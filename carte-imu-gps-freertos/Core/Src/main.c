@@ -26,6 +26,9 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "app.h"
+
+#include <stdio.h>
 
 /* USER CODE END Includes */
 
@@ -95,6 +98,7 @@ int main(void)
   MX_CRC_Init();
   MX_RNG_Init();
   /* USER CODE BEGIN 2 */
+  APP_Init();
 
   /* USER CODE END 2 */
 
@@ -232,8 +236,10 @@ void Error_Handler(void)
 void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
-  /* User can add his own implementation to report the file name and line number,
-     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+  /* User can add his own implementation to report the file name and line number */
+     printf("\r\n\n**** FATAL ERROR ****: file %s on line %ld\r\n", file, line);
+
+     for (;;);
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */

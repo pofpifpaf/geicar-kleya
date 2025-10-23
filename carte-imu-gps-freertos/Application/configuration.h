@@ -26,15 +26,20 @@
 #define APPLOOP_QUEUE_LENGTH   	10
 #define APPLOOP_QUEUE_ITEM_SIZE sizeof(void*)   // Chaque élément est un pointeur
 
+#define ECOMPASSLOOP_QUEUE_LENGTH   	16
+#define ECOMPASSLOOP_QUEUE_ITEM_SIZE sizeof(void*)   // Chaque élément est un pointeur
+
 // Tasks stack sizes
 #define APPLOOP_TASK_STACK_SIZE 	256   	// en mots de 32 bits
 #define DEBUGLOOP_TASK_STACK_SIZE 	256 	// en mots de 32 bits. Besoin de pas mal d'espace pour la fonction sprintf
 #define SENSORS_TASK_STACK_SIZE  	128 	// en mots de 32 bits. Pas besoin d'une stack enorme
+#define ECOMPASSLOOP_TASK_STACK_SIZE 	512   	// en mots de 32 bits. Pour les calculs de la boussole
 #define CAN_COMMUNICATION_TASK_STACK_SIZE 	128 	// en mots de 32 bits. Pas besoin d'une stack enorme
 
 // Tasks priorities
 #define CAN_COMMUNICATION_TASK_PRIORITY    	(tskIDLE_PRIORITY + 6) // Highest priority, no blocking function inside
 #define SENSORS_TASK_PRIORITY    	(tskIDLE_PRIORITY + 5)
+#define ECOMPASSLOOP_TASK_PRIORITY    	(tskIDLE_PRIORITY + 4)
 #define APPLOOP_TASK_PRIORITY   	(tskIDLE_PRIORITY + 3)
 #define DEBUGLOOP_TASK_PRIORITY 	(tskIDLE_PRIORITY + 1) // Lowest priority
 

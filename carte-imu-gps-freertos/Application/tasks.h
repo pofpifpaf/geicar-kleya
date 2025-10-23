@@ -20,6 +20,7 @@ extern "C" {
 
 /* Handle vers la queue de la tache TASK_AppLoop */
 extern QueueHandle_t xAppLoopQueue;
+extern QueueHandle_t xEcompassLoopQueue;
 
 void TASKS_Init(void);
 

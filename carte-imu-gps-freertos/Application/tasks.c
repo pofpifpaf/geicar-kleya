@@ -15,6 +15,7 @@
 
 #include "sensors.h"
 #include "can_communication.h"
+#include "ecompass.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -60,6 +61,17 @@ static StaticTask_t xSensorsLoopTaskTCB;
 static TaskHandle_t xSensorsLoopTaskHandle = NULL;
 
 /* -------------------------------------------------------------------------
+ * Déclaration de la tâche TASKS_EcompassLoop (statique)
+ * ------------------------------------------------------------------------- */
+void TASKS_EcompassLoop(void *argument);
+/* Buffer pour la pile et le TCB */
+static StackType_t xEcompassLoopTaskStack[ ECOMPASSLOOP_TASK_STACK_SIZE ];
+static StaticTask_t xEcompassLoopTaskTCB;
+
+/* Handle vers la tâche */
+static TaskHandle_t xEcompassLoopTaskHandle = NULL;
+
+/* -------------------------------------------------------------------------
  * Déclaration de la tâche TASKS_CANCommunicationEvent (statique)
  * ------------------------------------------------------------------------- */
 void TASKS_CANCommunicationEvent(void *argument);
@@ -75,6 +87,13 @@ static TaskHandle_t xCANCommunicationTaskHandle = NULL;
 static uint8_t ucAppLoopQueueStorageArea[ APPLOOP_QUEUE_LENGTH * APPLOOP_QUEUE_ITEM_SIZE ];
 static StaticQueue_t xAppLoopStaticQueue;
 QueueHandle_t xAppLoopQueue = NULL;
+
+/* -------------------------------------------------------------------------
+ * Déclaration du buffer pour la queue xEcompassLoopQueue
+ * ------------------------------------------------------------------------- */
+static uint8_t ucEcompassLoopQueueStorageArea[ ECOMPASSLOOP_QUEUE_LENGTH * ECOMPASSLOOP_QUEUE_ITEM_SIZE ];
+static StaticQueue_t xEcompassLoopStaticQueue;
+QueueHandle_t xEcompassLoopQueue = NULL;
 
 /* -------------------------------------------------------------------------
  * Déclaration du sémaphore de calibration (statique)
@@ -140,7 +159,7 @@ void TASKS_Init(void) {
 		Error_Handler();
 	}
 
-	/* Création de la tâche UltrasoundLoop (statiquement) */
+	/* Création de la tâche SensorsLoop (statiquement) */
 	xSensorsLoopTaskHandle = xTaskCreateStatic(TASKS_SensorsLoop, // fonction de la tâche
 			"SensorsLoop",             // nom (debug)
 			SENSORS_TASK_STACK_SIZE,   // taille pile (en mots de 32 bits)
@@ -154,6 +173,35 @@ void TASKS_Init(void) {
 		// Erreur : pas de mémoire statique ?
 		Error_Handler();
 
+	}
+
+	/* Création de la file pour la boussole electronique (statiquement) */
+	xEcompassLoopQueue = xQueueCreateStatic(
+			ECOMPASSLOOP_QUEUE_LENGTH,          // nombre d’éléments
+			ECOMPASSLOOP_QUEUE_ITEM_SIZE,       // taille d’un élément
+			ucEcompassLoopQueueStorageArea,    // buffer pour les données
+			&xEcompassLoopStaticQueue          // buffer pour la structure de contrôle
+	);
+
+	if (xEcompassLoopQueue == NULL) {
+		// Erreur : pas de mémoire statique ?
+		Error_Handler();
+	}
+
+	/* Création de la tâche EcompassLoop (statiquement) */
+	xEcompassLoopTaskHandle = xTaskCreateStatic(
+			TASKS_EcompassLoop,          // fonction de la tâche
+			"EcompassLoop",             // nom (debug)
+			ECOMPASSLOOP_TASK_STACK_SIZE,   // taille pile (en mots de 32 bits)
+			NULL,                  // paramètre d’entrée
+			ECOMPASSLOOP_TASK_PRIORITY,     // priorité
+			xEcompassLoopTaskStack,         // buffer pile
+			&xEcompassLoopTaskTCB           // buffer TCB
+	);
+
+	if (xEcompassLoopTaskHandle == NULL) {
+		// Erreur : pas de mémoire statique ?
+		Error_Handler();
 	}
 
 	/* Création de la tâche CANCommunicationEvent (statiquement) */
@@ -270,6 +318,35 @@ void TASKS_SensorsLoop(void *argument) {
 
 		// Time is compensated from others events that can make processing longer
 		vTaskDelayUntil(&xLastWakeTime, xPeriod);
+	}
+}
+
+/**
+ * @brief  Task function for the main application loop.
+ * This function processes messages received in the application queue.
+ * It runs indefinitely, handling messages as they arrive.
+ * @param  argument: Not used
+ */
+void TASKS_EcompassLoop(void *argument ) {
+	void *pReceived = NULL;
+
+	for(;;)
+	{
+#if defined (__TESTS__)
+		// TODO: add tests for eCompass
+#else
+		/* Attente infinie d’un élément dans la queue */
+		if (xQueueReceive(xAppLoopQueue, &pReceived, portMAX_DELAY) == pdPASS)
+		{
+			if (pReceived != NULL) {
+
+				/* Traitement de l’élément reçu */
+				// Exemple : cast et utilisation
+				// MyStruct_t *msg = (MyStruct_t*) pReceived;
+				ECOMPASS_ProcessMessage((ECOMPASS_SensorsValues_t*) pReceived);
+			}
+		}
+#endif /* __TESTS__ */
 	}
 }
 

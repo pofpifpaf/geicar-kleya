@@ -111,7 +111,7 @@ void SENSORS_Init(void) {
 }
 
 void SENSORS_TriggerMeasurements(void) {
-	static environement_counter = 0;
+	static uint32_t environement_counter = 0;
 
 	SENSORS_MotionMesures_t *motion_msg = pvPortMalloc(sizeof(SENSORS_MotionMesures_t));
 
@@ -205,8 +205,8 @@ void SENSORS_SendMesures(void) {
 		msg->id = SENSORS_SEND_MEASURES_ID;
 
 
-		// Send to APP task
-		if (xQueueSend(xAppLoopQueue, &msg, portMAX_DELAY) != pdPASS)  {
+		// Send to APP task, no wait
+		if (xQueueSend(xAppLoopQueue, &msg, 0) != pdPASS)  {
 			// Queue full, drop the message
 			vPortFree(msg);
 		}

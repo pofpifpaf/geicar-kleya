@@ -252,7 +252,7 @@
 //			}
 //
 //			// Send to APP task
-//			if (xQueueSend(xAppLoopQueue, &canFrame, portMAX_DELAY) != pdPASS)  {
+//			if (xQueueSend(xAppLoopQueue, &canFrame, 0) != pdPASS)  {
 //				// Queue full, drop the message
 //				vPortFree(canFrame);
 //			}

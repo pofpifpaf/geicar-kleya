@@ -20,6 +20,7 @@
 
 #include "can_communication.h"
 #include "sensors.h"
+#include "ecompass.h"
 #include "tasks.h"
 
 #include <stdio.h>
@@ -48,38 +49,6 @@ uint8_t env_sample_count = 0;
 #define MAX_BUF_SIZE 256
 static char dataOut[MAX_BUF_SIZE];
 
-//typedef struct displayFloatToInt_s
-//{
-//	int8_t sign; /* 0 means positive, 1 means negative*/
-//	uint32_t  out_int;
-//	uint32_t  out_dec;
-//} displayFloatToInt_t;
-
-/**
- * @brief  Splits a float into two integer values.
- * @param  in the float value as input
- * @param  out_value the pointer to the output integer structure
- * @param  dec_prec the decimal precision to be used
- * @retval None
- */
-//static void floatToInt(float in, displayFloatToInt_t *out_value, int32_t dec_prec)
-//{
-//	if (in >= 0.0f)
-//	{
-//		out_value->sign = 0;
-//	}
-//	else
-//	{
-//		out_value->sign = 1;
-//		in = -in;
-//	}
-//
-//	in = in + (0.5f / (float)pow(10, (double)dec_prec));
-//	out_value->out_int = (int32_t)in;
-//	in = in - (float)(out_value->out_int);
-//	out_value->out_dec = (int32_t)trunc((double)in * pow(10, (double)dec_prec));
-//}
-
 /**
  * @brief Initialize the application.
  * This function sets up the necessary software components
@@ -88,6 +57,7 @@ void APP_Init(void) {
 	// CAN communications
 	//CAN_COM_Init();
 	SENSORS_Init();
+	ECOMPASS_Init((float)SENSORS_MAG_ODR_HZ); // in Hz, at 100 Hz
 
 	// Tasks
 	TASKS_Init();
@@ -167,6 +137,26 @@ void APP_Run(AppMessage_typeDef *msg) {
 			acc_last_values = SENSORS_ACC_RawtoG(&(((SENSORS_MotionMesures_t*)msg)->acc));
 			gyro_last_values = SENSORS_GYRO_RawtoDPS(&(((SENSORS_MotionMesures_t*)msg)->gyro));
 			mag_last_values = SENSORS_MAG_RawtoMilliGauss(&(((SENSORS_MotionMesures_t*)msg)->mag));
+
+			ECOMPASS_SensorsValues_t *ecompass_msg = pvPortMalloc(sizeof(ECOMPASS_SensorsValues_t));
+			if (ecompass_msg != NULL) {
+				memset(ecompass_msg, 0, sizeof(ECOMPASS_SensorsValues_t)); // ras des valeurs
+				// ecompass_msg->header.id = ECOMPASS_SEND_MEASURES_ID;
+				ecompass_msg->elapsedTimeMs = 10; // TODO: add elapsed time if needed
+				ecompass_msg->acc = acc_last_values;
+				ecompass_msg->gyro = gyro_last_values;
+				ecompass_msg->mag = mag_last_values;
+
+				// Send mesures to ECOMPASS task, no wait
+				if (xQueueSend(xEcompassLoopQueue, &ecompass_msg, 0) != pdPASS) {
+					// Queue full, drop the message
+					vPortFree(ecompass_msg);
+					assert_param(0);
+				}
+			} else {
+				// Memory allocation failed, drop the message and assert
+				assert_param(0);
+			}
 			break;
 
 		case SENSORS_ENV_MEASURES_ID:

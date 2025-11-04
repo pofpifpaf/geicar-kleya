@@ -21,6 +21,7 @@ extern "C" {
 /* Handle vers la queue de la tache TASK_AppLoop */
 extern QueueHandle_t xAppLoopQueue;
 extern QueueHandle_t xEcompassLoopQueue;
+extern QueueHandle_t xPrintLoopQueue;
 
 void TASKS_Init(void);
 

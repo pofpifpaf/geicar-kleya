@@ -39,6 +39,7 @@ typedef struct {
 
 typedef struct {
 	AppMessage_typeDef header;
+	uint8_t sensorIndex; // Index of the environmental sensor;
     float temperature; // Temperature data
     float pressure; // Pressure data
     float humidity; // Humidity data

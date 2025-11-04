@@ -13,6 +13,8 @@
 
 #include "app.h"
 
+#include "print_mgr.h"
+
 #include "sensors.h"
 #include "can_communication.h"
 #include "ecompass.h"
@@ -39,6 +41,17 @@ static StaticTask_t xAppLoopTaskTCB;
 
 /* Handle vers la tâche */
 static TaskHandle_t xAppLoopTaskHandle = NULL;
+
+/* -------------------------------------------------------------------------
+ * Déclaration de la tâche TASKS_PrintLoop (statique)
+ * ------------------------------------------------------------------------- */
+void TASKS_PrintLoop(void *argument);
+/* Buffer pour la pile et le TCB */
+static StackType_t xPrintLoopTaskStack[ PRINTLOOP_TASK_STACK_SIZE ];
+static StaticTask_t xPrintLoopTaskTCB;
+
+/* Handle vers la tâche */
+static TaskHandle_t xPrintLoopTaskHandle = NULL;
 
 /* -------------------------------------------------------------------------
  * Déclaration de la tâche TASKS_DebugLoop (statique)
@@ -89,6 +102,13 @@ static StaticQueue_t xAppLoopStaticQueue;
 QueueHandle_t xAppLoopQueue = NULL;
 
 /* -------------------------------------------------------------------------
+ * Déclaration du buffer pour la queue xPrintLoopQueue
+ * ------------------------------------------------------------------------- */
+static uint8_t ucPrintLoopQueueStorageArea[ PRINTLOOP_QUEUE_LENGTH * PRINTLOOP_QUEUE_ITEM_SIZE ];
+static StaticQueue_t xPrintLoopStaticQueue;
+QueueHandle_t xPrintLoopQueue = NULL;
+
+/* -------------------------------------------------------------------------
  * Déclaration du buffer pour la queue xEcompassLoopQueue
  * ------------------------------------------------------------------------- */
 static uint8_t ucEcompassLoopQueueStorageArea[ ECOMPASSLOOP_QUEUE_LENGTH * ECOMPASSLOOP_QUEUE_ITEM_SIZE ];
@@ -96,17 +116,18 @@ static StaticQueue_t xEcompassLoopStaticQueue;
 QueueHandle_t xEcompassLoopQueue = NULL;
 
 /* -------------------------------------------------------------------------
- * Déclaration du sémaphore de calibration (statique)
- * ------------------------------------------------------------------------- */
-static StaticSemaphore_t xCalibrationSemaphoreBuffer;
-SemaphoreHandle_t xCalibrationSemaphore = NULL;
-
-/* -------------------------------------------------------------------------
- * Déclaration du timer pour l'envoi des données moteurs (statique)
+ * Déclaration du timer pour l'envoi des données des capteurs (statique)
  * ------------------------------------------------------------------------- */
 static void SensorsTimerCallback(TimerHandle_t xTimer);
 static StaticTimer_t xSensorsTimerBuffer;
 static TimerHandle_t xSensorsTimer   = NULL;
+
+/* -------------------------------------------------------------------------
+ * Déclaration du timer pour l'envoi des données de la boussole electronique (statique)
+ * ------------------------------------------------------------------------- */
+static void EcompassTimerCallback(TimerHandle_t xTimer);
+static StaticTimer_t xEcompassTimerBuffer;
+static TimerHandle_t xEcompassTimer   = NULL;
 
 /*
  * @brief  Initialize tasks, queues, semaphores and timers.
@@ -142,6 +163,35 @@ void TASKS_Init(void) {
 		// Erreur : pas de mémoire statique ?
 		Error_Handler();
 	}
+
+	/* Création de la file pour la tache d'affichage (statiquement) */
+		xPrintLoopQueue = xQueueCreateStatic(
+				PRINTLOOP_QUEUE_LENGTH,          // nombre d’éléments
+				PRINTLOOP_QUEUE_ITEM_SIZE,       // taille d’un élément
+				ucPrintLoopQueueStorageArea,    // buffer pour les données
+				&xPrintLoopStaticQueue          // buffer pour la structure de contrôle
+		);
+
+		if (xPrintLoopQueue == NULL) {
+			// Erreur : pas de mémoire statique ?
+			Error_Handler();
+		}
+
+		/* Création de la tâche PrintLoop (statiquement) */
+		xPrintLoopTaskHandle = xTaskCreateStatic(
+				TASKS_PrintLoop,          // fonction de la tâche
+				"PrintLoop",             // nom (debug)
+				PRINTLOOP_TASK_STACK_SIZE,   // taille pile (en mots de 32 bits)
+				NULL,                  // paramètre d’entrée
+				PRINTLOOP_TASK_PRIORITY,     // priorité
+				xPrintLoopTaskStack,         // buffer pile
+				&xPrintLoopTaskTCB           // buffer TCB
+		);
+
+		if (xPrintLoopTaskHandle == NULL) {
+			// Erreur : pas de mémoire statique ?
+			Error_Handler();
+		}
 
 	/* Création de la tâche DebugLoop (statiquement) */
 	xDebugLoopTaskHandle = xTaskCreateStatic(
@@ -219,17 +269,7 @@ void TASKS_Init(void) {
 		Error_Handler();
 	}
 
-	/* Création du sémaphore de calibration (statiquement) */
-	xCalibrationSemaphore = xSemaphoreCreateBinaryStatic(&xCalibrationSemaphoreBuffer);
-	if (xCalibrationSemaphore == NULL) {
-		// Erreur : pas de mémoire statique ?
-		Error_Handler();
-	}
-
-	/* Au démarrage, le sémaphore est "pris" */
-	xSemaphoreTake(xCalibrationSemaphore, 0);
-
-	/* Timer moteur */
+	/* Timer capteurs */
 	xSensorsTimer = xTimerCreateStatic(
 			"SensorsTimer",                                  // nom
 			pdMS_TO_TICKS(SENSORS_TIMER_PERIOD_MS),          // période
@@ -244,10 +284,34 @@ void TASKS_Init(void) {
 		Error_Handler();
 	}
 
+	/* Timer ecompass */
+	xEcompassTimer = xTimerCreateStatic(
+			"EcompassTimer",                                  // nom
+			pdMS_TO_TICKS(ECOMPASS_TIMER_PERIOD_MS),          // période
+			pdTRUE,                                        // auto-reload
+			(void*)0,                                      // identifiant (optionnel)
+			EcompassTimerCallback,                            // callback
+			&xEcompassTimerBuffer                             // buffer statique
+	);
+	configASSERT(xEcompassTimer != NULL);
+	if (xEcompassTimer == NULL) {
+		// Erreur : pas de mémoire statique ?
+		Error_Handler();
+	}
+
 	if (xTimerStart(xSensorsTimer, 0) != pdPASS) {
 		// Erreur : pas de mémoire statique ?
 		Error_Handler();
 	}
+
+	if (xTimerStart(xEcompassTimer, 0) != pdPASS) {
+		// Erreur : pas de mémoire statique ?
+		Error_Handler();
+	}
+
+	vQueueAddToRegistry(xEcompassLoopQueue, "EcompassLoopQueue");
+	vQueueAddToRegistry(xAppLoopQueue, "AppLoopQueue");
+	vQueueAddToRegistry(xPrintLoopQueue, "PrintLoopQueue");
 }
 
 /**
@@ -264,7 +328,7 @@ void TASKS_AppLoop(void *argument ) {
 #if defined (__TESTS__)
 		TESTS_Run(); // Run tests if defined
 #else
-		/* Attente infinie d’un élément dans la queue */
+		/* Attente infinie d’un élément dans la queue AppLoop*/
 		if (xQueueReceive(xAppLoopQueue, &pReceived, portMAX_DELAY) == pdPASS)
 		{
 			if (pReceived != NULL) {
@@ -276,6 +340,31 @@ void TASKS_AppLoop(void *argument ) {
 			}
 		}
 #endif /* __TESTS__ */
+	}
+}
+
+/**
+ * @brief  Task function for the main application loop.
+ * This function processes messages received in the application queue.
+ * It runs indefinitely, handling messages as they arrive.
+ * @param  argument: Not used
+ */
+void TASKS_PrintLoop(void *argument ) {
+	void *pReceived = NULL;
+
+	for(;;)
+	{
+		/* Attente infinie d’un élément dans la queue PrintLoop*/
+		if (xQueueReceive(xPrintLoopQueue, &pReceived, portMAX_DELAY) == pdPASS)
+		{
+			if (pReceived != NULL) {
+
+				/* Traitement de l’élément reçu */
+				// Exemple : cast et utilisation
+				// MyStruct_t *msg = (MyStruct_t*) pReceived;
+				PRINT_Run((PrintMessage_typeDef*) pReceived);
+			}
+		}
 	}
 }
 
@@ -335,8 +424,8 @@ void TASKS_EcompassLoop(void *argument ) {
 #if defined (__TESTS__)
 		// TODO: add tests for eCompass
 #else
-		/* Attente infinie d’un élément dans la queue */
-		if (xQueueReceive(xAppLoopQueue, &pReceived, portMAX_DELAY) == pdPASS)
+		/* Attente infinie d’un élément dans la queue ECompass*/
+		if (xQueueReceive(xEcompassLoopQueue, &pReceived, portMAX_DELAY) == pdPASS)
 		{
 			if (pReceived != NULL) {
 
@@ -366,13 +455,20 @@ void TASKS_CANCommunicationEvent(void *argument) {
 }
 
 /**
- * @brief  Callback function for the motor timer.
- * This function is called when the motor timer expires.
- * It performs sending motors measurements.
+ * @brief  Callback function for the sensors timer.
+ * This function is called when the sensors timer expires.
  */
 static void SensorsTimerCallback(TimerHandle_t xTimer) {
 	/* Send sensors measurements to application main loop, for CAN formating */
 	SENSORS_SendMesures();
 }
 
+/**
+ * @brief  Callback function for the ecompass timer.
+ * This function is called when the ecompass timer expires.
+ */
+static void EcompassTimerCallback(TimerHandle_t xTimer) {
+	/* Send Ecompass measurements to application main loop, for CAN formating */
+	ECOMPASS_SendMesures();
+}
 

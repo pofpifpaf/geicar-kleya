@@ -15,9 +15,11 @@
 
 typedef struct {
 	AppMessage_typeDef header;
-	float heading;
+	float yaw;
 	float pitch;
 	float roll;
+	float heading;
+	int32_t heading_valid;
 } ECOMPASS_Attitude_t;
 
 typedef struct {
@@ -30,5 +32,5 @@ typedef struct {
 
 uint32_t ECOMPASS_Init(float freq) ;
 void ECOMPASS_ProcessMessage(const ECOMPASS_SensorsValues_t *msg);
-
+void ECOMPASS_SendMesures(void);
 #endif /* ECOMPASS_H_ */

@@ -38,7 +38,7 @@ uint32_t SENSORS_LSM6DSV16X_InitAcc(LSM6DSV16X_Object_t *handler);
 /* Gyroscope LSM6DSV16X */
 LSM6DSV16X_Object_t lsm6dsv16x_gyro_handler;
 LSM6DSV16X_AxesRaw_t angular_velocity_raw = {0};
-#define NUM_CALIBRATION_SAMPLES 500
+#define NUM_CALIBRATION_SAMPLES 64
 LSM6DSV16X_AxesRaw_t gyro_bias = {0};
 float lsm6dsv16x_gyro_sensitivity = 0.0f;
 uint32_t SENSORS_LSM6DSV16X_InitGyro(LSM6DSV16X_Object_t *handler);
@@ -113,6 +113,8 @@ void SENSORS_Init(void) {
 void SENSORS_TriggerMeasurements(void) {
 	static uint32_t environement_counter = 0;
 
+	HAL_GPIO_WritePin(EVT_1_GPIO_Port, EVT_1_Pin, GPIO_PIN_SET);
+
 	SENSORS_MotionMesures_t *motion_msg = pvPortMalloc(sizeof(SENSORS_MotionMesures_t));
 
 	if (motion_msg != NULL) {
@@ -152,12 +154,15 @@ void SENSORS_TriggerMeasurements(void) {
 		assert_param(0);
 	}
 
+	HAL_GPIO_WritePin(EVT_1_GPIO_Port, EVT_1_Pin, GPIO_PIN_RESET);
+
 	// Environment measurements every N calls
 	environement_counter++;
 
 	if (environement_counter >= (SENSORS_ENVIRONMENTAL_PERIOD)) {
-		environement_counter = 0;
+		HAL_GPIO_WritePin(EVT_1_GPIO_Port, EVT_2_Pin, GPIO_PIN_SET);
 
+		environement_counter = 0;
 		SENSORS_EnvironementMesures_t *env_msg = pvPortMalloc(sizeof(SENSORS_EnvironementMesures_t));
 
 		if (env_msg != NULL) {
@@ -171,18 +176,23 @@ void SENSORS_TriggerMeasurements(void) {
 				env_msg->pressure = 0.0f;
 			}
 
-			// Get humidity data
+			// Get temperature data
+			if (STTS22H_TEMP_GetTemperature(&stts22h_handler,
+					&(env_msg->temperature)) != STTS22H_OK) {
+				// Error reading temperature
+				env_msg->temperature = 0.0f;
+			}
+
+			// Get humidity data from previous task activation
 			if (SHT40AD1B_HUM_GetHumidity(&sht40ad1b_handler,
 					&(env_msg->humidity)) != SHT40AD1B_OK) {
 				// Error reading humidity
 				env_msg->humidity = 0.0f;
 			}
 
-			// Get temperature data
-			if (STTS22H_TEMP_GetTemperature(&stts22h_handler,
-					&(env_msg->temperature)) != STTS22H_OK) {
-				// Error reading temperature
-				env_msg->temperature = 0.0f;
+			// Start humidity measurement for next task activation
+			if (SHT40AD1B_HUM_StartMeasurement(&sht40ad1b_handler) != SHT40AD1B_OK) {
+				// Error starting humidity measurement
 			}
 
 			// Send mesures to APP task
@@ -195,7 +205,11 @@ void SENSORS_TriggerMeasurements(void) {
 			// Memory allocation failed, drop the message and assert
 			assert_param(0);
 		}
+
+		HAL_GPIO_WritePin(EVT_1_GPIO_Port, EVT_2_Pin, GPIO_PIN_RESET);
 	}
+
+
 }
 
 void SENSORS_SendMesures(void) {
@@ -203,7 +217,6 @@ void SENSORS_SendMesures(void) {
 
 	if (msg != NULL) {
 		msg->id = SENSORS_SEND_MEASURES_ID;
-
 
 		// Send to APP task, no wait
 		if (xQueueSend(xAppLoopQueue, &msg, 0) != pdPASS)  {
@@ -333,13 +346,14 @@ uint32_t SENSORS_LSM6DSV16X_InitGyro(LSM6DSV16X_Object_t *handler) {
 		ret = SENSOR_ERROR;
 	}
 
-	if (ret == SENSOR_ERROR) {
-		if (LSM6DSV16X_Init(handler) != LSM6DSV16X_OK) {
-			ret = SENSOR_ERROR;
-		}
-	}
+	// Inutile de le faire, déjà fait par l'accelero
+	//	if (ret == SENSOR_OK) {
+	//		if (LSM6DSV16X_Init(handler) != LSM6DSV16X_OK) {
+	//			ret = SENSOR_ERROR;
+	//		}
+	//	}
 
-	if (ret == SENSOR_ERROR) {
+	if (ret == SENSOR_OK) {
 		/* Enable the gyroscope */
 		if (LSM6DSV16X_GYRO_Enable(handler) != LSM6DSV16X_OK) {
 			ret = SENSOR_ERROR;
@@ -498,7 +512,7 @@ void SENSORS_CalibrateGyroBias(LSM6DSV16X_Object_t *pObj)
 
 		// Délai minimal pour s'assurer que l'ODR est respecté.
 		// Par exemple, si ODR = 104 Hz, l'échantillon arrive toutes les 9.6ms.
-		IKS4A1_DELAY(5); // Attendre un peu moins que la période d'échantillonnage pour être sûr
+		IKS4A1_DELAY(10); // Attendre un peu moins que la période d'échantillonnage pour être sûr
 	}
 
 	// 2. Calculer la moyenne (le biais)

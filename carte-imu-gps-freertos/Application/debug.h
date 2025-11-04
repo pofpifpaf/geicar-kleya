@@ -16,5 +16,7 @@
 
 void DEBUG_PrintITM(uint8_t port, char *str);
 void DEBUG_PrintPeriodicInfo(void);
+void DEBUG_Panic(uint8_t *file, uint32_t line);
+void runTimeCounterOverflowHandler(void);
 
 #endif /* DEBUG_H_ */

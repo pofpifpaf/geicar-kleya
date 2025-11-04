@@ -21,13 +21,14 @@
 #include "cmsis_os.h"
 #include "crc.h"
 #include "rng.h"
+#include "tim.h"
 #include "usart.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "app.h"
-
+#include "debug.h"
 #include <stdio.h>
 
 /* USER CODE END Includes */
@@ -97,6 +98,7 @@ int main(void)
   MX_USART2_UART_Init();
   MX_CRC_Init();
   MX_RNG_Init();
+  MX_TIM7_Init();
   /* USER CODE BEGIN 2 */
   APP_Init();
 
@@ -237,7 +239,7 @@ void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
   /* User can add his own implementation to report the file name and line number */
-     printf("\r\n\n**** FATAL ERROR ****: file %s on line %ld\r\n", file, line);
+     DEBUG_Panic(file, line);
 
      for (;;);
   /* USER CODE END 6 */

@@ -11,6 +11,12 @@
 #include "iks4a1_motion_sensors.h"
 #include "motion_ec.h"
 
+#include "FreeRTOS.h"
+#include "semphr.h"
+#include "queue.h"
+
+#include "tasks.h" // for xAppLoopQueue
+
 #define MOTION_SENSOR_Axes_t IKS4A1_MOTION_SENSOR_Axes_t
 
 char acc_orientation[4];
@@ -28,6 +34,30 @@ static void q_conjug(float q_conj[], float q_src[]);
 static void q_multiply(float q_res[], float q_a[], float q_b[]);
 static void transform_orientation(const SENSORS_TriaxeValues_t *input, float output[], float matrix[][3]);
 static void v_rotate(float v_new[], float q_rot[], float v_old[]);
+
+#define DWT_CONTROL (*(volatile uint32_t*)0xE0001000)
+#define DWT_CYCCNT  (*(volatile uint32_t*)0xE0001004)
+#define DEMCR       (*(volatile uint32_t*)0xE000EDFC)
+#define DWT_CR_CYCCNTENA_Msk (1UL << 0)
+#define DEMCR_TRCENA_Msk     (1UL << 24)
+
+#define CYCLES_PER_MS 80000.0 // Utilisez un flottant pour le calcul en double
+
+double duration_ms;
+/**
+ * @brief Active le compteur de cycles DWT
+ */
+void DWT_Init(void)
+{
+    // 1. Autoriser l'accès au DWT (Trace Enable)
+    DEMCR |= DEMCR_TRCENA_Msk;
+
+    // 2. Réinitialiser le compteur de cycles
+    DWT_CYCCNT = 0;
+
+    // 3. Démarrer le compteur
+    DWT_CONTROL |= DWT_CR_CYCCNTENA_Msk;
+}
 
 /**
  * @brief  Get accelerometer sensor orientation
@@ -324,15 +354,24 @@ uint32_t ECOMPASS_Init(float freq) {
 void ECOMPASS_ProcessMessage(const ECOMPASS_SensorsValues_t *msg) {
 	// Process the sensor values to compute heading, pitch, and roll
 
-	//uint32_t elapsed_time_us = 0U;
+	uint32_t start_cycles;
+	uint32_t end_cycles;
+	uint32_t duration_cycles;
+
 	MEC_input_t  data_in;
 	MEC_output_t data_out;
 
+	float heading;
+	int32_t heading_valid;
+
+	HAL_GPIO_WritePin(EVT_4_GPIO_Port, EVT_4_Pin, GPIO_PIN_SET);
+
 	/* Do sensor orientation transformation */
-	//MotionEC_manager_transform_orientation(&AccValue, &MagValueComp, data_in.acc, data_in.mag);
 	transform_orientation(&(msg->acc), data_in.acc, AccMatrix);
 	//transform_orientation(&(msg->gyro), data_in.gyr, GyrMatrix);
 	transform_orientation(&(msg->mag), data_in.mag, MagMatrix);
+
+	vPortFree((void*)msg); // Free the message after extracting data)
 
 	/* Convert raw accelerometer data from [mg] to [g] */
 //	data_in.acc[0] = data_in.acc[0] / 1000.0f; /* East */
@@ -349,40 +388,52 @@ void ECOMPASS_ProcessMessage(const ECOMPASS_SensorsValues_t *msg) {
 
 	/* Run E-Compass algorithm */
 	//BSP_LED_On(LED2);
-	//DWT_Start();
+	start_cycles = DWT_CYCCNT;
 	MotionEC_manager_run(&data_in, &data_out);
-	//elapsed_time_us = DWT_Stop();
-	//BSP_LED_Off(LED2);
-
+	end_cycles = DWT_CYCCNT;
+	duration_cycles = end_cycles - start_cycles;
+	duration_ms = (double)duration_cycles / CYCLES_PER_MS;
 	/* Write data to output stream */
-//	FloatToArray(&Msg->Data[55], data_out.quaternion[0]);
-//	FloatToArray(&Msg->Data[59], data_out.quaternion[1]);
-//	FloatToArray(&Msg->Data[63], data_out.quaternion[2]);
-//	FloatToArray(&Msg->Data[67], data_out.quaternion[3]);
-//
-//	FloatToArray(&Msg->Data[71], data_out.euler[0]);
-//	FloatToArray(&Msg->Data[75], data_out.euler[1]);
-//	FloatToArray(&Msg->Data[79], data_out.euler[2]);
-//
-//	FloatToArray(&Msg->Data[83], data_out.i_gyro[0]);
-//	FloatToArray(&Msg->Data[87], data_out.i_gyro[1]);
-//	FloatToArray(&Msg->Data[91], data_out.i_gyro[2]);
-//
-//	FloatToArray(&Msg->Data[95], data_out.gravity[0]);
-//	FloatToArray(&Msg->Data[99], data_out.gravity[1]);
-//	FloatToArray(&Msg->Data[103], data_out.gravity[2]);
-//
-//	FloatToArray(&Msg->Data[107], data_out.linear[0]);
-//	FloatToArray(&Msg->Data[111], data_out.linear[1]);
-//	FloatToArray(&Msg->Data[115], data_out.linear[2]);
-
-	float heading;
-	int32_t heading_valid;
 
 	MotionEC_manager_calc_heading(data_out.quaternion, &heading, &heading_valid);
 
-//	FloatToArray(&Msg->Data[119], heading);
-//	Msg->Data[123] = (uint8_t)heading_valid;
-//
-//	Serialize_s32(&Msg->Data[125], (int32_t)elapsed_time_us, 4);
+	ECOMPASS_Attitude_t *attitude_msg = pvPortMalloc(sizeof(ECOMPASS_Attitude_t));
+	if (attitude_msg != NULL) {
+		memset(attitude_msg, 0, sizeof(ECOMPASS_Attitude_t)); // ras des valeurs
+		attitude_msg->header.id = ECOMPASS_ATTITUDE_DATA_ID;
+		attitude_msg->heading = heading;
+		attitude_msg->heading_valid = heading_valid;
+		attitude_msg->yaw = data_out.euler[0];
+		attitude_msg->pitch = data_out.euler[1];
+		attitude_msg->roll = data_out.euler[2];
+
+		if (xQueueSend(xAppLoopQueue, &attitude_msg, portMAX_DELAY) != pdPASS) {
+			// Queue full, drop the message
+			vPortFree(attitude_msg);
+			assert_param(0);
+		}
+	} else {
+		// Memory allocation failed, drop the message and assert
+		assert_param(0);
+	}
+
+	HAL_GPIO_WritePin(EVT_4_GPIO_Port, EVT_4_Pin, GPIO_PIN_RESET);
+}
+
+void ECOMPASS_SendMesures(void) {
+// This function can be used to trigger sending eCompass measures if needed
+	AppMessage_typeDef *msg = pvPortMalloc(sizeof(AppMessage_typeDef));
+
+	if (msg != NULL) {
+		msg->id = ECOMPASS_SEND_MEASURES_ID;
+
+		// Send to APP task, no wait
+		if (xQueueSend(xAppLoopQueue, &msg, portMAX_DELAY) != pdPASS) {
+			// Queue full, drop the message
+			vPortFree(msg);
+		}
+	} else {
+		// Memory allocation failed, drop the message
+		assert_param(0);
+	}
 }

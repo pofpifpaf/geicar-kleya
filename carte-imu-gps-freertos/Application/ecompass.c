@@ -401,11 +401,11 @@ void ECOMPASS_ProcessMessage(const ECOMPASS_SensorsValues_t *msg) {
 	if (attitude_msg != NULL) {
 		memset(attitude_msg, 0, sizeof(ECOMPASS_Attitude_t)); // ras des valeurs
 		attitude_msg->header.id = ECOMPASS_ATTITUDE_DATA_ID;
-		attitude_msg->heading = heading;
-		attitude_msg->heading_valid = heading_valid;
-		attitude_msg->yaw = data_out.euler[0];
-		attitude_msg->pitch = data_out.euler[1];
-		attitude_msg->roll = data_out.euler[2];
+		attitude_msg->values.heading = heading;
+		attitude_msg->values.heading_valid = heading_valid;
+		attitude_msg->values.yaw = data_out.euler[0];
+		attitude_msg->values.pitch = data_out.euler[1];
+		attitude_msg->values.roll = data_out.euler[2];
 
 		if (xQueueSend(xAppLoopQueue, &attitude_msg, portMAX_DELAY) != pdPASS) {
 			// Queue full, drop the message

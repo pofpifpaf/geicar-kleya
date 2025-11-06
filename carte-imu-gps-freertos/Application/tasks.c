@@ -116,11 +116,18 @@ static StaticQueue_t xEcompassLoopStaticQueue;
 QueueHandle_t xEcompassLoopQueue = NULL;
 
 /* -------------------------------------------------------------------------
- * Déclaration du timer pour l'envoi des données des capteurs (statique)
+ * Déclaration du timer pour l'envoi des données des capteurs de mouvement (statique)
  * ------------------------------------------------------------------------- */
-static void SensorsTimerCallback(TimerHandle_t xTimer);
-static StaticTimer_t xSensorsTimerBuffer;
-static TimerHandle_t xSensorsTimer   = NULL;
+static void MotionTimerCallback(TimerHandle_t xTimer);
+static StaticTimer_t xMotionTimerBuffer;
+static TimerHandle_t xMotionTimer   = NULL;
+
+/* -------------------------------------------------------------------------
+ * Déclaration du timer pour l'envoi des données des capteurs environnementaux (statique)
+ * ------------------------------------------------------------------------- */
+static void EnvTimerCallback(TimerHandle_t xTimer);
+static StaticTimer_t xEnvTimerBuffer;
+static TimerHandle_t xEnvTimer   = NULL;
 
 /* -------------------------------------------------------------------------
  * Déclaration du timer pour l'envoi des données de la boussole electronique (statique)
@@ -270,16 +277,31 @@ void TASKS_Init(void) {
 	}
 
 	/* Timer capteurs */
-	xSensorsTimer = xTimerCreateStatic(
-			"SensorsTimer",                                  // nom
-			pdMS_TO_TICKS(SENSORS_TIMER_PERIOD_MS),          // période
+	xMotionTimer = xTimerCreateStatic(
+			"MotionTimer",                                  // nom
+			pdMS_TO_TICKS(MOTION_TIMER_PERIOD_MS),          // période
 			pdTRUE,                                        // auto-reload
 			(void*)0,                                      // identifiant (optionnel)
-			SensorsTimerCallback,                            // callback
-			&xSensorsTimerBuffer                             // buffer statique
+			MotionTimerCallback,                            // callback
+			&xMotionTimerBuffer                             // buffer statique
 	);
-	configASSERT(xSensorsTimer != NULL);
-	if (xSensorsTimer == NULL) {
+	configASSERT(xMotionTimer != NULL);
+	if (xMotionTimer == NULL) {
+		// Erreur : pas de mémoire statique ?
+		Error_Handler();
+	}
+
+	/* Timer environnement */
+	xEnvTimer = xTimerCreateStatic(
+			"EnvTimer",                            // nom
+			pdMS_TO_TICKS(ENV_TIMER_PERIOD_MS),          // période
+			pdTRUE,                                        // auto-reload
+			(void*) 0,                                // identifiant (optionnel)
+			EnvTimerCallback,                            // callback
+			&xEnvTimerBuffer                             // buffer statique
+			);
+	configASSERT(xEnvTimer != NULL);
+	if (xEnvTimer == NULL) {
 		// Erreur : pas de mémoire statique ?
 		Error_Handler();
 	}
@@ -299,7 +321,12 @@ void TASKS_Init(void) {
 		Error_Handler();
 	}
 
-	if (xTimerStart(xSensorsTimer, 0) != pdPASS) {
+	if (xTimerStart(xMotionTimer, 0) != pdPASS) {
+		// Erreur : pas de mémoire statique ?
+		Error_Handler();
+	}
+
+	if (xTimerStart(xEnvTimer, 0) != pdPASS) {
 		// Erreur : pas de mémoire statique ?
 		Error_Handler();
 	}
@@ -362,7 +389,7 @@ void TASKS_PrintLoop(void *argument ) {
 				/* Traitement de l’élément reçu */
 				// Exemple : cast et utilisation
 				// MyStruct_t *msg = (MyStruct_t*) pReceived;
-				PRINT_Run((PrintMessage_typeDef*) pReceived);
+				PRINT_Run((AppMessage_typeDef*) pReceived);
 			}
 		}
 	}
@@ -458,9 +485,18 @@ void TASKS_CANCommunicationEvent(void *argument) {
  * @brief  Callback function for the sensors timer.
  * This function is called when the sensors timer expires.
  */
-static void SensorsTimerCallback(TimerHandle_t xTimer) {
+static void MotionTimerCallback(TimerHandle_t xTimer) {
 	/* Send sensors measurements to application main loop, for CAN formating */
-	SENSORS_SendMesures();
+	SENSORS_SendMotionMesures();
+}
+
+/**
+ * @brief  Callback function for the environmental sensors timer.
+ * This function is called when the environmental sensors timer expires.
+ */
+static void EnvTimerCallback(TimerHandle_t xTimer) {
+	/* Send environmental sensors measurements to application main loop, for CAN formating */
+	SENSORS_SendEnvMesures();
 }
 
 /**

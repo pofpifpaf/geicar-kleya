@@ -47,7 +47,8 @@ typedef struct {
 
 void SENSORS_Init(void);
 void SENSORS_TriggerMeasurements(void);
-void SENSORS_SendMesures(void);
+void SENSORS_SendMotionMesures(void);
+void SENSORS_SendEnvMesures(void);
 
 SENSORS_TriaxeValues_t SENSORS_GYRO_RawtoDPS(LSM6DSV16X_AxesRaw_t *raw);
 SENSORS_TriaxeValues_t SENSORS_ACC_RawtoG(LSM6DSV16X_AxesRaw_t *raw);

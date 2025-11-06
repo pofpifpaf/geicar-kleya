@@ -26,6 +26,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+static void PRINT_FormatFrame(uint8_t frame_id, uint8_t *data, uint8_t length) {
+	//******** Format frame for UART transmission **********
+	// TODO:
+}
+
 /**
  * @brief Initialize the print manager.
  * This function sets up the necessary software components
@@ -42,11 +47,59 @@ void PRINT_Init(void) {
  *
  * @remark: this function never returns, it runs indefinitely.
  */
-void PRINT_Run(PrintMessage_typeDef *msg) {
+void PRINT_Run(AppMessage_typeDef *msg) {
 	switch (msg->id) {
-	case PRINT_MSG_ID: // a message frame was received to send over uart
-		printf("%s", msg->s);
-		vPortFree((void*)msg->s);
+	case PRINT_MOTION_MSG_ID: // motion data were received, to send over uart
+		PrintMessage_Motion_typeDef *sensors_print_msg = pvPortMalloc(sizeof(PrintMessage_Motion_typeDef));
+		if (sensors_print_msg == NULL) {
+			// Memory allocation failed, drop the message and assert
+			assert_param(0);
+		}
+
+		/********** Send motion data **********/
+		/* TODO :
+		 * Implement the printing of motion data over UART.
+		 * Use the huart2 handle for UART transmission.
+		 * Format the output as needed.
+		 */
+
+		PRINT_FormatFrame(0x10, (uint8_t*)&sensors_print_msg->acc, sizeof(SENSORS_TriaxeValues_t) * 3);
+		break;
+
+	case PRINT_ECOMPASS_MSG_ID: // ecompass data were received, to send over uart
+		PrintMessage_ECompass_typeDef *ecompass_print_msg = pvPortMalloc(sizeof(PrintMessage_ECompass_typeDef));
+		if (ecompass_print_msg == NULL) {
+			// Memory allocation failed, drop the message and assert
+			assert_param(0);
+		}
+
+		/********** Send ecompass data **********/
+		/* TODO :
+		 * Implement the printing of ecompass data over UART.
+		 * Use the huart2 handle for UART transmission.
+		 * Format the output as needed.
+		 */
+
+		PRINT_FormatFrame(0x20, (uint8_t*)&ecompass_print_msg->ecompass, sizeof(ECOMPASS_Values_t));
+
+		break;
+
+	case PRINT_ENV_MSG_ID: // environmental data were received, to send over uart
+		PrintMessage_Env_typeDef *env_print_msg = pvPortMalloc(sizeof(PrintMessage_Env_typeDef));
+		if (env_print_msg == NULL) {
+			// Memory allocation failed, drop the message and assert
+			assert_param(0);
+		}
+
+		/********** Send environmental data **********/
+		/* TODO :
+		 * Implement the printing of environmental data over UART.
+		 * Use the huart2 handle for UART transmission.
+		 * Format the output as needed.
+		 */
+
+		PRINT_FormatFrame(0x30, (uint8_t*)&env_print_msg->env, sizeof(SENSORS_EnvironementMesures_t));
+
 		break;
 
 	default:
@@ -55,33 +108,6 @@ void PRINT_Run(PrintMessage_typeDef *msg) {
 	}
 
 	vPortFree((void*)msg);
-}
-
-PrintMessage_typeDef* PRINT_AllocateMessage(uint32_t length) {
-	PrintMessage_typeDef* msg = pvPortMalloc(sizeof(PrintMessage_typeDef));
-
-	if (msg != NULL) {
-		msg->s = pvPortMalloc(length);
-		if (msg->s != NULL) {
-			memset(msg->s, 0, length); // clear the string
-			msg->id = PRINT_MSG_ID;
-		} else {
-			vPortFree((void*) msg);
-			msg = NULL;
-		}
-	}
-
-	return msg;
-}
-
-void PRINT_PostMessage(PrintMessage_typeDef *msg) {
-	// Send to PRINT task, no wait
-	if (xQueueSend(xPrintLoopQueue, &msg, portMAX_DELAY) != pdPASS) {
-		// Queue full, drop the message
-		vPortFree((void*) msg->s);
-		vPortFree((void*) msg);
-		assert_param(0);
-	}
 }
 
 /**

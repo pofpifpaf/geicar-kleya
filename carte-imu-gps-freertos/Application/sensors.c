@@ -212,14 +212,31 @@ void SENSORS_TriggerMeasurements(void) {
 
 }
 
-void SENSORS_SendMesures(void) {
+void SENSORS_SendMotionMesures(void) {
 	AppMessage_typeDef *msg = pvPortMalloc(sizeof(AppMessage_typeDef));
 
 	if (msg != NULL) {
-		msg->id = SENSORS_SEND_MEASURES_ID;
+		msg->id = MOTION_SEND_MEASURES_ID;
 
 		// Send to APP task, no wait
 		if (xQueueSend(xAppLoopQueue, &msg, 0) != pdPASS)  {
+			// Queue full, drop the message
+			vPortFree(msg);
+		}
+	} else {
+		// Memory allocation failed, drop the message
+		assert_param(0);
+	}
+}
+
+void SENSORS_SendEnvMesures(void) {
+	AppMessage_typeDef *msg = pvPortMalloc(sizeof(AppMessage_typeDef));
+
+	if (msg != NULL) {
+		msg->id = ENV_SEND_MEASURES_ID;
+
+		// Send to APP task, no wait
+		if (xQueueSend(xAppLoopQueue, &msg, 0) != pdPASS) {
 			// Queue full, drop the message
 			vPortFree(msg);
 		}

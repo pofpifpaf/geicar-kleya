@@ -14,12 +14,16 @@
 #include "sensors.h"
 
 typedef struct {
-	AppMessage_typeDef header;
 	float yaw;
 	float pitch;
 	float roll;
 	float heading;
 	int32_t heading_valid;
+} ECOMPASS_Values_t;
+
+typedef struct {
+	AppMessage_typeDef header;
+	ECOMPASS_Values_t values;
 } ECOMPASS_Attitude_t;
 
 typedef struct {

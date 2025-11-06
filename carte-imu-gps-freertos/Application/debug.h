@@ -10,12 +10,17 @@
 #define DEBUG_H_
 
 #include "app.h"
-
-//int __io_putchar(int ch);
-//int __io_getchar(void);
+#include "sensors.h"
+#include "ecompass.h"
 
 void DEBUG_PrintITM(uint8_t port, char *str);
 void DEBUG_PrintPeriodicInfo(void);
+void DEBUG_UpdateMotionData(SENSORS_TriaxeValues_t acc,
+		SENSORS_TriaxeValues_t gyro,
+		SENSORS_TriaxeValues_t mag);
+void DEBUG_UpdateEnvData(SENSORS_EnvironementMesures_t env);
+void DEBUG_UpdateECompassData(ECOMPASS_Values_t ecompass);
+
 void DEBUG_Panic(uint8_t *file, uint32_t line);
 void runTimeCounterOverflowHandler(void);
 

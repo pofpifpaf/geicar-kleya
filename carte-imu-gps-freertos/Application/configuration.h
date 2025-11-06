@@ -16,8 +16,9 @@
 #define APP_VERSION "1.0.0"
 
 // Periodic events, in ms
-#define SENSORS_TIMER_PERIOD_MS 	1000		// Period in ms to send sensors data (acc, gyr, mag, pres, hum and temp)
-#define ECOMPASS_TIMER_PERIOD_MS 	1000		// Period in ms to send ecompass data (yaw, pitch, roll and attitude)
+#define MOTION_TIMER_PERIOD_MS 		100		// Period in ms to send sensors data (acc, gyr, mag)
+#define ECOMPASS_TIMER_PERIOD_MS 	100		// Period in ms to send ecompass data (yaw, pitch, roll and attitude)
+#define ENV_TIMER_PERIOD_MS 		1000	// Period in ms to send environmental sensors data (temp, press, hum)
 #define SENSORS_LOOP_PERIOD_MS		10		// Debug loop period in ms
 #define DEBUG_LOOP_PERIOD_MS		1000	// Debug loop period in ms
 
@@ -50,14 +51,17 @@
 #define DEBUGLOOP_TASK_PRIORITY 			(tskIDLE_PRIORITY + 3) // Lowest priority
 
 // APP messages IDs
-#define SENSORS_SEND_MEASURES_ID	1
+#define MOTION_SEND_MEASURES_ID		1
 #define SENSORS_MOTION_MEASURES_ID	2
 #define SENSORS_ENV_MEASURES_ID	    3
 #define ECOMPASS_SEND_MEASURES_ID	4
 #define ECOMPASS_ATTITUDE_DATA_ID	5
 #define TILT_SEND_MEASURES_ID		6
 #define CAN_RECEIVED_FRAME_ID		7
-#define PRINT_MSG_ID				8
+#define PRINT_ECOMPASS_MSG_ID		8
+#define PRINT_MOTION_MSG_ID			9
+#define PRINT_ENV_MSG_ID			10
+#define ENV_SEND_MEASURES_ID		11
 
 // Sensors configuration
 #define SENSORS_ACC_ODR_HZ 		104.0f 	// Accelerometer output data rate in Hz

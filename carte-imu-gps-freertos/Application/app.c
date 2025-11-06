@@ -27,6 +27,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "debug.h"
+
 #if defined (__TESTS__)
 #include "tests.h"
 #endif
@@ -48,11 +50,7 @@ float temperature_accumulator = 0.0f;
 uint8_t env_sample_count = 0;
 
 /*** Ecompass variables ***/
-float ecompass_yaw = 0.0f;
-float ecompass_pitch = 0.0f;
-float ecompass_roll = 0.0f;
-float ecompass_heading = 0.0f;
-int32_t ecompass_heading_valid = 0;
+ECOMPASS_Values_t ecompass_last_values = {0.0f, 0.0f, 0.0f, 0.0f, 0};
 
 #define MAX_BUF_SIZE 256
 //static char dataOut[MAX_BUF_SIZE];
@@ -106,69 +104,68 @@ void APP_Run(AppMessage_typeDef *msg) {
 		}
 		break;
 
-		case SENSORS_SEND_MEASURES_ID:
-			//CAN_COM_Send(CAN_ID_SENSORS, data, 6);
-			PrintMessage_typeDef *sensors_print_msg = PRINT_AllocateMessage(MAX_BUF_SIZE);
-			if (sensors_print_msg == NULL) {
-				// Memory allocation failed, drop the message and assert
-				assert_param(0);
-			}
-			snprintf(sensors_print_msg->s, MAX_BUF_SIZE,
-					"\r\nAcc (g):\r\n X: %f\r\n Y: %f\r\n Z: %f\r\n",
-					acc_last_values.x, acc_last_values.y, acc_last_values.z);
-			PRINT_PostMessage(sensors_print_msg);
+		case MOTION_SEND_MEASURES_ID:
+			PrintMessage_Motion_typeDef *motion_data_msg = pvPortMalloc(sizeof(PrintMessage_Motion_typeDef));
 
-			sensors_print_msg = PRINT_AllocateMessage(MAX_BUF_SIZE);
-			if (sensors_print_msg == NULL) {
-				// Memory allocation failed, drop the message and assert
-				assert_param(0);
-			}
-			snprintf(sensors_print_msg->s, MAX_BUF_SIZE,
-					"\r\nGyro (dps):\r\n X: %f\r\n Y: %f\r\n Z: %f\r\n",
-					gyro_last_values.x, gyro_last_values.y, gyro_last_values.z);
-			PRINT_PostMessage(sensors_print_msg);
+			if (motion_data_msg != NULL) {
+				memset(motion_data_msg, 0, sizeof(PrintMessage_Motion_typeDef)); // ras des valeurs
+				motion_data_msg->id = PRINT_MOTION_MSG_ID;
+				motion_data_msg->acc = acc_last_values;
+				motion_data_msg->gyro = gyro_last_values;
+				motion_data_msg->mag = mag_last_values;
 
-			sensors_print_msg = PRINT_AllocateMessage(MAX_BUF_SIZE);
-			if (sensors_print_msg == NULL) {
+				// Send mesures to Print task, no wait
+				if (xQueueSend(xPrintLoopQueue, &motion_data_msg, portMAX_DELAY) != pdPASS) {
+					// Queue full, drop the message
+					vPortFree(motion_data_msg);
+					assert_param(0);
+				}
+			} else {
 				// Memory allocation failed, drop the message and assert
 				assert_param(0);
 			}
-			snprintf(sensors_print_msg->s, MAX_BUF_SIZE,
-					"\r\nMag (dps):\r\n X: %f\r\n Y: %f\r\n Z: %f\r\n",
-					mag_last_values.x, mag_last_values.y, mag_last_values.z);
-			PRINT_PostMessage(sensors_print_msg);
-
-			sensors_print_msg = PRINT_AllocateMessage(MAX_BUF_SIZE);
-			if (sensors_print_msg == NULL) {
-				// Memory allocation failed, drop the message and assert
-				assert_param(0);
-			}
-			snprintf(sensors_print_msg->s, MAX_BUF_SIZE,
-					"\r\nPressure (hpa): %f \r\nHumidity (%%): %f\r\nTemperature (°C): %f\r\n",
-					pressure_last_value, humidity_last_value, temperature_last_value);
-			PRINT_PostMessage(sensors_print_msg);
-
-			sensors_print_msg = PRINT_AllocateMessage(MAX_BUF_SIZE);
-			if (sensors_print_msg == NULL) {
-				// Memory allocation failed, drop the message and assert
-				assert_param(0);
-			}
-			snprintf(sensors_print_msg->s, MAX_BUF_SIZE,"\r\n======================\r\n");
-			PRINT_PostMessage(sensors_print_msg);
 			break;
 
-		case ECOMPASS_SEND_MEASURES_ID:
-			//CAN_COM_Send(CAN_ID_ECOMPASS, data, 6);
-			PrintMessage_typeDef *ecompass_print_msg = PRINT_AllocateMessage(MAX_BUF_SIZE);
-			if (ecompass_print_msg == NULL) {
+		case ENV_SEND_MEASURES_ID:
+			PrintMessage_Env_typeDef *env_data_msg = pvPortMalloc(sizeof(PrintMessage_Env_typeDef));
+
+			if (env_data_msg != NULL) {
+				memset(env_data_msg, 0, sizeof(PrintMessage_Env_typeDef)); // ras des valeurs
+				env_data_msg->id = PRINT_ECOMPASS_MSG_ID;
+				env_data_msg->env.temperature = temperature_last_value;
+				env_data_msg->env.pressure = pressure_last_value;
+				env_data_msg->env.humidity = humidity_last_value;
+
+				// Send mesures to Print task, no wait
+				if (xQueueSend(xPrintLoopQueue, &env_data_msg, portMAX_DELAY) != pdPASS) {
+					// Queue full, drop the message
+					vPortFree(env_data_msg);
+					assert_param(0);
+				}
+			} else {
 				// Memory allocation failed, drop the message and assert
 				assert_param(0);
 			}
-			snprintf(ecompass_print_msg->s, MAX_BUF_SIZE,
-					"\r\nEcompass Attitude:\r\n Yaw: %f\r\n Pitch: %f\r\n Roll: %f\r\n Heading: %f (Valid: %ld)\r\n",
-					ecompass_yaw, ecompass_pitch, ecompass_roll, ecompass_heading,
-					ecompass_heading_valid);
-			PRINT_PostMessage(ecompass_print_msg);
+			break;
+		case ECOMPASS_SEND_MEASURES_ID:
+			PrintMessage_ECompass_typeDef *ecompass_data_msg = pvPortMalloc(sizeof(PrintMessage_ECompass_typeDef));
+
+			if (ecompass_data_msg != NULL) {
+				memset(ecompass_data_msg, 0, sizeof(PrintMessage_ECompass_typeDef)); // ras des valeurs
+				ecompass_data_msg->id = PRINT_ECOMPASS_MSG_ID;
+				ecompass_data_msg->ecompass = ecompass_last_values;
+
+				// Send mesures to Print task, no wait
+				if (xQueueSend(xPrintLoopQueue, &ecompass_data_msg, portMAX_DELAY) != pdPASS) {
+					// Queue full, drop the message
+					vPortFree(ecompass_data_msg);
+					assert_param(0);
+				}
+			} else {
+				// Memory allocation failed, drop the message and assert
+				assert_param(0);
+			}
+
 			break;
 
 		case TILT_SEND_MEASURES_ID:
@@ -176,11 +173,10 @@ void APP_Run(AppMessage_typeDef *msg) {
 			break;
 
 		case ECOMPASS_ATTITUDE_DATA_ID:
-			ecompass_yaw = ((ECOMPASS_Attitude_t*)msg)->yaw;
-			ecompass_pitch = ((ECOMPASS_Attitude_t*)msg)->pitch;
-			ecompass_roll = ((ECOMPASS_Attitude_t*)msg)->roll;
-			ecompass_heading = ((ECOMPASS_Attitude_t*)msg)->heading;
-			ecompass_heading_valid = ((ECOMPASS_Attitude_t*)msg)->heading_valid;
+			ecompass_last_values = ((ECOMPASS_Attitude_t*)msg)->values;
+
+			/* Update debug data */
+			DEBUG_UpdateECompassData(ecompass_last_values);
 			break;
 
 		case SENSORS_MOTION_MEASURES_ID:
@@ -188,6 +184,9 @@ void APP_Run(AppMessage_typeDef *msg) {
 			acc_last_values = SENSORS_ACC_RawtoG(&(((SENSORS_MotionMesures_t*)msg)->acc));
 			gyro_last_values = SENSORS_GYRO_RawtoDPS(&(((SENSORS_MotionMesures_t*)msg)->gyro));
 			mag_last_values = SENSORS_MAG_RawtoMilliGauss(&(((SENSORS_MotionMesures_t*)msg)->mag));
+
+			/* Update debug data */
+			DEBUG_UpdateMotionData(acc_last_values, gyro_last_values, mag_last_values);
 
 			ECOMPASS_SensorsValues_t *ecompass_msg = pvPortMalloc(sizeof(ECOMPASS_SensorsValues_t));
 			if (ecompass_msg != NULL) {
@@ -216,7 +215,6 @@ void APP_Run(AppMessage_typeDef *msg) {
 			humidity_accumulator += ((SENSORS_EnvironementMesures_t*)msg)->humidity;
 			env_sample_count++;
 
-
 			if (env_sample_count >= SENSORS_ENVIRONMENTAL_FILTER) {
 				pressure_last_value = pressure_accumulator
 						/ (float) env_sample_count;
@@ -224,6 +222,12 @@ void APP_Run(AppMessage_typeDef *msg) {
 						/ (float) env_sample_count;
 				temperature_last_value = temperature_accumulator
 						/ (float) env_sample_count;
+
+				/* Update debug data */
+				DEBUG_UpdateEnvData((SENSORS_EnvironementMesures_t){
+					.temperature = temperature_last_value,
+							.pressure = pressure_last_value,
+							.humidity = humidity_last_value});
 
 				// Reset accumulators
 				pressure_accumulator = 0.0f;

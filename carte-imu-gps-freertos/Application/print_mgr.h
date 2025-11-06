@@ -17,11 +17,25 @@ extern "C" {
 #endif
 
 #include "main.h"
+#include "sensors.h"
+#include "ecompass.h"
 
 typedef struct {
 	uint16_t id;
-	char *s;
-} PrintMessage_typeDef;
+	SENSORS_TriaxeValues_t acc;
+	SENSORS_TriaxeValues_t gyro;
+	SENSORS_TriaxeValues_t mag;
+} PrintMessage_Motion_typeDef;
+
+typedef struct {
+	uint16_t id;
+	SENSORS_EnvironementMesures_t env;
+} PrintMessage_Env_typeDef;
+
+typedef struct {
+	uint16_t id;
+	ECOMPASS_Values_t ecompass;
+} PrintMessage_ECompass_typeDef;
 
 /**
  * @brief Initialize the application.
@@ -37,10 +51,7 @@ void PRINT_Init(void);
  *
  * @remark: this function never returns, it runs indefinitely.
  */
-void PRINT_Run(PrintMessage_typeDef *msg);
-
-PrintMessage_typeDef* PRINT_AllocateMessage(uint32_t length);
-void PRINT_PostMessage(PrintMessage_typeDef* msg);
+void PRINT_Run(AppMessage_typeDef *msg);
 
 #ifdef __cplusplus
 }

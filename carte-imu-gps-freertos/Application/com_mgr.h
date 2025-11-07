@@ -1,16 +1,16 @@
 /**
- * @file app.c
+ * @file com_mgr.h
  * @author Sebastien DI MERCURIO
  * @version V1.0
  * @date 20 Aout 2023
  *
- * @brief Main application file.
+ * @brief communication handler.
  * This file contains the main application logic, including initialization and the main loop.
  * It handles the control of the car's motors, ultrasonic sensors, and communication via CAN.
  */
 
-#ifndef PRINT_MGR_H_
-#define PRINT_MGR_H_
+#ifndef COM_MGR_H_
+#define COM_MGR_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -25,36 +25,36 @@ typedef struct {
 	SENSORS_TriaxeValues_t acc;
 	SENSORS_TriaxeValues_t gyro;
 	SENSORS_TriaxeValues_t mag;
-} PrintMessage_Motion_typeDef;
+} COM_Msg_Motion_typeDef;
 
 typedef struct {
 	uint16_t id;
 	SENSORS_EnvironementMesures_t env;
-} PrintMessage_Env_typeDef;
+} COM_Msg_Env_typeDef;
 
 typedef struct {
 	uint16_t id;
 	ECOMPASS_Values_t ecompass;
-} PrintMessage_ECompass_typeDef;
+} COM_Msg_ECompass_typeDef;
 
 /**
- * @brief Initialize the application.
+ * @brief Initialize the communication manager.
  * This function sets up the necessary software components
  */
-void PRINT_Init(void);
+void COM_Init(void);
 
 /**
- * @brief Run the application.
+ * @brief Run the communication manager.
  *
- * This function is the main loop of the application. It handles the main logic,
+ * This function is the main loop of the communication manager. It handles the main logic,
  * processes inputs, and updates outputs.
  *
  * @remark: this function never returns, it runs indefinitely.
  */
-void PRINT_Run(AppMessage_typeDef *msg);
+void COM_Run(AppMessage_typeDef *msg);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* PRINT_MGR_H_ */
+#endif /* COM_MGR_H_ */

@@ -30,6 +30,8 @@ SENSORS_TriaxeValues_t DEBUG_mag;
 SENSORS_EnvironementMesures_t DEBUG_env;
 ECOMPASS_Values_t DEBUG_ecompass;
 
+void DEBUG_PrintITM(uint8_t port, char *str);
+
 void DEBUG_PrintITM(uint8_t port, char *str) {
 	if (ITM->TCR & ITM_TCR_ITMENA_Msk) { // Vérifie si l'ITM est activé
 		while (*str!=0) {
@@ -39,6 +41,10 @@ void DEBUG_PrintITM(uint8_t port, char *str) {
 			str++;
 		}
 	}
+}
+
+void DEBUG_Print(char *str) {
+	DEBUG_PrintITM(ITM_STIMULUS_PORT_PRINTF, str);
 }
 
 void DEBUG_PrintPeriodicInfo(void) {

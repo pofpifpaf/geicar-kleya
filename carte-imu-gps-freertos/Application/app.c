@@ -9,17 +9,16 @@
  * It handles the control of the car's motors, ultrasonic sensors, and communication via CAN.
  */
 
+#include <com_mgr.h>
 #include "app.h"
 
 #include "configuration.h"
 
-#include "print_mgr.h"
 #include "main.h"
 //#include "can.h"
 #include "usart.h"
 #include "gpio.h"
 
-#include "can_communication.h"
 #include "sensors.h"
 #include "ecompass.h"
 #include "tasks.h"
@@ -68,9 +67,13 @@ void APP_Init(void) {
 	// Tasks
 	TASKS_Init();
 
-	printf("IMU - GPS.\r\n");
-	printf("Application version: %s\r\n\n", APP_VERSION);
-	printf("Application started\r\n");
+	DEBUG_Print("IMU - GPS.\r\n");
+
+	char buffer[50];
+	snprintf(buffer, 50, "Application version: %s\r\n\n", APP_VERSION);
+	DEBUG_Print(buffer);
+
+	DEBUG_Print("Application started\r\n");
 }
 
 /**
@@ -86,36 +89,18 @@ void APP_Run(AppMessage_typeDef *msg) {
 	TESTS_Run(); // Run tests if defined
 #else
 	switch (msg->id) {
-	case CAN_RECEIVED_FRAME_ID: // a CAN frame was received
-		CANReceivedFrame_typeDef *canFrame = (CANReceivedFrame_typeDef*) msg;
-
-		switch (canFrame->can_id) {
-		case CAN_ID_COMM_CHECKING:
-			if (canFrame->length >= 1 &&
-					canFrame->data[0] == COMM_CHECKING_REQUEST) {
-				data[0] = COMM_CHECKING_REQUEST;
-				data[1] = COMM_CHECKING_ACK;
-
-				CAN_COM_Send(CAN_ID_COMM_CHECKING, data, 2); // Send ack
-			}
-			break;
-		default:
-			break;
-		}
-		break;
-
 		case MOTION_SEND_MEASURES_ID:
-			PrintMessage_Motion_typeDef *motion_data_msg = pvPortMalloc(sizeof(PrintMessage_Motion_typeDef));
+			COM_Msg_Motion_typeDef *motion_data_msg = pvPortMalloc(sizeof(COM_Msg_Motion_typeDef));
 
 			if (motion_data_msg != NULL) {
-				memset(motion_data_msg, 0, sizeof(PrintMessage_Motion_typeDef)); // ras des valeurs
-				motion_data_msg->id = PRINT_MOTION_MSG_ID;
+				memset(motion_data_msg, 0, sizeof(COM_Msg_Motion_typeDef)); // ras des valeurs
+				motion_data_msg->id = COM_MSG_MOTION_ID;
 				motion_data_msg->acc = acc_last_values;
 				motion_data_msg->gyro = gyro_last_values;
 				motion_data_msg->mag = mag_last_values;
 
 				// Send mesures to Print task, no wait
-				if (xQueueSend(xPrintLoopQueue, &motion_data_msg, portMAX_DELAY) != pdPASS) {
+				if (xQueueSend(xComLoopQueue, &motion_data_msg, portMAX_DELAY) != pdPASS) {
 					// Queue full, drop the message
 					vPortFree(motion_data_msg);
 					assert_param(0);
@@ -127,17 +112,17 @@ void APP_Run(AppMessage_typeDef *msg) {
 			break;
 
 		case ENV_SEND_MEASURES_ID:
-			PrintMessage_Env_typeDef *env_data_msg = pvPortMalloc(sizeof(PrintMessage_Env_typeDef));
+			COM_Msg_Env_typeDef *env_data_msg = pvPortMalloc(sizeof(COM_Msg_Env_typeDef));
 
 			if (env_data_msg != NULL) {
-				memset(env_data_msg, 0, sizeof(PrintMessage_Env_typeDef)); // ras des valeurs
-				env_data_msg->id = PRINT_ECOMPASS_MSG_ID;
+				memset(env_data_msg, 0, sizeof(COM_Msg_Env_typeDef)); // ras des valeurs
+				env_data_msg->id = COM_MSG_ENV_ID;
 				env_data_msg->env.temperature = temperature_last_value;
 				env_data_msg->env.pressure = pressure_last_value;
 				env_data_msg->env.humidity = humidity_last_value;
 
 				// Send mesures to Print task, no wait
-				if (xQueueSend(xPrintLoopQueue, &env_data_msg, portMAX_DELAY) != pdPASS) {
+				if (xQueueSend(xComLoopQueue, &env_data_msg, portMAX_DELAY) != pdPASS) {
 					// Queue full, drop the message
 					vPortFree(env_data_msg);
 					assert_param(0);
@@ -148,15 +133,15 @@ void APP_Run(AppMessage_typeDef *msg) {
 			}
 			break;
 		case ECOMPASS_SEND_MEASURES_ID:
-			PrintMessage_ECompass_typeDef *ecompass_data_msg = pvPortMalloc(sizeof(PrintMessage_ECompass_typeDef));
+			COM_Msg_ECompass_typeDef *ecompass_data_msg = pvPortMalloc(sizeof(COM_Msg_ECompass_typeDef));
 
 			if (ecompass_data_msg != NULL) {
-				memset(ecompass_data_msg, 0, sizeof(PrintMessage_ECompass_typeDef)); // ras des valeurs
-				ecompass_data_msg->id = PRINT_ECOMPASS_MSG_ID;
+				memset(ecompass_data_msg, 0, sizeof(COM_Msg_ECompass_typeDef)); // ras des valeurs
+				ecompass_data_msg->id = COM_MSG_ECOMPASS_ID;
 				ecompass_data_msg->ecompass = ecompass_last_values;
 
 				// Send mesures to Print task, no wait
-				if (xQueueSend(xPrintLoopQueue, &ecompass_data_msg, portMAX_DELAY) != pdPASS) {
+				if (xQueueSend(xComLoopQueue, &ecompass_data_msg, portMAX_DELAY) != pdPASS) {
 					// Queue full, drop the message
 					vPortFree(ecompass_data_msg);
 					assert_param(0);
@@ -169,7 +154,7 @@ void APP_Run(AppMessage_typeDef *msg) {
 			break;
 
 		case TILT_SEND_MEASURES_ID:
-			CAN_COM_Send(CAN_ID_TILT, data, 6);
+            // Process tilt mesures if needed
 			break;
 
 		case ECOMPASS_ATTITUDE_DATA_ID:

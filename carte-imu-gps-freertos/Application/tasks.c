@@ -8,15 +8,13 @@
  * It defines the tasks for application logic, debugging, ultrasonic sensor management, control loop, and calibration events.
  */
 
+#include <com_mgr.h>
 #include "tasks.h"
 #include "configuration.h"
 
 #include "app.h"
 
-#include "print_mgr.h"
-
 #include "sensors.h"
-#include "can_communication.h"
 #include "ecompass.h"
 
 #include "FreeRTOS.h"
@@ -43,15 +41,15 @@ static StaticTask_t xAppLoopTaskTCB;
 static TaskHandle_t xAppLoopTaskHandle = NULL;
 
 /* -------------------------------------------------------------------------
- * Déclaration de la tâche TASKS_PrintLoop (statique)
+ * Déclaration de la tâche TASKS_ComLoop (statique)
  * ------------------------------------------------------------------------- */
-void TASKS_PrintLoop(void *argument);
+void TASKS_ComLoop(void *argument);
 /* Buffer pour la pile et le TCB */
-static StackType_t xPrintLoopTaskStack[ PRINTLOOP_TASK_STACK_SIZE ];
-static StaticTask_t xPrintLoopTaskTCB;
+static StackType_t xComLoopTaskStack[ COMLOOP_TASK_STACK_SIZE ];
+static StaticTask_t xComLoopTaskTCB;
 
 /* Handle vers la tâche */
-static TaskHandle_t xPrintLoopTaskHandle = NULL;
+static TaskHandle_t xComLoopTaskHandle = NULL;
 
 /* -------------------------------------------------------------------------
  * Déclaration de la tâche TASKS_DebugLoop (statique)
@@ -85,16 +83,6 @@ static StaticTask_t xEcompassLoopTaskTCB;
 static TaskHandle_t xEcompassLoopTaskHandle = NULL;
 
 /* -------------------------------------------------------------------------
- * Déclaration de la tâche TASKS_CANCommunicationEvent (statique)
- * ------------------------------------------------------------------------- */
-void TASKS_CANCommunicationEvent(void *argument);
-/* Buffer pour la pile et le TCB */
-static StackType_t xCANCommunicationTaskStack[ CAN_COMMUNICATION_TASK_STACK_SIZE ];
-static StaticTask_t xCANCommunicationTaskTCB;
-/* Handle vers la tâche */
-static TaskHandle_t xCANCommunicationTaskHandle = NULL;
-
-/* -------------------------------------------------------------------------
  * Déclaration du buffer pour la queue xAppLoopQueue
  * ------------------------------------------------------------------------- */
 static uint8_t ucAppLoopQueueStorageArea[ APPLOOP_QUEUE_LENGTH * APPLOOP_QUEUE_ITEM_SIZE ];
@@ -102,11 +90,11 @@ static StaticQueue_t xAppLoopStaticQueue;
 QueueHandle_t xAppLoopQueue = NULL;
 
 /* -------------------------------------------------------------------------
- * Déclaration du buffer pour la queue xPrintLoopQueue
+ * Déclaration du buffer pour la queue xComLoopQueue
  * ------------------------------------------------------------------------- */
-static uint8_t ucPrintLoopQueueStorageArea[ PRINTLOOP_QUEUE_LENGTH * PRINTLOOP_QUEUE_ITEM_SIZE ];
-static StaticQueue_t xPrintLoopStaticQueue;
-QueueHandle_t xPrintLoopQueue = NULL;
+static uint8_t ucComLoopQueueStorageArea[ COMLOOP_QUEUE_LENGTH * COMLOOP_QUEUE_ITEM_SIZE ];
+static StaticQueue_t xComLoopStaticQueue;
+QueueHandle_t xComLoopQueue = NULL;
 
 /* -------------------------------------------------------------------------
  * Déclaration du buffer pour la queue xEcompassLoopQueue
@@ -172,30 +160,30 @@ void TASKS_Init(void) {
 	}
 
 	/* Création de la file pour la tache d'affichage (statiquement) */
-		xPrintLoopQueue = xQueueCreateStatic(
-				PRINTLOOP_QUEUE_LENGTH,          // nombre d’éléments
-				PRINTLOOP_QUEUE_ITEM_SIZE,       // taille d’un élément
-				ucPrintLoopQueueStorageArea,    // buffer pour les données
-				&xPrintLoopStaticQueue          // buffer pour la structure de contrôle
+		xComLoopQueue = xQueueCreateStatic(
+				COMLOOP_QUEUE_LENGTH,          // nombre d’éléments
+				COMLOOP_QUEUE_ITEM_SIZE,       // taille d’un élément
+				ucComLoopQueueStorageArea,    // buffer pour les données
+				&xComLoopStaticQueue          // buffer pour la structure de contrôle
 		);
 
-		if (xPrintLoopQueue == NULL) {
+		if (xComLoopQueue == NULL) {
 			// Erreur : pas de mémoire statique ?
 			Error_Handler();
 		}
 
 		/* Création de la tâche PrintLoop (statiquement) */
-		xPrintLoopTaskHandle = xTaskCreateStatic(
-				TASKS_PrintLoop,          // fonction de la tâche
-				"PrintLoop",             // nom (debug)
-				PRINTLOOP_TASK_STACK_SIZE,   // taille pile (en mots de 32 bits)
+		xComLoopTaskHandle = xTaskCreateStatic(
+				TASKS_ComLoop,          // fonction de la tâche
+				"ComLoop",             // nom (debug)
+				COMLOOP_TASK_STACK_SIZE,   // taille pile (en mots de 32 bits)
 				NULL,                  // paramètre d’entrée
-				PRINTLOOP_TASK_PRIORITY,     // priorité
-				xPrintLoopTaskStack,         // buffer pile
-				&xPrintLoopTaskTCB           // buffer TCB
+				COMLOOP_TASK_PRIORITY,     // priorité
+				xComLoopTaskStack,         // buffer pile
+				&xComLoopTaskTCB           // buffer TCB
 		);
 
-		if (xPrintLoopTaskHandle == NULL) {
+		if (xComLoopTaskHandle == NULL) {
 			// Erreur : pas de mémoire statique ?
 			Error_Handler();
 		}
@@ -261,25 +249,10 @@ void TASKS_Init(void) {
 		Error_Handler();
 	}
 
-	/* Création de la tâche CANCommunicationEvent (statiquement) */
-	xCANCommunicationTaskHandle = xTaskCreateStatic(TASKS_CANCommunicationEvent, // fonction de la tâche
-			"CalibrationEvent",             // nom (debug)
-			CAN_COMMUNICATION_TASK_STACK_SIZE,   // taille pile (en mots de 32 bits)
-			NULL,                  // paramètre d’entrée
-			CAN_COMMUNICATION_TASK_PRIORITY,     // priorité
-			xCANCommunicationTaskStack,         // buffer pile
-			&xCANCommunicationTaskTCB           // buffer TCB
-	);
-
-	if (xCANCommunicationTaskHandle == NULL) {
-		// Erreur : pas de mémoire statique ?
-		Error_Handler();
-	}
-
 	/* Timer capteurs */
 	xMotionTimer = xTimerCreateStatic(
 			"MotionTimer",                                  // nom
-			pdMS_TO_TICKS(MOTION_TIMER_PERIOD_MS),          // période
+			pdMS_TO_TICKS(MOTION_COM_PERIOD_MS),          // période
 			pdTRUE,                                        // auto-reload
 			(void*)0,                                      // identifiant (optionnel)
 			MotionTimerCallback,                            // callback
@@ -294,7 +267,7 @@ void TASKS_Init(void) {
 	/* Timer environnement */
 	xEnvTimer = xTimerCreateStatic(
 			"EnvTimer",                            // nom
-			pdMS_TO_TICKS(ENV_TIMER_PERIOD_MS),          // période
+			pdMS_TO_TICKS(ENV_COM_PERIOD_MS),          // période
 			pdTRUE,                                        // auto-reload
 			(void*) 0,                                // identifiant (optionnel)
 			EnvTimerCallback,                            // callback
@@ -309,7 +282,7 @@ void TASKS_Init(void) {
 	/* Timer ecompass */
 	xEcompassTimer = xTimerCreateStatic(
 			"EcompassTimer",                                  // nom
-			pdMS_TO_TICKS(ECOMPASS_TIMER_PERIOD_MS),          // période
+			pdMS_TO_TICKS(ECOMPASS_COM_PERIOD_MS),          // période
 			pdTRUE,                                        // auto-reload
 			(void*)0,                                      // identifiant (optionnel)
 			EcompassTimerCallback,                            // callback
@@ -338,7 +311,7 @@ void TASKS_Init(void) {
 
 	vQueueAddToRegistry(xEcompassLoopQueue, "EcompassLoopQueue");
 	vQueueAddToRegistry(xAppLoopQueue, "AppLoopQueue");
-	vQueueAddToRegistry(xPrintLoopQueue, "PrintLoopQueue");
+	vQueueAddToRegistry(xComLoopQueue, "PrintLoopQueue");
 }
 
 /**
@@ -376,20 +349,20 @@ void TASKS_AppLoop(void *argument ) {
  * It runs indefinitely, handling messages as they arrive.
  * @param  argument: Not used
  */
-void TASKS_PrintLoop(void *argument ) {
+void TASKS_ComLoop(void *argument ) {
 	void *pReceived = NULL;
 
 	for(;;)
 	{
 		/* Attente infinie d’un élément dans la queue PrintLoop*/
-		if (xQueueReceive(xPrintLoopQueue, &pReceived, portMAX_DELAY) == pdPASS)
+		if (xQueueReceive(xComLoopQueue, &pReceived, portMAX_DELAY) == pdPASS)
 		{
 			if (pReceived != NULL) {
 
 				/* Traitement de l’élément reçu */
 				// Exemple : cast et utilisation
 				// MyStruct_t *msg = (MyStruct_t*) pReceived;
-				PRINT_Run((AppMessage_typeDef*) pReceived);
+				COM_Run((AppMessage_typeDef*) pReceived);
 			}
 		}
 	}
@@ -463,21 +436,6 @@ void TASKS_EcompassLoop(void *argument ) {
 			}
 		}
 #endif /* __TESTS__ */
-	}
-}
-
-/**
- * @brief  Task function for handling CAN communication events.
- * This function processes incoming CAN messages.
- * It runs indefinitely, handling CAN communication as messages are received.
- * @param  argument: Not used
- */
-void TASKS_CANCommunicationEvent(void *argument) {
-	CAN_COM_ReceiveTask();
-
-	for (;;) {
-		// This function never returns, it runs indefinitely
-		vTaskDelay(pdMS_TO_TICKS(1000)); // Just to avoid compiler warning
 	}
 }
 

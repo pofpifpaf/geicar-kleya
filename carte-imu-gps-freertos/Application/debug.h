@@ -13,7 +13,7 @@
 #include "sensors.h"
 #include "ecompass.h"
 
-void DEBUG_PrintITM(uint8_t port, char *str);
+void DEBUG_Print(char *str);
 void DEBUG_PrintPeriodicInfo(void);
 void DEBUG_UpdateMotionData(SENSORS_TriaxeValues_t acc,
 		SENSORS_TriaxeValues_t gyro,

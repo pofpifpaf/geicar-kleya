@@ -14,6 +14,9 @@
 
 // Application version
 #define APP_VERSION "1.0.0"
+#define APP_VERSION_MAJOR 1
+#define APP_VERSION_MINOR 0
+#define APP_VERSION_PATCH 0
 
 // Periodic events, in ms
 #define MOTION_COM_PERIOD_MS 		100		// Period in ms to send sensors data (acc, gyr, mag)
@@ -40,28 +43,33 @@
 #define SENSORS_TASK_STACK_SIZE  			192		// en mots de 32 bits. Pas besoin d'une stack enorme
 #define ECOMPASSLOOP_TASK_STACK_SIZE 		256   	// en mots de 32 bits. Pour les calculs de la boussole
 #define CAN_COMMUNICATION_TASK_STACK_SIZE 	128 	// en mots de 32 bits. Pas besoin d'une stack enorme
-#define COMLOOP_TASK_STACK_SIZE 			128   	// en mots de 32 bits
+#define COMTXLOOP_TASK_STACK_SIZE 			128   	// en mots de 32 bits
+#define COMRXLOOP_TASK_STACK_SIZE 			128   	// en mots de 32 bits
 
 // Tasks priorities
-#define CAN_COMMUNICATION_TASK_PRIORITY    	(tskIDLE_PRIORITY + 10) // Highest priority, no blocking function inside
 #define SENSORS_TASK_PRIORITY    			(tskIDLE_PRIORITY + 20)
 #define ECOMPASSLOOP_TASK_PRIORITY    		(tskIDLE_PRIORITY + 10)
 #define APPLOOP_TASK_PRIORITY   			(tskIDLE_PRIORITY + 7)
-#define COMLOOP_TASK_PRIORITY  				(tskIDLE_PRIORITY + 5)
+#define COMTXLOOP_TASK_PRIORITY  			(tskIDLE_PRIORITY + 5)
+#define COMRXLOOP_TASK_PRIORITY  			(tskIDLE_PRIORITY + 30) // Highest priority to not miss any incoming data
 #define DEBUGLOOP_TASK_PRIORITY 			(tskIDLE_PRIORITY + 3) // Lowest priority
 
 // APP messages IDs
-#define MOTION_SEND_MEASURES_ID		1
-#define SENSORS_MOTION_MEASURES_ID	2
-#define SENSORS_ENV_MEASURES_ID	    3
-#define ECOMPASS_SEND_MEASURES_ID	4
-#define ECOMPASS_ATTITUDE_DATA_ID	5
-#define TILT_SEND_MEASURES_ID		6
-#define CAN_RECEIVED_FRAME_ID		7
-#define COM_MSG_ECOMPASS_ID			8
-#define COM_MSG_MOTION_ID			9
-#define COM_MSG_ENV_ID				10
-#define ENV_SEND_MEASURES_ID		11
+enum {
+	ENV_SEND_MEASURES_ID = 1,
+	MOTION_SEND_MEASURES_ID,
+	ECOMPASS_SEND_MEASURES_ID,
+	TILT_SEND_MEASURES_ID,
+	SENSORS_MOTION_MEASURES_ID,
+	SENSORS_ENV_MEASURES_ID,
+	ECOMPASS_ATTITUDE_DATA_ID,
+	COM_MSG_ECOMPASS_ID,
+	COM_MSG_MOTION_ID,
+	COM_MSG_ENV_ID,
+	COM_MSG_GET_VERSION_ID,
+	COM_MSG_RESET_HEADING_ID,
+	COM_MSG_CALIBRATE_MAG_ID
+};
 
 // Sensors configuration
 #define SENSORS_ACC_ODR_HZ 		104.0f 	// Accelerometer output data rate in Hz

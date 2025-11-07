@@ -41,15 +41,25 @@ static StaticTask_t xAppLoopTaskTCB;
 static TaskHandle_t xAppLoopTaskHandle = NULL;
 
 /* -------------------------------------------------------------------------
- * Déclaration de la tâche TASKS_ComLoop (statique)
+ * Déclaration de la tâche TASKS_ComTXLoop (statique)
  * ------------------------------------------------------------------------- */
-void TASKS_ComLoop(void *argument);
+void TASKS_ComTXLoop(void *argument);
 /* Buffer pour la pile et le TCB */
-static StackType_t xComLoopTaskStack[ COMLOOP_TASK_STACK_SIZE ];
-static StaticTask_t xComLoopTaskTCB;
+static StackType_t xComLoopTXTaskStack[ COMTXLOOP_TASK_STACK_SIZE ];
+static StaticTask_t xComTXLoopTaskTCB;
 
 /* Handle vers la tâche */
-static TaskHandle_t xComLoopTaskHandle = NULL;
+static TaskHandle_t xComTXLoopTaskHandle = NULL;
+
+/* -------------------------------------------------------------------------
+ * Déclaration de la tâche TASKS_ComRXLoop (statique)
+ * ------------------------------------------------------------------------- */
+void TASKS_ComRXLoop(void *argument);
+/* Buffer pour la pile et le TCB */
+static StackType_t xComLoopRXTaskStack[ COMTXLOOP_TASK_STACK_SIZE ];
+static StaticTask_t xComRXLoopTaskTCB;
+/* Handle vers la tâche */
+static TaskHandle_t xComRXLoopTaskHandle = NULL;
 
 /* -------------------------------------------------------------------------
  * Déclaration de la tâche TASKS_DebugLoop (statique)
@@ -159,34 +169,49 @@ void TASKS_Init(void) {
 		Error_Handler();
 	}
 
-	/* Création de la file pour la tache d'affichage (statiquement) */
-		xComLoopQueue = xQueueCreateStatic(
-				COMLOOP_QUEUE_LENGTH,          // nombre d’éléments
-				COMLOOP_QUEUE_ITEM_SIZE,       // taille d’un élément
-				ucComLoopQueueStorageArea,    // buffer pour les données
-				&xComLoopStaticQueue          // buffer pour la structure de contrôle
-		);
+	/* Création de la file pour la tache d'envoi sur uart (statiquement) */
+	xComLoopQueue = xQueueCreateStatic(
+			COMLOOP_QUEUE_LENGTH,          // nombre d’éléments
+			COMLOOP_QUEUE_ITEM_SIZE,       // taille d’un élément
+			ucComLoopQueueStorageArea,    // buffer pour les données
+			&xComLoopStaticQueue          // buffer pour la structure de contrôle
+	);
 
-		if (xComLoopQueue == NULL) {
-			// Erreur : pas de mémoire statique ?
-			Error_Handler();
-		}
+	if (xComLoopQueue == NULL) {
+		// Erreur : pas de mémoire statique ?
+		Error_Handler();
+	}
 
-		/* Création de la tâche PrintLoop (statiquement) */
-		xComLoopTaskHandle = xTaskCreateStatic(
-				TASKS_ComLoop,          // fonction de la tâche
-				"ComLoop",             // nom (debug)
-				COMLOOP_TASK_STACK_SIZE,   // taille pile (en mots de 32 bits)
-				NULL,                  // paramètre d’entrée
-				COMLOOP_TASK_PRIORITY,     // priorité
-				xComLoopTaskStack,         // buffer pile
-				&xComLoopTaskTCB           // buffer TCB
-		);
+	/* Création de la tâche ComTXLoop (statiquement) */
+	xComTXLoopTaskHandle = xTaskCreateStatic(
+			TASKS_ComTXLoop,          // fonction de la tâche
+			"ComTXLoop",             // nom (debug)
+			COMTXLOOP_TASK_STACK_SIZE,   // taille pile (en mots de 32 bits)
+			NULL,                  // paramètre d’entrée
+			COMTXLOOP_TASK_PRIORITY,     // priorité
+			xComLoopTXTaskStack,         // buffer pile
+			&xComTXLoopTaskTCB           // buffer TCB
+	);
 
-		if (xComLoopTaskHandle == NULL) {
-			// Erreur : pas de mémoire statique ?
-			Error_Handler();
-		}
+	if (xComTXLoopTaskHandle == NULL) {
+		// Erreur : pas de mémoire statique ?
+		Error_Handler();
+	}
+
+	/* Création de la tâche ComRXLoop (statiquement) */
+	xComRXLoopTaskHandle = xTaskCreateStatic(TASKS_ComRXLoop, // fonction de la tâche
+			"ComRXLoop",             // nom (debug)
+			COMTXLOOP_TASK_STACK_SIZE,   // taille pile (en mots de 32 bits)
+			NULL,                  // paramètre d’entrée
+			COMTXLOOP_TASK_PRIORITY,     // priorité
+			xComLoopRXTaskStack,         // buffer pile
+			&xComRXLoopTaskTCB           // buffer TCB
+			);
+
+	if (xComRXLoopTaskHandle == NULL) {
+		// Erreur : pas de mémoire statique ?
+		Error_Handler();
+	}
 
 	/* Création de la tâche DebugLoop (statiquement) */
 	xDebugLoopTaskHandle = xTaskCreateStatic(
@@ -272,7 +297,7 @@ void TASKS_Init(void) {
 			(void*) 0,                                // identifiant (optionnel)
 			EnvTimerCallback,                            // callback
 			&xEnvTimerBuffer                             // buffer statique
-			);
+	);
 	configASSERT(xEnvTimer != NULL);
 	if (xEnvTimer == NULL) {
 		// Erreur : pas de mémoire statique ?
@@ -344,12 +369,12 @@ void TASKS_AppLoop(void *argument ) {
 }
 
 /**
- * @brief  Task function for the main application loop.
+ * @brief  Task function for the communication transmit loop.
  * This function processes messages received in the application queue.
  * It runs indefinitely, handling messages as they arrive.
  * @param  argument: Not used
  */
-void TASKS_ComLoop(void *argument ) {
+void TASKS_ComTXLoop(void *argument ) {
 	void *pReceived = NULL;
 
 	for(;;)
@@ -362,9 +387,21 @@ void TASKS_ComLoop(void *argument ) {
 				/* Traitement de l’élément reçu */
 				// Exemple : cast et utilisation
 				// MyStruct_t *msg = (MyStruct_t*) pReceived;
-				COM_Run((AppMessage_typeDef*) pReceived);
+				COM_RunTX((AppMessage_typeDef*) pReceived);
 			}
 		}
+	}
+}
+
+/**
+ * @brief  Task function for the communication receive loop.
+ * This function continuously runs the communication receive logic.
+ * It runs indefinitely, processing incoming data as it arrives.
+ * @param  argument: Not used
+ */
+void TASKS_ComRXLoop(void *argument ) {
+	for (;;) {
+		COM_RunRX();
 	}
 }
 

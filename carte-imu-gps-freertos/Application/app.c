@@ -2,7 +2,7 @@
  * @file app.c
  * @author Sebastien DI MERCURIO
  * @version V1.0
- * @date 20 Aout 2023
+ * @date 14 November 2023
  *
  * @brief Main application file.
  * This file contains the main application logic, including initialization and the main loop.
@@ -15,7 +15,6 @@
 #include "configuration.h"
 
 #include "main.h"
-//#include "can.h"
 #include "usart.h"
 #include "gpio.h"
 
@@ -32,9 +31,6 @@
 #include "tests.h"
 #endif
 
-/* Data buffer for CAN messages */
-uint8_t data[8] = {0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88};
-
 /* Sensors last mesures */
 SENSORS_TriaxeValues_t acc_last_values = {0.0f, 0.0f, 0.0f};
 SENSORS_TriaxeValues_t gyro_last_values = {0.0f, 0.0f, 0.0f};
@@ -48,11 +44,8 @@ float humidity_accumulator = 0.0f;
 float temperature_accumulator = 0.0f;
 uint8_t env_sample_count = 0;
 
-/*** Ecompass variables ***/
+/*** Ecompass last mesures  ***/
 ECOMPASS_Values_t ecompass_last_values = {0.0f, 0.0f, 0.0f, 0.0f, 0};
-
-#define MAX_BUF_SIZE 256
-//static char dataOut[MAX_BUF_SIZE];
 
 /**
  * @brief Initialize the application.
@@ -81,7 +74,8 @@ void APP_Init(void) {
  * This function is the main loop of the application. It handles the main logic,
  * processes inputs, and updates outputs.
  *
- * @remark: this function never returns, it runs indefinitely.
+ * @remark: this function is called by TASKS_AppLoop tasks when a new message is received.
+ * @param  msg: Pointer to the message to process.
  */
 void APP_Run(AppMessage_typeDef *msg) {
 	COM_Msg_RX_typeDef *com_msg;
@@ -90,7 +84,7 @@ void APP_Run(AppMessage_typeDef *msg) {
 	TESTS_Run(); // Run tests if defined
 #else
 	switch (msg->id) {
-	case MOTION_SEND_MEASURES_ID:
+	case MOTION_SEND_MEASURES_ID: // Receive a request to send motion sensors (acc/gyro/mag) mesures over USB
 		COM_Msg_Motion_typeDef *motion_data_msg = pvPortMalloc(sizeof(COM_Msg_Motion_typeDef));
 
 		if (motion_data_msg != NULL) {
@@ -112,7 +106,7 @@ void APP_Run(AppMessage_typeDef *msg) {
 		}
 		break;
 
-	case ENV_SEND_MEASURES_ID:
+	case ENV_SEND_MEASURES_ID: // Receive a request to send environmental sensors (temp/press/hum) mesures over USB
 		COM_Msg_Env_typeDef *env_data_msg = pvPortMalloc(sizeof(COM_Msg_Env_typeDef));
 
 		if (env_data_msg != NULL) {
@@ -133,7 +127,8 @@ void APP_Run(AppMessage_typeDef *msg) {
 			assert_param(0);
 		}
 		break;
-	case ECOMPASS_SEND_MEASURES_ID:
+
+	case ECOMPASS_SEND_MEASURES_ID: // Receive a request to send ecompass (pitch/yaw/roll/heading) mesures over USB
 		COM_Msg_ECompass_typeDef *ecompass_data_msg = pvPortMalloc(sizeof(COM_Msg_ECompass_typeDef));
 
 		if (ecompass_data_msg != NULL) {
@@ -151,21 +146,21 @@ void APP_Run(AppMessage_typeDef *msg) {
 			// Memory allocation failed, drop the message and assert
 			assert_param(0);
 		}
-
 		break;
 
-	case TILT_SEND_MEASURES_ID:
+	case TILT_SEND_MEASURES_ID:	// Receive a request to send tilt mesures over USB
 		// Process tilt mesures if needed
+		// TODO: implement tilt sensor processing and sending if needed
 		break;
 
-	case ECOMPASS_ATTITUDE_DATA_ID:
+	case ECOMPASS_MEASURES_ID: // Receive new ecompass attitude (pitch/yaw/roll/heading) data
 		ecompass_last_values = ((ECOMPASS_Attitude_t*)msg)->values;
 
 		/* Update debug data */
 		DEBUG_UpdateECompassData(ecompass_last_values);
 		break;
 
-	case SENSORS_MOTION_MEASURES_ID:
+	case SENSORS_MOTION_MEASURES_ID: // Receive new motion sensors (acc/gyro/mag) data
 		// Process sensors measures if needed
 		acc_last_values = SENSORS_ACC_RawtoG(&(((SENSORS_MotionMesures_t*)msg)->acc));
 		gyro_last_values = SENSORS_GYRO_RawtoDPS(&(((SENSORS_MotionMesures_t*)msg)->gyro));
@@ -195,7 +190,7 @@ void APP_Run(AppMessage_typeDef *msg) {
 		}
 		break;
 
-	case SENSORS_ENV_MEASURES_ID:
+	case SENSORS_ENV_MEASURES_ID: // Receive new environmental sensors (temp/press/hum) data
 		pressure_accumulator += ((SENSORS_EnvironementMesures_t*)msg)->pressure;
 		temperature_accumulator += ((SENSORS_EnvironementMesures_t*)msg)->temperature;
 		humidity_accumulator += ((SENSORS_EnvironementMesures_t*)msg)->humidity;
@@ -223,7 +218,8 @@ void APP_Run(AppMessage_typeDef *msg) {
 		}
 
 		break;
-	case COM_MSG_RESET_HEADING_ID:
+
+	case COM_MSG_RESET_HEADING_ID: // Receive a request to reset ecompass heading (set it to zero)
 		/*
 		 * Reset heading of ecompass
 		 * TODO: implement heading reset function in ecompass module
@@ -236,18 +232,21 @@ void APP_Run(AppMessage_typeDef *msg) {
 			vPortFree(com_msg->data);
 		}
 		break;
-	case COM_MSG_CALIBRATE_MAG_ID:
+
+	case COM_MSG_CALIBRATE_MAG_ID: // Receive a request to start magnetometer calibration
 		/*
 		 * Start magnetometer calibration
 		 * TODO: implement magnetometer calibration function in ecompass module
 		 */
 		//ECOMPASS_StartMagCalib();
+
 		com_msg = (COM_Msg_RX_typeDef *)msg;
 		if (com_msg->data != NULL) {
 			// Free the data buffer allocated in COM RX task
 			vPortFree(com_msg->data);
 		}
 		break;
+
 	default:
 		break;
 	}
@@ -255,4 +254,3 @@ void APP_Run(AppMessage_typeDef *msg) {
 	vPortFree((void*)msg);
 #endif /* __TESTS__ */
 }
-

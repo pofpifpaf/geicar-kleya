@@ -18,6 +18,10 @@ extern "C" {
 
 #include "main.h"
 
+/**
+ * @brief Application message structure.
+ * This structure defines the base format of messages used in the application.
+ */
 typedef struct {
 	uint16_t id;
 } AppMessage_typeDef;
@@ -34,11 +38,10 @@ void APP_Init(void);
  * This function is the main loop of the application. It handles the main logic,
  * processes inputs, and updates outputs.
  *
- * @remark: this function never returns, it runs indefinitely.
+ * @remark: this function is called by TASKS_AppLoop tasks when a new message is received.
+ * @param msg Pointer to the application message to be processed.
  */
 void APP_Run(AppMessage_typeDef *msg);
-
-void APP_PeriodicCountersUpdate(void);
 
 #ifdef __cplusplus
 }

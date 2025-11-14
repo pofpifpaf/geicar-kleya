@@ -1,8 +1,11 @@
-/*
- * ecompass.c
+/**
+ * @file ecompass.c
+ * @author Sebastien DI MERCURIO
+ * @version V1.0
+ * @date 14 November 2023
  *
- *  Created on: Oct 23, 2025
- *      Author: dimercur
+ * @brief Ecompass management.
+ * This file contains the surrounding functions to manage the ecompass calculations
  */
 
 #include "ecompass.h"
@@ -28,26 +31,30 @@ static float GyrMatrix[3][3];
 static float MagMatrix[3][3];
 
 /* Private function prototypes -----------------------------------------------*/
-static int32_t calc_heading(float *heading, float v_head[]);
-static void calc_matrix(char orientation[], float matrix[][3]);
-static void q_conjug(float q_conj[], float q_src[]);
-static void q_multiply(float q_res[], float q_a[], float q_b[]);
-static void transform_orientation(const SENSORS_TriaxeValues_t *input, float output[], float matrix[][3]);
-static void v_rotate(float v_new[], float q_rot[], float v_old[]);
+static int32_t ECOMPASS_CalcHeading(float *heading, float v_head[]);
+static void ECOMPASS_CalcMatrix(char orientation[], float matrix[][3]);
+static void ECOMPASS_QConjug(float q_conj[], float q_src[]);
+static void ECOMPASS_QMultiply(float q_res[], float q_a[], float q_b[]);
+static void ECOMPASS_TransformOrientation(const SENSORS_TriaxeValues_t *input, float output[], float matrix[][3]);
+static void ECOMPASS_VectorRotate(float v_new[], float q_rot[], float v_old[]);
 
+/* DWT (Data Watchpoint and Trace) registers
+ * Used for cycle counting for profiling
+ */
 #define DWT_CONTROL (*(volatile uint32_t*)0xE0001000)
 #define DWT_CYCCNT  (*(volatile uint32_t*)0xE0001004)
 #define DEMCR       (*(volatile uint32_t*)0xE000EDFC)
 #define DWT_CR_CYCCNTENA_Msk (1UL << 0)
 #define DEMCR_TRCENA_Msk     (1UL << 24)
 
-#define CYCLES_PER_MS 80000.0 // Utilisez un flottant pour le calcul en double
+#define CYCLES_PER_MS 80000.0 // flottant pour le calcul en double
 
 double duration_ms;
+
 /**
- * @brief Active le compteur de cycles DWT
+ * @brief Initialise le compteur de cycles DWT pour le profiling
  */
-void DWT_Init(void)
+static __attribute__ ((unused)) void DWT_Init(void)
 {
     // 1. Autoriser l'accès au DWT (Trace Enable)
     DEMCR |= DEMCR_TRCENA_Msk;
@@ -64,7 +71,7 @@ void DWT_Init(void)
  * @param  Orientation Pointer to sensor orientation
  * @retval None
  */
-void BSP_SENSOR_ACC_GetOrientation(char *Orientation)
+static void ECOMPASS_ACC_GetOrientation(char *Orientation)
 {
 	Orientation[0] = 's';
 	Orientation[1] = 'e';
@@ -76,7 +83,7 @@ void BSP_SENSOR_ACC_GetOrientation(char *Orientation)
  * @param  Orientation Pointer to sensor orientation
  * @retval None
  */
-void BSP_SENSOR_GYR_GetOrientation(char *Orientation)
+static void ECOMPASS_GYR_GetOrientation(char *Orientation)
 {
 	Orientation[0] = 's';
 	Orientation[1] = 'e';
@@ -88,7 +95,7 @@ void BSP_SENSOR_GYR_GetOrientation(char *Orientation)
  * @param  Orientation Pointer to sensor orientation
  * @retval None
  */
-void BSP_SENSOR_MAG_GetOrientation(char *Orientation)
+static void ECOMPASS_MAG_GetOrientation(char *Orientation)
 {
 	Orientation[0] = 'n';
 	Orientation[1] = 'e';
@@ -101,7 +108,7 @@ void BSP_SENSOR_MAG_GetOrientation(char *Orientation)
  * @param  v_head  Device orientation vector for heading
  * @retval 1 in case of success, 0 otherwise
  */
-static int32_t calc_heading(float *heading, float v_head[])
+static int32_t ECOMPASS_CalcHeading(float *heading, float v_head[])
 {
 	const float tol_deg = 5.0f; /* Tolerance [deg] */
 	float tolerance = sinf(tol_deg * M_PI / 180.0f);
@@ -128,7 +135,7 @@ static int32_t calc_heading(float *heading, float v_head[])
  * @param  matrix  Sensor frame to device frame transformation matrix
  * @retval None
  */
-static void calc_matrix(char orientation[], float matrix[][3])
+static void ECOMPASS_CalcMatrix(char orientation[], float matrix[][3])
 {
 	matrix[0][0] = (orientation[0] == 'e') ?  1
 			: (orientation[0] == 'w') ? -1
@@ -173,7 +180,7 @@ static void calc_matrix(char orientation[], float matrix[][3])
  * @param  q_src   Source quaternion
  * @retval None
  */
-static void q_conjug(float q_conj[], float q_src[])
+static void ECOMPASS_QConjug(float q_conj[], float q_src[])
 {
 	q_conj[0] = (-1.0f) * q_src[0];
 	q_conj[1] = (-1.0f) * q_src[1];
@@ -190,7 +197,7 @@ static void q_conjug(float q_conj[], float q_src[])
  * @param  q_b    Quaternion B
  * @retval None
  */
-static void q_multiply(float q_res[], float q_a[], float q_b[])
+static void ECOMPASS_QMultiply(float q_res[], float q_a[], float q_b[])
 {
 	q_res[0] =
 			q_a[3] * q_b[0]
@@ -230,7 +237,7 @@ static void q_multiply(float q_res[], float q_a[], float q_b[])
  * @param  matrix  Sensor frame to device frame transformation matrix
  * @retval None
  */
-static void transform_orientation(const SENSORS_TriaxeValues_t *input, float output[], float matrix[][3])
+static void ECOMPASS_TransformOrientation(const SENSORS_TriaxeValues_t *input, float output[], float matrix[][3])
 {
 	output[0] = matrix[0][0] * (float)input->x  +  matrix[0][1] * (float)input->y  +  matrix[0][2] * (float)input->z;
 	output[1] = matrix[1][0] * (float)input->x  +  matrix[1][1] * (float)input->y  +  matrix[1][2] * (float)input->z;
@@ -248,7 +255,7 @@ static void transform_orientation(const SENSORS_TriaxeValues_t *input, float out
  * @param  v_old  Vector before rotation
  * @retval None
  */
-static void v_rotate(float v_new[], float q_rot[], float v_old[])
+static void ECOMPASS_VectorRotate(float v_new[], float q_rot[], float v_old[])
 {
 	float q_old[4];
 	float q_new[4];
@@ -261,9 +268,9 @@ static void v_rotate(float v_new[], float q_rot[], float v_old[])
 	q_old[2] = v_old[2];
 	q_old[3] = 0.0f;
 
-	q_conjug(q_rot_inv, q_rot);
-	q_multiply(q_temp, q_old, q_rot_inv);
-	q_multiply(q_new, q_rot, q_temp);
+	ECOMPASS_QConjug(q_rot_inv, q_rot);
+	ECOMPASS_QMultiply(q_temp, q_old, q_rot_inv);
+	ECOMPASS_QMultiply(q_new, q_rot, q_temp);
 
 	v_new[0] = q_new[0];
 	v_new[1] = q_new[1];
@@ -273,27 +280,12 @@ static void v_rotate(float v_new[], float q_rot[], float v_old[])
 }
 
 /**
- * @brief  Transform the accelerometer and magnetometer data orientation
- * @param  acc_in  accelerometer data (sensor frame)
- * @param  mag_in  magnetometer data (sensor frame)
- * @param  acc_out  accelerometer data (device frame)
- * @param  mag_out  magnetometer data (device frame)
- * @retval None
- */
-//void MotionEC_manager_transform_orientation(MOTION_SENSOR_Axes_t *acc_in, MOTION_SENSOR_Axes_t *mag_in, float acc_out[],
-//		float mag_out[])
-//{
-//	transform_orientation(acc_in, acc_out, AccMatrix);
-//	transform_orientation(mag_in, mag_out, MagMatrix);
-//}
-
-/**
  * @brief  Run E-Compass algorithm (accelerometer and magnetometer data fusion)
  * @param  data_in  Structure containing input data
  * @param  data_out  Structure containing output data
  * @retval None
  */
-void MotionEC_manager_run(MEC_input_t *data_in, MEC_output_t *data_out)
+void ECOMPASS_ManagerRun(MEC_input_t *data_in, MEC_output_t *data_out)
 {
 	MotionEC_Run(data_in, data_out);
 }
@@ -305,13 +297,13 @@ void MotionEC_manager_run(MEC_input_t *data_in, MEC_output_t *data_out)
  * @param  heading_valid  E-Compass device heading is valid
  * @retval None
  */
-void MotionEC_manager_calc_heading(float quaternion[], float *heading, int32_t *heading_valid)
+void ECOMPASS_ManagerCalcHeading(float quaternion[], float *heading, int32_t *heading_valid)
 {
 	float v_base[3] = {0.0, 1.0, 0.0};
 	float v_head[3];
 
-	v_rotate(v_head, quaternion, v_base);
-	*heading_valid = calc_heading(heading, v_head);
+	ECOMPASS_VectorRotate(v_head, quaternion, v_base);
+	*heading_valid = ECOMPASS_CalcHeading(heading, v_head);
 }
 
 /**
@@ -320,26 +312,26 @@ void MotionEC_manager_calc_heading(float quaternion[], float *heading, int32_t *
  * @param  length  Library version string length
  * @retval None
  */
-void MotionEC_manager_get_version(char *version, int32_t *length)
+void ECOMPASS_ManagerGetVersion(char *version, int32_t *length)
 {
 	*length = (int)MotionEC_GetLibVersion(version);
 }
 
 /**
- * @brief  Initialize and reset the MotionEC engine
+ * @brief  Initialize and reset the MotionEC/ECOMPASS engine
  * @param  freq  Sensors sampling frequency [Hz]
  * @retval None
  */
 uint32_t ECOMPASS_Init(float freq) {
 	// Initialization code for the eCompass module
 
-	BSP_SENSOR_ACC_GetOrientation(acc_orientation);
-	BSP_SENSOR_GYR_GetOrientation(gyr_orientation);
-	BSP_SENSOR_MAG_GetOrientation(mag_orientation);
+	ECOMPASS_ACC_GetOrientation(acc_orientation);
+	ECOMPASS_GYR_GetOrientation(gyr_orientation);
+	ECOMPASS_MAG_GetOrientation(mag_orientation);
 
-	calc_matrix(acc_orientation, AccMatrix);
-	calc_matrix(gyr_orientation, GyrMatrix);
-	calc_matrix(mag_orientation, MagMatrix);
+	ECOMPASS_CalcMatrix(acc_orientation, AccMatrix);
+	ECOMPASS_CalcMatrix(gyr_orientation, GyrMatrix);
+	ECOMPASS_CalcMatrix(mag_orientation, MagMatrix);
 
 	/* Je ne sais pas ce que c'est */
 	MotionEC_Initialize(MEC_MCU_STM32, &freq);
@@ -351,6 +343,12 @@ uint32_t ECOMPASS_Init(float freq) {
 	return 0; // Return 0 on success
 }
 
+/**
+ * @brief  Process ECOMPASS sensor data message
+ *
+ * @remark : this function is called by ECOMPASS task when a new message is received.
+ * @param msg Pointer to ECOMPASS_SensorsValues_t message containing sensor data
+ */
 void ECOMPASS_ProcessMessage(const ECOMPASS_SensorsValues_t *msg) {
 	// Process the sensor values to compute heading, pitch, and roll
 
@@ -367,9 +365,9 @@ void ECOMPASS_ProcessMessage(const ECOMPASS_SensorsValues_t *msg) {
 	HAL_GPIO_WritePin(EVT_4_GPIO_Port, EVT_4_Pin, GPIO_PIN_SET);
 
 	/* Do sensor orientation transformation */
-	transform_orientation(&(msg->acc), data_in.acc, AccMatrix);
+	ECOMPASS_TransformOrientation(&(msg->acc), data_in.acc, AccMatrix);
 	//transform_orientation(&(msg->gyro), data_in.gyr, GyrMatrix);
-	transform_orientation(&(msg->mag), data_in.mag, MagMatrix);
+	ECOMPASS_TransformOrientation(&(msg->mag), data_in.mag, MagMatrix);
 
 	vPortFree((void*)msg); // Free the message after extracting data)
 
@@ -389,18 +387,18 @@ void ECOMPASS_ProcessMessage(const ECOMPASS_SensorsValues_t *msg) {
 	/* Run E-Compass algorithm */
 	//BSP_LED_On(LED2);
 	start_cycles = DWT_CYCCNT;
-	MotionEC_manager_run(&data_in, &data_out);
+	ECOMPASS_ManagerRun(&data_in, &data_out);
 	end_cycles = DWT_CYCCNT;
 	duration_cycles = end_cycles - start_cycles;
 	duration_ms = (double)duration_cycles / CYCLES_PER_MS;
 	/* Write data to output stream */
 
-	MotionEC_manager_calc_heading(data_out.quaternion, &heading, &heading_valid);
+	ECOMPASS_ManagerCalcHeading(data_out.quaternion, &heading, &heading_valid);
 
 	ECOMPASS_Attitude_t *attitude_msg = pvPortMalloc(sizeof(ECOMPASS_Attitude_t));
 	if (attitude_msg != NULL) {
 		memset(attitude_msg, 0, sizeof(ECOMPASS_Attitude_t)); // ras des valeurs
-		attitude_msg->header.id = ECOMPASS_ATTITUDE_DATA_ID;
+		attitude_msg->header.id = ECOMPASS_MEASURES_ID;
 		attitude_msg->values.heading = heading;
 		attitude_msg->values.heading_valid = heading_valid;
 		attitude_msg->values.yaw = data_out.euler[0];
@@ -420,8 +418,12 @@ void ECOMPASS_ProcessMessage(const ECOMPASS_SensorsValues_t *msg) {
 	HAL_GPIO_WritePin(EVT_4_GPIO_Port, EVT_4_Pin, GPIO_PIN_RESET);
 }
 
+/**
+ * @brief  Send eCompass measures request
+ *
+ * This function can be used to trigger sending eCompass measures if needed
+ */
 void ECOMPASS_SendMesures(void) {
-// This function can be used to trigger sending eCompass measures if needed
 	AppMessage_typeDef *msg = pvPortMalloc(sizeof(AppMessage_typeDef));
 
 	if (msg != NULL) {

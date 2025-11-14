@@ -343,6 +343,7 @@ void TASKS_Init(void) {
  * @brief  Task function for the main application loop.
  * This function processes messages received in the application queue.
  * It runs indefinitely, handling messages as they arrive.
+ *
  * @param  argument: Not used
  */
 void TASKS_AppLoop(void *argument ) {
@@ -358,9 +359,7 @@ void TASKS_AppLoop(void *argument ) {
 		{
 			if (pReceived != NULL) {
 
-				/* Traitement de l’élément reçu */
-				// Exemple : cast et utilisation
-				// MyStruct_t *msg = (MyStruct_t*) pReceived;
+				/* Traitement du message reçu par l'application */
 				APP_Run((AppMessage_typeDef*) pReceived);
 			}
 		}
@@ -372,6 +371,7 @@ void TASKS_AppLoop(void *argument ) {
  * @brief  Task function for the communication transmit loop.
  * This function processes messages received in the application queue.
  * It runs indefinitely, handling messages as they arrive.
+ *
  * @param  argument: Not used
  */
 void TASKS_ComTXLoop(void *argument ) {
@@ -384,9 +384,7 @@ void TASKS_ComTXLoop(void *argument ) {
 		{
 			if (pReceived != NULL) {
 
-				/* Traitement de l’élément reçu */
-				// Exemple : cast et utilisation
-				// MyStruct_t *msg = (MyStruct_t*) pReceived;
+				/* Traitement du message reçu par le gestionnaire de communication */
 				COM_RunTX((AppMessage_typeDef*) pReceived);
 			}
 		}
@@ -397,7 +395,10 @@ void TASKS_ComTXLoop(void *argument ) {
  * @brief  Task function for the communication receive loop.
  * This function continuously runs the communication receive logic.
  * It runs indefinitely, processing incoming data as it arrives.
+ *
  * @param  argument: Not used
+ *
+ * @remark periodically called by freertos timer
  */
 void TASKS_ComRXLoop(void *argument ) {
 	for (;;) {
@@ -409,6 +410,7 @@ void TASKS_ComRXLoop(void *argument ) {
  * @brief  Task function for the debug loop.
  * This function runs periodically to perform debug tasks.
  * It runs indefinitely, executing its logic at defined intervals.
+ *
  * @param  argument: Not used
  */
 void TASKS_DebugLoop(void *argument) {
@@ -427,9 +429,10 @@ void TASKS_DebugLoop(void *argument) {
 }
 
 /**
- * @brief  Task function for the ultrasound measurement loop.
- * This function continuously triggers ultrasonic measurements.
- * It runs indefinitely, starting new measurements as soon as the previous ones are finished.
+ * @brief  Task function for sensors loop.
+ * This function continuously triggers sensors measurements.
+ * Periodically called to initiate sensor data acquisition.
+ *
  * @param  argument: Not used
  */
 void TASKS_SensorsLoop(void *argument) {
@@ -448,9 +451,10 @@ void TASKS_SensorsLoop(void *argument) {
 }
 
 /**
- * @brief  Task function for the main application loop.
- * This function processes messages received in the application queue.
+ * @brief  Task function for ecompass loop.
+ * This function processes messages received in the ecompass queue.
  * It runs indefinitely, handling messages as they arrive.
+ *
  * @param  argument: Not used
  */
 void TASKS_EcompassLoop(void *argument ) {

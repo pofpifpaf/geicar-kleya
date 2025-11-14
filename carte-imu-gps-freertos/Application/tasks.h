@@ -20,9 +20,22 @@ extern "C" {
 
 /* Handle vers la queue de la tache TASK_AppLoop */
 extern QueueHandle_t xAppLoopQueue;
+
+/* Handle vers la queue de la tache TASK_EcompassLoop */
 extern QueueHandle_t xEcompassLoopQueue;
+
+/* Handle vers la queue de la tache TASK_ComTXLoop */
 extern QueueHandle_t xComLoopQueue;
 
+/* -------------------------------------------------------------------------
+ * Prototypes des fonctions publiques
+ * ------------------------------------------------------------------------- */
+
+/*
+ * @brief  Initialize tasks, queues, semaphores and timers.
+ * This function creates the necessary FreeRTOS components for the application.
+ * It sets up tasks, queues, semaphores, and timers used in the application.
+ */
 void TASKS_Init(void);
 
 #ifdef __cplusplus

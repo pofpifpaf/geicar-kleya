@@ -2,11 +2,10 @@
  * @file com_mgr.c
  * @author Sebastien DI MERCURIO
  * @version V1.0
- * @date 20 Aout 2023
+ * @date 14 November 2023
  *
  * @brief communication manager.
- * This file contains the main application logic, including initialization and the main loop.
- * It handles the control of the car's motors, ultrasonic sensors, and communication via CAN.
+ * This file contains communication manager implementation.
  */
 
 #include <com_mgr.h>
@@ -24,6 +23,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+/**
+ * @brief Float to bytes union.
+ *
+ * This union is used to convert a float value to its byte representation.
+ */
 typedef union {
 	float value;
 	uint8_t bytes[4];
@@ -39,7 +43,7 @@ typedef union {
 #define COM_FRAME_ECOMPASS_ID  		0x31
 #define COM_FRAME_ENV_ID       		0x32
 
-#define COM_FRAME_VERSION_SIZE    (3*1)   // 3 bytes for version major, minor, patch
+#define COM_FRAME_VERSION_SIZE    (3*1)  // 3 bytes for version major, minor, patch
 
 #define COM_FRAME_MOTION_SIZE    (3*3*4) // 3 triaxe values (acc, gyro, mag) of 4 bytes each
 #define COM_FRAME_ECOMPASS_SIZE  (4*4+1) // 4 float values (heading, pitch, roll, heading) of 4 bytes each + 1 byte heading status
@@ -50,13 +54,12 @@ typedef union {
 #define COM_RX_BUFFER_LEN 256
 uint8_t COM_RxBuffer[COM_RX_BUFFER_LEN]; // Buffer de réception DMA
 
-
+/* ----------------- Private function prototypes ----------------- */
 static void COM_SendFrame(uint8_t frame_id, uint8_t *data, uint16_t length);
 static size_t COM_AvailableBytes(void);
 static void COM_CopyFromCircular(uint8_t *dst, size_t len);
 
 /* ----------------- Configuration / types ----------------- */
-
 typedef struct {
 	UART_HandleTypeDef *huart;       // handle UART (uniquement pour info si besoin)
 	DMA_HandleTypeDef  *hdma_rx;     // handle DMA rx (utilisé par __HAL_DMA_GET_COUNTER)
@@ -91,9 +94,14 @@ void COM_Init(UART_HandleTypeDef *huart,
 	}
 }
 
-/* ----------------- COM_Read (bloquant) ----------------- */
-/* Remplit 'dst' avec 'len' octets. Bloque tant qu'il n'y a pas assez d'octets.
- * Utilisateur appelle depuis une tâche FreeRTOS. */
+/**
+ * @brief Read data from the communication manager.
+ * This function reads data from the communication manager into the provided buffer.
+ * It blocks until the requested number of bytes is read.
+ *
+ * @param dst Pointer to the destination buffer where the read data will be stored.
+ * @param len Number of bytes to read.
+ */
 void COM_Read(uint8_t *dst, size_t len)
 {
 	if (dst == NULL || len == 0) {
@@ -123,14 +131,14 @@ void COM_Read(uint8_t *dst, size_t len)
 		}
 	}
 }
-
 /**
- * @brief Run the communication manager.
+ * @brief Run the communication transmitter manager.
  *
- * This function is the main loop of the print manager. It handles the main logic,
- * processes inputs, and updates outputs.
+ * This function processes messages received in the application queue and sent them over USB.
+ * It handles frame formatting and transmission.
  *
- * @remark: this function never returns, it runs indefinitely.
+ * @remark: this function is called by TASKS_ComTXLoop tasks when a new message is received.
+ * @param  msg: Pointer to the message to process.
  */
 void COM_RunTX(AppMessage_typeDef *msg) {
 	uint8_t *frame_data;
@@ -247,6 +255,14 @@ void COM_RunTX(AppMessage_typeDef *msg) {
 	vPortFree((void*)msg);
 }
 
+/**
+ * @brief Run the communication receive manager.
+ *
+ * This function is periodically called to handle incoming data from the UART.
+ * It processes incoming data as it arrives and sends valid messages to the appropriate queues.
+ *
+ * @remark: this function is called periodically by TASKS_ComRXLoop.
+ */
 void COM_RunRX(void) {
 	uint8_t header[4]={0};
 	uint8_t frame_id = 0;
@@ -343,7 +359,14 @@ void COM_RunRX(void) {
 	}
 }
 
-
+/**
+ * @brief Send a frame over UART.
+ * This function formats and sends a frame over UART.
+ *
+ * @param frame_id Frame ID.
+ * @param data Pointer to the data to send.
+ * @param length Length of the data.
+ */
 static void COM_SendFrame(uint8_t frame_id, uint8_t *data, uint16_t length) {
 	//******** Format frame for UART transmission **********
 	uint8_t *buffer = pvPortMalloc(length+5);
@@ -373,8 +396,12 @@ static void COM_SendFrame(uint8_t frame_id, uint8_t *data, uint16_t length) {
 	vPortFree(buffer);
 }
 
-/* ----------------- Helper: get DMA write position ----------------- */
-/* Utilise la macro HAL pour récupérer le compteur restant (no direct register access). */
+/**
+ * @brief Get current DMA write position in circular buffer.
+ * This function calculates the current write position of the DMA in the circular buffer.
+ *
+ * @return Current write position index.
+ */
 static size_t COM_GetDMAWritePos(void)
 {
 	/* counter = nombre d'octets restants dans le transfert DMA (macro HAL) */
@@ -390,7 +417,12 @@ static size_t COM_GetDMAWritePos(void)
 	return pos;
 }
 
-/* ----------------- Helper: available bytes in circular buffer ----------------- */
+/**
+ * @brief Get number of available bytes in circular buffer.
+ * This function calculates the number of bytes available to read in the circular buffer.
+ *
+ * @return Number of available bytes.
+ */
 static size_t COM_AvailableBytes(void)
 {
 	size_t write_pos = COM_GetDMAWritePos();
@@ -401,7 +433,14 @@ static size_t COM_AvailableBytes(void)
 	}
 }
 
-/* ----------------- Copy from circular buffer (manages wrap) ----------------- */
+/**
+ * @brief Copy data from circular buffer to destination buffer.
+ * This function copies data from the circular buffer to the provided destination buffer.
+ * It handles wrap-around if necessary.
+ *
+ * @param dst Pointer to the destination buffer.
+ * @param len Number of bytes to copy.
+ */
 static void COM_CopyFromCircular(uint8_t *dst, size_t len)
 {
 	/* assume caller already verified that len <= available */
@@ -417,7 +456,12 @@ static void COM_CopyFromCircular(uint8_t *dst, size_t len)
 	}
 }
 
-/* ----------------- Optionnelle: fonction non-bloquante (pour debug/tests) ------------- */
+/**
+ * @brief Get number of available bytes in circular buffer.
+ * This function calculates the number of bytes available to read in the circular buffer.
+ *
+ * @return Number of available bytes.
+ */
 size_t COM_Available(void)
 {
 	return COM_AvailableBytes();

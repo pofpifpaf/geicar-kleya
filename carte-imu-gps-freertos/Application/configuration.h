@@ -25,8 +25,6 @@
 #define SENSORS_LOOP_PERIOD_MS		10		// Debug loop period in ms
 #define DEBUG_LOOP_PERIOD_MS		1000	// Debug loop period in ms
 
-#define US_MAX_WAIT_TIME_MS 	50 		// Period in ms to update us data
-
 // Tasks, semaphores, queues constants
 #define APPLOOP_QUEUE_LENGTH   	10
 #define APPLOOP_QUEUE_ITEM_SIZE sizeof(void*)   // Chaque élément est un pointeur
@@ -40,18 +38,18 @@
 // Tasks stack sizes
 #define APPLOOP_TASK_STACK_SIZE 			192  	// en mots de 32 bits
 #define DEBUGLOOP_TASK_STACK_SIZE 			384 	// en mots de 32 bits. Besoin de pas mal d'espace pour la fonction sprintf
-#define SENSORS_TASK_STACK_SIZE  			192		// en mots de 32 bits. Pas besoin d'une stack enorme
+#define SENSORS_TASK_STACK_SIZE  			192		// en mots de 32 bits. Pas besoin d'une stack énorme
 #define ECOMPASSLOOP_TASK_STACK_SIZE 		256   	// en mots de 32 bits. Pour les calculs de la boussole
-#define CAN_COMMUNICATION_TASK_STACK_SIZE 	128 	// en mots de 32 bits. Pas besoin d'une stack enorme
+#define CAN_COMMUNICATION_TASK_STACK_SIZE 	128 	// en mots de 32 bits. Pas besoin d'une stack énorme
 #define COMTXLOOP_TASK_STACK_SIZE 			128   	// en mots de 32 bits
 #define COMRXLOOP_TASK_STACK_SIZE 			128   	// en mots de 32 bits
 
 // Tasks priorities
+#define COMRXLOOP_TASK_PRIORITY  			(tskIDLE_PRIORITY + 30) // Highest priority to not miss any incoming data
 #define SENSORS_TASK_PRIORITY    			(tskIDLE_PRIORITY + 20)
 #define ECOMPASSLOOP_TASK_PRIORITY    		(tskIDLE_PRIORITY + 10)
 #define APPLOOP_TASK_PRIORITY   			(tskIDLE_PRIORITY + 7)
 #define COMTXLOOP_TASK_PRIORITY  			(tskIDLE_PRIORITY + 5)
-#define COMRXLOOP_TASK_PRIORITY  			(tskIDLE_PRIORITY + 30) // Highest priority to not miss any incoming data
 #define DEBUGLOOP_TASK_PRIORITY 			(tskIDLE_PRIORITY + 3) // Lowest priority
 
 // APP messages IDs
@@ -62,7 +60,7 @@ enum {
 	TILT_SEND_MEASURES_ID,
 	SENSORS_MOTION_MEASURES_ID,
 	SENSORS_ENV_MEASURES_ID,
-	ECOMPASS_ATTITUDE_DATA_ID,
+	ECOMPASS_MEASURES_ID,
 	COM_MSG_ECOMPASS_ID,
 	COM_MSG_MOTION_ID,
 	COM_MSG_ENV_ID,

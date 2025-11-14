@@ -1,9 +1,11 @@
 /**
- * @file debug.h
+ * @file debug.c
  * @author Sebastien DI MERCURIO
  * @version V1.0
- * @date 29 aout 2025
- * @brief Debug functions for the car application.
+ * @date 14 November 2023
+ *
+ * @brief Debug functions.
+ * This file contains the declarations for debug functions.
  */
 
 #include "debug.h"
@@ -30,8 +32,19 @@ SENSORS_TriaxeValues_t DEBUG_mag;
 SENSORS_EnvironementMesures_t DEBUG_env;
 ECOMPASS_Values_t DEBUG_ecompass;
 
+/**
+ * @brief Print a string via ITM.
+ *
+ * @param port The ITM stimulus port to use.
+ * @param str The string to print.
+ */
 void DEBUG_PrintITM(uint8_t port, char *str);
 
+/**
+ * @brief Print a string via ITM on the default port.
+ *
+ * @param str The string to print.
+ */
 void DEBUG_PrintITM(uint8_t port, char *str) {
 	if (ITM->TCR & ITM_TCR_ITMENA_Msk) { // Vérifie si l'ITM est activé
 		while (*str!=0) {
@@ -43,14 +56,24 @@ void DEBUG_PrintITM(uint8_t port, char *str) {
 	}
 }
 
+/**
+ * @brief Print a string via ITM on the default port.
+ *
+ * @param str The string to print.
+ */
 void DEBUG_Print(char *str) {
 	DEBUG_PrintITM(ITM_STIMULUS_PORT_PRINTF, str);
 }
 
+/**
+ * @brief Print periodic debug information via ITM.
+ * This function collects from Freertos and prints periodic debug information,
+ * including task states and sensor data.
+ */
 void DEBUG_PrintPeriodicInfo(void) {
 	/******************************************************
 	 * Collecte et affiche les informations périodiques
-	 * Données liées aux taches et à la memoire dynamique
+	 * Données liées aux taches et à la mémoire dynamique
 	 * Canal de debug 1
 	 **************************************************/
 
@@ -107,6 +130,14 @@ void DEBUG_PrintPeriodicInfo(void) {
 	DEBUG_PrintITM(ITM_STIMULUS_PORT_PRINTF, DEBUG_Buffer);
 }
 
+/**
+ * @brief Update motion sensor debug data.
+ * This function updates the debug data for motion sensors (accelerometer, gyroscope, magnetometer).
+ *
+ * @param acc The accelerometer data.
+ * @param gyro The gyroscope data.
+ * @param mag The magnetometer data.
+ */
 void DEBUG_UpdateMotionData(SENSORS_TriaxeValues_t acc,
 		SENSORS_TriaxeValues_t gyro,
 		SENSORS_TriaxeValues_t mag) {
@@ -115,14 +146,33 @@ void DEBUG_UpdateMotionData(SENSORS_TriaxeValues_t acc,
 	DEBUG_mag = mag;
 }
 
+/**
+ * @brief Update environmental sensor debug data.
+ * This function updates the debug data for environmental sensors (temperature, pressure, humidity).
+ *
+ * @param env The environmental sensor data.
+ */
 void DEBUG_UpdateEnvData(SENSORS_EnvironementMesures_t env) {
 	DEBUG_env = env;
 }
 
+/**
+ * @brief Update ecompass debug data.
+ * This function updates the debug data for the ecompass (yaw, pitch, roll, heading).
+ *
+ * @param ecompass The ecompass data.
+ */
 void DEBUG_UpdateECompassData(ECOMPASS_Values_t ecompass) {
 	DEBUG_ecompass = ecompass;
 }
 
+/**
+ * @brief Handle a panic situation.
+ * This function is called when a panic situation occurs, printing the file and line number.
+ *
+ * @param file The file where the panic occurred.
+ * @param line The line number where the panic occurred.
+ */
 void DEBUG_Panic(uint8_t *file, uint32_t line) {
 	snprintf(DEBUG_Buffer, DEBUG_BUFFER_SIZE - 1,
 			"\r\nPANIC at line %lu in file %s\r\n", line, file);
@@ -140,9 +190,15 @@ void DEBUG_Panic(uint8_t *file, uint32_t line) {
 	}
 }
 
+// ----- Run time stats configuration for FreeRTOS -----
+
 extern TIM_HandleTypeDef htim7; // Déclarez la structure de handle de CubeMX
 extern void MX_TIM7_Init(void); // Déclarez la fonction d'initialisation de CubeMX
 
+/**
+ * @brief Configure the timer for run time stats.
+ * This function initializes TIM7 to be used as the run time counter for FreeRTOS.
+ */
 void configureTimerForRunTimeStats(void)
 {
 	// C'est la fonction générée par CubeMX pour initialiser TIM7
@@ -153,10 +209,20 @@ void configureTimerForRunTimeStats(void)
 	//HAL_TIM_Base_Start(&htim7);
 }
 
+/**
+ * @brief Run time counter overflow handler.
+ * This function handles the overflow of the run time counter used by FREERTOS for task statistics.
+ */
 void runTimeCounterOverflowHandler(void) {
 	runTimeCounterOverflow++;
 }
 
+/**
+ * @brief Get the current value of the run time counter.
+ * This function returns the current value of the run time counter used by FreeRTOS.
+ *
+ * @return unsigned long The current value of the run time counter.
+ */
 unsigned long getRunTimeCounterValue(void)
 {
 	return (((long)(runTimeCounterOverflow))<<16) + __HAL_TIM_GET_COUNTER(&htim7);

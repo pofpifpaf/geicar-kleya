@@ -4,10 +4,10 @@ from rclpy.node import Node
 from sensor_msgs.msg import Imu
 from std_msgs.msg import Bool
 
-class DetectShock(Node):
+class detect_shock(Node):
 
     def __init__(self):
-        #Initialization of the shockDetection Node
+        #Initialization of the shock_detection Node
         super().__init__('shock_detection')
         self.publisher_ = self.create_publisher(Bool, 'isShockDetected', 10)
 
@@ -50,14 +50,14 @@ class DetectShock(Node):
 def main(args=None):
     rclpy.init(args=args)
 
-    shockDetection = DetectShock()
+    shock_detection = detect_shock()
 
-    rclpy.spin(shockDetection)
+    rclpy.spin(shock_detection)
 
     # Destroy the node explicitly
     # (optional - otherwise it will be done automatically
     # when the garbage collector destroys the node object)
-    shockDetection.destroy_node()
+    shock_detection.destroy_node()
     rclpy.shutdown()
 
 

@@ -26,12 +26,10 @@ class detect_shock(Node):
         # get the data  from the imu topic
         ax = msg.linear_acceleration.x
         ay = msg.linear_acceleration.y
-        az = msg.linear_acceleration.z
 
         # Compare the value with the min we defined
         if (ax >= min_linear_acceleration or 
-            ay >= min_linear_acceleration or 
-            az >= min_linear_acceleration):
+            ay >= min_linear_acceleration ):
             shock = True
         else:
             shock = False

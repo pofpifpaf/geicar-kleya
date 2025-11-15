@@ -31,12 +31,14 @@ class detect_shock(Node):
         if (ax >= min_linear_acceleration or 
             ay >= min_linear_acceleration ):
             shock = True
+
+            # publish the message with shock state
+            shock_msg = Bool()
+            shock_msg.data = shock
+            self.publisher_.publish(shock_msg)
         else:
             shock = False
-        # publish the message with shock state
-        shock_msg = Bool()
-        shock_msg.data = shock
-        self.publisher_.publish(shock_msg)
+
 
         # log to debug
         self.get_logger().info(f"Accel = ({ax:.2f}, {ay:.2f}, Shock Status = {shock_msg.data}")

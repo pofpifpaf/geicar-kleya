@@ -39,7 +39,7 @@ class detect_shock(Node):
         self.publisher_.publish(shock_msg)
 
         # log to debug
-        self.get_logger().info(f"Accel = ({ax:.2f}, {ay:.2f}, {az:.2f}), Shock Status = {shock_msg.data}")
+        self.get_logger().info(f"Accel = ({ax:.2f}, {ay:.2f}, Shock Status = {shock_msg.data}")
 
 
 

@@ -8,6 +8,7 @@
 #include <chrono>
 #include <functional>
 #include <memory>
+#include <algorithm>
 
 using std::placeholders::_1;
 
@@ -73,6 +74,11 @@ private:
           order.left_rear_pwm = 50;
           order.right_rear_pwm = 50;
           RCLCPP_INFO(this->get_logger(), "Detecting obtacle <20 cm away : Stopping car");
+        }
+        else if ((100 < ultras.front_left && ultras.front_left > 20) || (100 < ultras.front_right && ultras.front_right > 20) || (100 < ultras.front_center && ultras.front_center > 20)) {
+          order.left_rear_pwm = std::min( order.left_rear_pwm, 65);
+          order.right_rear_pwm = std::min( order.right_rear_pwm, 65);;
+          RCLCPP_INFO(this->get_logger(), "Detecting obtacle : Speed limit 30%");
         }
 
       }

@@ -66,19 +66,15 @@ private:
       return 0;
     }
 
-    int detectCollision(struct ultra_data ultras){
-      if (order.right_rear_pwm > 50 || order.left_rear_pwm > 50){
-        RCLCPP_INFO(this->get_logger(), "Car going forward : looking for obstacles");
+    int detectCollision(struct ultra_data ultras) {
+      if (order.right_rear_pwm > 50 || order.left_rear_pwm > 50) {
 
-        if (ultras.front_left < 20 || ultras.front_right < 20 || ultras.front_center < 20){
+        if (ultras.front_left < 20 || ultras.front_right < 20 || ultras.front_center < 20) {
           order.left_rear_pwm = 50;
           order.right_rear_pwm = 50;
           RCLCPP_INFO(this->get_logger(), "Detecting obtacle <20 cm away : Stopping car");
         }
 
-        else {
-          RCLCPP_INFO(this->get_logger(), "No obstacles <20 cm away : No changes");
-        }
       }
 
       auto motorsOrderCmd = interfaces::msg::MotorsOrder();

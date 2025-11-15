@@ -43,6 +43,7 @@ private:
     {
       int right_rear_pwm;
       int left_rear_pwm;
+      int steering_angle;
     };
 
     struct motors_order order;
@@ -67,12 +68,26 @@ private:
 
     int detectCollision(struct ultra_data ultras){
       if (order.right_rear_pwm > 50 || order.left_rear_pwm > 50){
+        RCLCPP_INFO(this->get_logger(), "Car going forward : looking for obstacles");
+
         if (ultras.front_left < 20 || ultras.front_right < 20 || ultras.front_center < 20){
           order.left_rear_pwm = 50;
           order.right_rear_pwm = 50;
           RCLCPP_INFO(this->get_logger(), "Detecting obtacle <20 cm away : Stopping car");
         }
+
+        else {
+          RCLCPP_INFO(this->get_logger(), "No obstacles <20 cm away : No changes");
+        }
       }
+
+      auto motorsOrderCmd = interfaces::msg::MotorsOrder();
+
+      motorsOrderCmd.left_rear_pwm = order.left_rear_pwm;
+      motorsOrderCmd.right_rear_pwm = order.right_rear_pwm;
+      motorsOrderCmd.steering_angle = order.steering_angle;
+
+      publisher_motors_order_->publish(motorsOrderCmd);
 
       return 0;
     }

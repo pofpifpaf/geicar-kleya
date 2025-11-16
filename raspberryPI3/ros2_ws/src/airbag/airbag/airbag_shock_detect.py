@@ -4,11 +4,13 @@ from rclpy.node import Node
 from sensor_msgs.msg import Imu
 from std_msgs.msg import Bool
 
-class detect_shock(Node):
+min_linear_acceleration = 2.5
+
+class airbag_shock_detection(Node):
 
     def __init__(self):
-        #Initialization of the shock_detection Node
-        super().__init__('shock_detection')
+        #Initialization of the shock_detection_node Node
+        super().__init__('shock_detection_node')
         self.publisher_ = self.create_publisher(Bool, 'isShockDetected', 10)
 
         #Subscription to the IMU topic
@@ -21,7 +23,6 @@ class detect_shock(Node):
     def imu_callback(self, msg):
 
         # Define a variable with the minimal value for shock detection
-        min_linear_acceleration = 1.5
         
         # get the data  from the imu topic
         ax = msg.linear_acceleration.x
@@ -33,7 +34,7 @@ class detect_shock(Node):
             shock = True
 
             # log to debug
-            self.get_logger().info(f"Accel = ({ax:.2f}, {ay:.2f}, Shock detected")
+            self.get_logger().info(f"Accel = ({ax:.2f}, {ay:.2f}), Shock detected")
 
         else:
             shock = False
@@ -51,14 +52,14 @@ class detect_shock(Node):
 def main(args=None):
     rclpy.init(args=args)
 
-    shock_detection = detect_shock()
+    shock_detection_node = airbag_shock_detection()
 
-    rclpy.spin(shock_detection)
+    rclpy.spin(shock_detection_node)
 
     # Destroy the node explicitly
     # (optional - otherwise it will be done automatically
     # when the garbage collector destroys the node object)
-    shock_detection.destroy_node()
+    shock_detection_node.destroy_node()
     rclpy.shutdown()
 
 

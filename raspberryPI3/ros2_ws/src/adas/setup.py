@@ -24,6 +24,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
+            'airbag_shock_detection = adas.airbag.airbag_shock_detect:main',
         ],
     },
 )

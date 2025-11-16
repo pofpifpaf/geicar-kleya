@@ -30,7 +30,7 @@ public:
         requestedSteerAngle = 0;
     
 
-        publisher_can_= this->create_publisher<interfaces::msg::MotorsOrder>("motors_order", 10);
+        publisher_motors_order_raw_= this->create_publisher<interfaces::msg::MotorsOrder>("motors_order_raw", 10);
 
         publisher_steeringCalibration_ = this->create_publisher<interfaces::msg::SteeringCalibration>("steering_calibration", 10);
 
@@ -149,7 +149,7 @@ private:
         motorsOrder.steering_angle = (int8_t)((int8_t)(requestedSteerAngle*127.0)); //Scale [-1,1] to [-127,+127]
         currentAngle = requestedSteerAngle;
 
-        publisher_can_->publish(motorsOrder);
+        publisher_motors_order_raw_->publish(motorsOrder);
     }
 
 
@@ -229,7 +229,7 @@ private:
     uint8_t steeringPwmCmd;
 
     //Publishers
-    rclcpp::Publisher<interfaces::msg::MotorsOrder>::SharedPtr publisher_can_;
+    rclcpp::Publisher<interfaces::msg::MotorsOrder>::SharedPtr publisher_motors_order_raw_;
     rclcpp::Publisher<interfaces::msg::SteeringCalibration>::SharedPtr publisher_steeringCalibration_;
 
     //Subscribers

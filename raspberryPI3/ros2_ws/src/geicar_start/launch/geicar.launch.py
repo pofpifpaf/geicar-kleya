@@ -37,7 +37,7 @@ def generate_launch_description():
     )
 
     shock_detection_node = Node(
-        package="airbag",
+        package="adas",
         executable="airbag_shock_detection",
         emulate_tty=True
     )

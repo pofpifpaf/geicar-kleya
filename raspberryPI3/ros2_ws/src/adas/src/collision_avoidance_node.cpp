@@ -79,8 +79,8 @@ private:
         else if ((ultras.front_left < 100 && ultras.front_left > 20)
                || (ultras.front_right < 100 && ultras.front_right > 20) 
                || (ultras.front_center < 100 && ultras.front_center > 20)) {
-          order.left_rear_pwm = std::min(order.left_rear_pwm, 65);
-          order.right_rear_pwm = std::min(order.right_rear_pwm, 65);
+          order.left_rear_pwm = std::min((int)order.left_rear_pwm, 65);
+          order.right_rear_pwm = std::min((int)order.right_rear_pwm, 65);
           RCLCPP_INFO(this->get_logger(), "Detecting obtacle : Speed limit 30%%");
         }
       }

@@ -12,10 +12,6 @@ find_package(interfaces REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
 
-# uncomment the following section in order to fill in
-# further dependencies manually.
-# find_package(<dependency> REQUIRED)
-
 add_executable(collision_avoidance_node 
   src/collision_avoidance_node.cpp
 )

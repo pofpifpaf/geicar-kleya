@@ -3,8 +3,8 @@
 <package format="3">
   <name>adas</name>
   <version>0.0.0</version>
-  <description>Package regrouping the different ADAS systems implemented by the Kleya group.</description>
-  <maintainer email="madatime@todo.todo">madatime</maintainer>
+  <description>TODO: Package description</description>
+  <maintainer email="caroline0084@gmail.com">cnguyen</maintainer>
   <license>TODO: License declaration</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
@@ -20,5 +20,5 @@
   <export>
     <build_type>ament_cmake</build_type>
   </export>
-
+  
 </package>

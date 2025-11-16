@@ -39,6 +39,9 @@ def generate_launch_description():
     collision_avoidance_node = Node(
         package="adas",
         executable="collision_avoidance_node",
+    shock_detection_node = Node(
+        package="adas",
+        executable="airbag_shock_detection",
         emulate_tty=True
     )
 
@@ -68,5 +71,6 @@ def generate_launch_description():
     ld.add_action(collision_avoidance_node)
     ld.add_action(imu_filter_madgwick_node)
     ld.add_action(system_check_node)
+    ld.add_action(shock_detection_node)
 
     return ld

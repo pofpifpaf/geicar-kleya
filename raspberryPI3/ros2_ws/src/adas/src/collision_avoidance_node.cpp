@@ -32,19 +32,19 @@ private:
 
     struct ultra_data
     {
-      int front_left;
-      int front_right;
-      int front_center;
-      int rear_left;
-      int rear_right;
-      int rear_center;
+      short int front_left;
+      short int front_right;
+      short int front_center;
+      short int rear_left;
+      short int rear_right;
+      short int rear_center;
     };
 
     struct motors_order
     {
-      int right_rear_pwm;
-      int left_rear_pwm;
-      int steering_angle;
+      unsigned char right_rear_pwm;
+      unsigned char left_rear_pwm;
+      signed char steering_angle;
     };
 
     struct motors_order order;
@@ -63,6 +63,7 @@ private:
 
       order.right_rear_pwm = motorsOrder.right_rear_pwm;
       order.left_rear_pwm = motorsOrder.left_rear_pwm;
+      order.steering_angle = motorsOrder.steering_angle;
 
       return 0;
     }

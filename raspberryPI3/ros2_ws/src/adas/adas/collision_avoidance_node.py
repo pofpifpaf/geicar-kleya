@@ -9,10 +9,10 @@ FIRST_MAX = 65
 class collision_avoidance(Node):
 
     def __init__(self):
-        
+
         super().__init__('collision_avoidance_node')
-        self.publisher_ = self.create_publisher(MotorsOrder, 'motors_order', 10)
-        
+        self.publisher_motors_order = self.create_publisher(MotorsOrder, 'motors_order', 10)
+
         self.subscription = self.create_subscription(Ultrasonic,'us_data', self.ultrasonic_callback, 10)
         self.subscription = self.create_subscription(MotorsOrder,'motors_order_raw', self.motors_order_callback, 10)
         self.subscription  # prevent unused variable warning
@@ -28,7 +28,7 @@ class collision_avoidance(Node):
         self.get_logger().info("collision_avoidance_node READY")
 
 
-    def ultrasonic_callback(self, msg):
+    def ultrasonic_callback(self, us_data : Ultrasonic):
 
         self.ultra_front_left = us_data.front_left
         self.ultra_front_right = us_data.front_right
@@ -36,13 +36,13 @@ class collision_avoidance(Node):
 
         self.detect_collision()
 
-    def motors_order_callback(self, msg):
+    def motors_order_callback(self, motors_order : MotorsOrder):
 
         self.motor_right_rear_pwm = motors_order.right_rear_pwm
         self.motor_left_rear_pwm = motors_order.left_rear_pwm
         self.motor_steering_angle = motors_order.steering_angle
-    
-    def detectCollision(ultrasonic):
+
+    def detect_collision(self):
 
         if self.motor_right_rear_pwm > STOP or self.motor_left_rear_pwm > STOP:
 
@@ -67,9 +67,9 @@ class collision_avoidance(Node):
         msg.steering_angle = self.motor_steering_angle
 
         self.publisher_motors_order.publish(msg)
-        
 
- 
+
+
 
 def main(args=None):
     rclpy.init(args=args)

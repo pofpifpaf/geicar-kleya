@@ -39,6 +39,9 @@ def generate_launch_description():
     collision_avoidance_node = Node(
         package="adas",
         executable="collision_avoidance_node",
+        emulate_tty=True
+    )
+    
     shock_detection_node = Node(
         package="adas",
         executable="airbag_shock_detection",

@@ -35,17 +35,17 @@
 // Misc
 
 #define FIRST_BYTE (0x01)
+#define HEADER_SIZE (5)
 
 #define FRAME_BUFFER_LENGTH (100)
 
 // States
 
-#define INITIAL_STATE (0)
-#define STATE_SOH (1)
-#define STATE_FRAME_ID (2)
-#define STATE_FRAME_LENGTH_FIRST_BYTE (3)
-#define STATE_FRAME_LENGTH_SECOND_BYTE (4)
-#define STATE_FRAME_DATA (5)
+#define INITIAL_STATE_SOH (0)
+#define STATE_FRAME_ID (1)
+#define STATE_FRAME_LENGTH_FIRST_BYTE (2)
+#define STATE_FRAME_LENGTH_SECOND_BYTE (3)
+#define STATE_FRAME_DATA (4)
 #define STATE_FRAME_COMPLETE (120)
 
 // Offsets
@@ -193,20 +193,17 @@ private:
   bool checkChecksum()
   {
     // Check if the frame is correct
-    for (int i = 0; i < frame_length; i++) 
+    uint8_t sum = 0;
+    for (uint16_t i = 0; i < frame_length - 2; i++) 
     {
-      checksum += frame[i];
+      sum = static_cast<uint8_t>(sum + frame[i]);
     }
 
-    if (checksum != frame[frame_length]) 
-    {
-       RCLCPP_ERROR(this->get_logger(), "Error : frame failed checksum");
-       return false;
-    }
-    else 
-    {
-      return true;
-    }
+    RCLCPP_INFO(this->get_logger(), "Checksum found is : 0x%02X", sum);
+    RCLCPP_INFO(this->get_logger(), "Actual checksum is : 0x%02X", frame[frame_length - 1]);
+
+    return sum == frame[frame_length - 1];
+
   }
 
   float get_float(uint8_t offset)
@@ -221,7 +218,10 @@ private:
   {
 
     // Diffuse frame info on topic
-    switch (frame[STATE_FRAME_ID - 1])
+
+    
+
+    switch (frame[STATE_FRAME_ID])
     {
     case VERSION :
       RCLCPP_INFO(this->get_logger(), "Received version"); // ADD version
@@ -283,7 +283,7 @@ private:
       break;
     }
 
-    state = 0;
+    state = INITIAL_STATE_SOH;
     frame_length = 0;
   }
 
@@ -293,14 +293,23 @@ private:
   {
     uint8_t byte = 0;
     
-
     while (running_) 
     {
       if (state == STATE_FRAME_COMPLETE) 
       {
+
         if (checkChecksum())
         {
+          RCLCPP_INFO(this->get_logger(), "Checksum successful - Diffusing frame : ID = 0x%02X ", frame[STATE_FRAME_ID]);
           diffuseFrame(); 
+        }
+        else 
+        {
+          RCLCPP_ERROR(this->get_logger(), "Error : frame failed checksum");
+          state = INITIAL_STATE_SOH;
+          memset(frame, 0, sizeof(frame));
+          index = 0;
+          frame_length = 0;
         }
       }
 
@@ -308,20 +317,28 @@ private:
 
       if (n > 0) 
       {
+        // RCLCPP_INFO(this->get_logger(), "Received 0x%02X", byte);
         switch (state)
         {
-        case INITIAL_STATE :
+        case INITIAL_STATE_SOH :
           index = 0;
           if (byte == FIRST_BYTE)
           {
+            RCLCPP_INFO(this->get_logger(), "Serial frame : Valid first byte 0x%02X !!", byte);
             frame[index++] = byte;
-            state = STATE_SOH;
+            state = STATE_FRAME_ID;
           }
           else
           {
             // Send reset heading
-            RCLCPP_INFO(this->get_logger(), "Serial frame : Invalid first byte - Resetting Header");
+            RCLCPP_INFO(this->get_logger(), "Serial frame : Invalid first byte 0x%02X - Resetting Header", byte);
           }
+          break;
+
+        case STATE_FRAME_ID :
+          frame[index++] = byte;
+          state = STATE_FRAME_LENGTH_FIRST_BYTE;
+          RCLCPP_INFO(this->get_logger(), "Received frame ID 0x%02X", byte);
           break;
 
         case STATE_FRAME_LENGTH_FIRST_BYTE : 
@@ -329,18 +346,22 @@ private:
           frame_length = byte;
           frame[index++] = byte;
           state = STATE_FRAME_LENGTH_SECOND_BYTE;
+          // RCLCPP_INFO(this->get_logger(), "Received frame length first byte 0x%02X", byte);
           break;
 
         case STATE_FRAME_LENGTH_SECOND_BYTE : 
           // Received fourth byte (frame length - second byte)
-          frame_length |= byte << 8;
+          frame_length = (byte | (frame_length << 8)) + HEADER_SIZE;
           frame[index++] = byte;
           state++;
+          // RCLCPP_INFO(this->get_logger(), "Received frame length second byte 0x%02X", byte);
+          // RCLCPP_INFO(this->get_logger(), "Received frame length %d", frame_length);
           break;
 
         default : 
           if (state > 0 && index <= frame_length && index < FRAME_BUFFER_LENGTH)
           {
+            
             frame[index++] = byte;
           }
 

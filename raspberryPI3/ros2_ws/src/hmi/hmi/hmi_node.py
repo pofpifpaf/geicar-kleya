@@ -14,7 +14,7 @@ class hmi_node(Node):
         #self.publisher_motors_order = self.create_publisher(MotorsOrder, 'motors_order', 10)
 
         self.subscription = self.create_subscription(MotorsFeedback,'motors_feedback', self.motorsfeedback_callback, 10)
-        self.subscription  # prevent unused variable warning
+        self.subscription = self.create_subscription(GeneralData,'general_data', self.generaldata_callback, 10)
 
         self.get_logger().info("hmi_node READY")
 
@@ -26,7 +26,6 @@ class hmi_node(Node):
         self.left_rear_odometry  = motors_feedback.left_rear_odometry 
         self.right_rear_odometry = motors_feedback.right_rear_odometry
         """
-
         # RPM variables
         self.left_rear_RPM  = motors_feedback.left_rear_speed  
         self.right_rear_RPM   = motors_feedback.right_rear_speed  
@@ -38,6 +37,13 @@ class hmi_node(Node):
 
         self.show_speed()
 
+    def generaldata_callback(self, general_data : GeneralData):
+        # battery, temperature, pressure
+        self.battery_level  = general_data.battery_level  
+        self.temperature  = general_data.temperautre
+        self.pressure  = general_data.pressure
+
+        self.show_speed()
     """"
     def motors_order_callback(self, motors_order : MotorsOrder):
 

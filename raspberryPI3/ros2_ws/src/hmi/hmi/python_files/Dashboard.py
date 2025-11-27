@@ -7,7 +7,7 @@ import json
 
 def generate_dashboard():
 
-  def load_config(path="data.json"):
+  def load_config(path="../data/data.json"):
       with open(path, "r") as f:
           return json.load(f)
 

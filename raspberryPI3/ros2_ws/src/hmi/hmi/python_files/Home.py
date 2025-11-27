@@ -11,8 +11,8 @@ def get_base64(file_path):
 
 def generate_home():
 
-    IMAGE_PATH = "test.jpeg"
-    IMAGE_PATH_2 = "page2.jpg"
+    IMAGE_PATH = "../pictures/test.jpeg"
+    IMAGE_PATH_2 = "../pictures/page2.jpg"
     b64 = get_base64(IMAGE_PATH)
     b64_2 = get_base64(IMAGE_PATH_2)
 

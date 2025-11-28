@@ -2,7 +2,7 @@
     "LCA": false,
     "ACC": true,
     "LDW": true,
-    "vitesse" : 0,
+    "speed" : 0,
     "battery" : 0,
     "pressure" : 0,
     "temperature" : 0

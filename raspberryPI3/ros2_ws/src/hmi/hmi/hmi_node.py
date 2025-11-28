@@ -5,7 +5,7 @@ from rclpy.node import Node
 
 from interfaces.msg import MotorsFeedback, GeneralData
 
-data_json = "../data/data.json"
+data_json = "./data/data.json"
 
 class hmi_node(Node):
 

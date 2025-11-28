@@ -1,9 +1,11 @@
 import math
 import rclpy
+import _json
 from rclpy.node import Node
 
 from interfaces.msg import Ultrasonic, MotorsOrder
 
+data_json = "../data/data.json"
 
 class hmi_node(Node):
 
@@ -18,14 +20,12 @@ class hmi_node(Node):
 
         self.get_logger().info("hmi_node READY")
 
+    #Circonference function : 2*pie*rayon
     def circonference(self,rayon):
         return 2*math.pi.rayon
 
     def motorsfeedback_callback(self, motors_feedback : MotorsFeedback):
-        """
-        self.left_rear_odometry  = motors_feedback.left_rear_odometry 
-        self.right_rear_odometry = motors_feedback.right_rear_odometry
-        """
+
         # RPM variables
         self.left_rear_RPM  = motors_feedback.left_rear_speed  
         self.right_rear_RPM   = motors_feedback.right_rear_speed  
@@ -35,7 +35,8 @@ class hmi_node(Node):
         self.right_speed = (self.right_rear_RPM * self.circonference(0.95) * 0.06)
         self.speed = (self.left_speed+self.right_speed)/2
 
-        self.show_speed()
+        self.save_datas()
+
 
     def generaldata_callback(self, general_data : GeneralData):
         # battery, temperature, pressure
@@ -43,42 +44,26 @@ class hmi_node(Node):
         self.temperature  = general_data.temperature
         self.pressure  = general_data.pressure
 
-        self.show_speed()
-    """"
-    def motors_order_callback(self, motors_order : MotorsOrder):
+        self.save_datas()
 
-        self.motor_right_rear_pwm = motors_order.right_rear_pwm
-        self.motor_left_rear_pwm = motors_order.left_rear_pwm
-        self.motor_steering_angle = motors_order.steering_angle
-    """
 
-    def show_speed(self):
-
-        """"
-        if self.motor_right_rear_pwm > STOP or self.motor_left_rear_pwm > STOP:
-
-            if self.ultra_front_left < 20 or self.ultra_front_right < 20 or self.ultra_front_center < 20:
-
-                self.motor_right_rear_pwm = STOP
-                self.motor_left_rear_pwm = STOP
-                self.get_logger().info("Detecting obstacle <20 cm: Stopping car")
-
-            elif ((20 < self.ultra_front_left < 100) or
-                  (20 < self.ultra_front_right < 100) or
-                  (20 < self.ultra_front_center < 100)):
-
-                self.motor_right_rear_pwm = min(self.motor_right_rear_pwm, FIRST_MAX)
-                self.motor_left_rear_pwm = min(self.motor_left_rear_pwm, FIRST_MAX)
-                self.get_logger().info("Detecting obstacle: Speed limit 30%")
+    def save_datas(self):
         
+        #Open data file
+        with open(data_json, "r") as f:
+            data = json.load(f)
+        
+        #Write data
+        data["battery"] = self.battery_level
+        data["pressure"] = self.pressure
+        data["temperature"] = self.temperature
+        data["speed"] = self.speed
+        
+        #Save data
+        with open(data_json, "w") as f:
+            json.dump(data, f, indent=4)
 
-        msg = MotorsOrder()
-        msg.right_rear_pwm = self.motor_right_rear_pwm
-        msg.left_rear_pwm = self.motor_left_rear_pwm
-        msg.steering_angle = self.motor_steering_angle
-        """
-
-        self.publisher_motors_order.publish(msg)
+        #self.publisher_motors_order.publish(msg)
 
 
 

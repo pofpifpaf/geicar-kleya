@@ -2,15 +2,15 @@ import streamlit as st
 from math import radians, cos, sin
 import time
 import json
-
+from streamlit_autorefresh import st_autorefresh
 
 
 def generate_dashboard():
-
+  st_autorefresh(interval=200, key="dashboard_refresh")
   def load_config(path="../data/data.json"):
       with open(path, "r") as f:
           return json.load(f)
-
+  jason_data = load_config()
   def svg_mini_gauge(width=120, height=100, percent=0.5, ticks=5, primary_color="#FFD36E"):
       # On peut juste réutiliser svg_semi_gauge avec des dimensions réduites
       return svg_semi_gauge(width=width, height=height, percent=percent, ticks=ticks, primary_color=primary_color)
@@ -125,7 +125,7 @@ def generate_dashboard():
       center_html = f"""
       <div class="center-panel">
         <div style="color:#4EE6FF; font-size:18px;">Hold My Wheel</div>
-        <div class="speed-value">{int(speed_val):02d}</div>
+        <div class="speed-value">{int(jason_data["speed"]):02d}</div>
         <div class="unit">km/h</div>
       </div>
       """
@@ -305,3 +305,6 @@ def generate_dashboard():
       show_ldw_popup(duration=6)
   elif collision_popup:
       show_collision_popup(duration=3)
+
+
+  

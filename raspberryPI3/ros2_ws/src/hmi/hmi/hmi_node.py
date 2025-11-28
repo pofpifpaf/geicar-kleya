@@ -40,7 +40,7 @@ class hmi_node(Node):
     def generaldata_callback(self, general_data : GeneralData):
         # battery, temperature, pressure
         self.battery_level  = general_data.battery_level  
-        self.temperature  = general_data.temperautre
+        self.temperature  = general_data.temperature
         self.pressure  = general_data.pressure
 
         self.show_speed()

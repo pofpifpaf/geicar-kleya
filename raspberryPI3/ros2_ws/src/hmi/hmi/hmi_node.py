@@ -3,7 +3,7 @@ import rclpy
 import _json
 from rclpy.node import Node
 
-from interfaces.msg import Ultrasonic, MotorsOrder
+from interfaces.msg import MotorsFeedback, GeneralData
 
 data_json = "../data/data.json"
 

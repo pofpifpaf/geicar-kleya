@@ -20,8 +20,8 @@ if page == "Home" :
 elif page == "ADAS OPTIONS":
   adas_options.generate_options()
 
-if page == "Dashboard" :
+elif page == "Dashboard" :
     Dashboard.generate_dashboard()
 
-if page == "contact us":
+elif page == "contact us":
     contactus.generate_contact()

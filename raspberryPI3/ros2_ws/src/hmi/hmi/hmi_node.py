@@ -71,14 +71,14 @@ class hmi_node(Node):
 def main(args=None):
     rclpy.init(args=args)
 
-    hmi_node = hmi_node()
+    hmi_nodes = hmi_node()
 
-    rclpy.spin(hmi_node)
+    rclpy.spin(hmi_nodes)
 
     # Destroy the node explicitly
     # (optional - otherwise it will be done automatically
     # when the garbage collector destroys the node object)
-    hmi_node.destroy_node()
+    hmi_nodes.destroy_node()
     rclpy.shutdown()
 
 

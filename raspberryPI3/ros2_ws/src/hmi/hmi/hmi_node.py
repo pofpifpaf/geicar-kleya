@@ -5,7 +5,13 @@ from rclpy.node import Node
 
 from interfaces.msg import MotorsFeedback, GeneralData
 
-data_json = "./data/data.json"
+from pathlib import Path
+
+# Chemin vers le dossier où se trouve ce fichier Python
+current_dir = Path(__file__).parent
+
+# Chemin vers ton fichier JSON dans le même dossier
+data_json = current_dir / "data/data.json"
 
 class hmi_node(Node):
 

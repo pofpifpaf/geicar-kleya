@@ -44,6 +44,9 @@
 
 #define FRAME_VERSION_SIZE (3*1 + HEADER_SIZE)
 
+#define G_CONSTANT (9.80665f)
+#define RAD_S_CONSTANT (M_PI / 180.0f)
+
 // States
 
 #define INITIAL_STATE_SOH (0)
@@ -112,6 +115,7 @@ public:
     if (!error)
     {
       reader_thread_ = std::thread(&imu_rx::serialLoop, this);
+      RCLCPP_INFO(this->get_logger(), "Successfully connected to Serial port");
       RCLCPP_INFO(this->get_logger(), "imu_rx_node READY");
     }
   }
@@ -191,8 +195,8 @@ private:
       sum = static_cast<uint8_t>(sum + frame[i]);
     }
 
-    RCLCPP_INFO(this->get_logger(), "Checksum found is : 0x%02X", sum);
-    RCLCPP_INFO(this->get_logger(), "Actual checksum is : 0x%02X", frame[frame_length - 1]);
+    // RCLCPP_INFO(this->get_logger(), "Checksum found is : 0x%02X", sum);
+    // RCLCPP_INFO(this->get_logger(), "Actual checksum is : 0x%02X", frame[frame_length - 1]);
 
     return sum == frame[frame_length - 1];
 
@@ -225,13 +229,13 @@ private:
       {
         auto imu_raw_msg = sensor_msgs::msg::Imu();
 
-        imu_raw_msg.linear_acceleration.x = get_float(OFFSET_ACCELEROMETER_X) * pow(9.80665,-2);    //Conversion to [m/s²]
-        imu_raw_msg.linear_acceleration.y = get_float(OFFSET_ACCELEROMETER_Y) * pow(9.80665,-2);    //Conversion to [m/s²]
-        imu_raw_msg.linear_acceleration.z = get_float(OFFSET_ACCELEROMETER_Z) * pow(9.80665,-2);    //Conversion to [m/s²]
+        imu_raw_msg.linear_acceleration.x = get_float(OFFSET_ACCELEROMETER_X) * G_CONSTANT;    //Conversion to [m/s²]
+        imu_raw_msg.linear_acceleration.y = get_float(OFFSET_ACCELEROMETER_Y) * G_CONSTANT;    //Conversion to [m/s²]
+        imu_raw_msg.linear_acceleration.z = get_float(OFFSET_ACCELEROMETER_Z) * G_CONSTANT;    //Conversion to [m/s²]
 
-        imu_raw_msg.angular_velocity.x = get_float(OFFSET_GYROSCOPE_X) * pow(1.7453,-5);            //Conversion to [rad/s]
-        imu_raw_msg.angular_velocity.y = get_float(OFFSET_GYROSCOPE_Y) * pow(1.7453,-5);            //Conversion to [rad/s]
-        imu_raw_msg.angular_velocity.z = get_float(OFFSET_GYROSCOPE_Z) * pow(1.7453,-5);            //Conversion to [rad/s]
+        imu_raw_msg.angular_velocity.x = get_float(OFFSET_GYROSCOPE_X) * RAD_S_CONSTANT;       //Conversion to [rad/s]
+        imu_raw_msg.angular_velocity.y = get_float(OFFSET_GYROSCOPE_Y) * RAD_S_CONSTANT;       //Conversion to [rad/s]
+        imu_raw_msg.angular_velocity.z = get_float(OFFSET_GYROSCOPE_Z) * RAD_S_CONSTANT;       //Conversion to [rad/s]
 
         imu_raw_msg.header.stamp = rclcpp::Clock().now();
         publisher_imu_data_raw_->publish(imu_raw_msg);
@@ -299,7 +303,7 @@ private:
 
         if (checkChecksum())
         {
-          // RCLCPP_INFO(this->get_logger(), "Checksum successful - Diffusing frame : ID = 0x%02X ", frame[STATE_FRAME_ID]);
+          RCLCPP_DEBUG(this->get_logger(), "Checksum successful - Diffusing frame : ID = 0x%02X ", frame[STATE_FRAME_ID]);
           diffuseFrame(); 
         }
         else 
@@ -316,7 +320,7 @@ private:
 
       if (n > 0) 
       {
-        // RCLCPP_INFO(this->get_logger(), "Received 0x%02X", byte);
+        // RCLCPP_DEBUG(this->get_logger(), "Received 0x%02X", byte);
         switch (state)
         {
         case INITIAL_STATE_SOH :
@@ -337,7 +341,7 @@ private:
         case STATE_FRAME_ID :
           frame[index++] = byte;
           state = STATE_FRAME_LENGTH_FIRST_BYTE;
-          RCLCPP_INFO(this->get_logger(), "Received frame ID 0x%02X", byte);
+          // RCLCPP_INFO(this->get_logger(), "Received frame ID 0x%02X", byte);
           break;
 
         case STATE_FRAME_LENGTH_FIRST_BYTE : 

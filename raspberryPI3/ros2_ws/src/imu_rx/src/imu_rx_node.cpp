@@ -15,12 +15,15 @@
 #include <string> 
 
 #include "sensor_msgs/msg/imu.hpp"
+#include "sensor_msgs/msg/magnetic_field.hpp"
+
+#include "interfaces/msg/e_compass.hpp"
+#include "interfaces/msg/environment_data.hpp"
 
 // Serial
 
 #define PORT "/dev/ttyACM0"
 #define BAUD_RATE (B115200)
-#define TIMER_PERIOD (25)
 
 // SOH
 
@@ -39,6 +42,8 @@
 
 #define FRAME_BUFFER_LENGTH (100)
 
+#define FRAME_VERSION_SIZE (3*1 + HEADER_SIZE)
+
 // States
 
 #define INITIAL_STATE_SOH (0)
@@ -51,6 +56,8 @@
 // Offsets
 
 // -- MOTION
+
+#define FRAME_MOTION_SIZE (9*4 + HEADER_SIZE)
 
 #define OFFSET_ACCELEROMETER_X (0)
 #define OFFSET_ACCELEROMETER_Y (4)
@@ -66,6 +73,8 @@
 
 // -- ECOMPASS
 
+#define FRAME_ECOMPASS_SIZE (4*4+1 + HEADER_SIZE)
+
 #define OFFSET_YAW (0)
 #define OFFSET_PITCH (4)
 #define OFFSET_ROLL (8)
@@ -73,6 +82,8 @@
 #define OFFSET_HEADING_VALID (16)
 
 // -- ENV
+
+#define FRAME_ENV_SIZE (4*3 + HEADER_SIZE)
 
 #define OFFSET_TEMPERATURE (0)
 #define OFFSET_PRESSURE (4)
@@ -86,6 +97,10 @@ public:
   : Node("imu_rx_node")
   {
     publisher_imu_data_raw_ = this->create_publisher<sensor_msgs::msg::Imu>("imu/data_raw", 10);
+    publisher_imu_mag_ = this->create_publisher<sensor_msgs::msg::MagneticField>("imu/mag", 10);
+
+    publisher_imu_ecompass_ = this->create_publisher<interfaces::msg::ECompass>("imu/ecompass", 10);
+    publisher_imu_env_ = this->create_publisher<interfaces::msg::EnvironmentData>("imu/env", 10);
 
     fd_ = openSerialPort(PORT);
     if (!configureSerialPort(fd_, BAUD_RATE))
@@ -94,12 +109,9 @@ public:
       error = true;
     }
 
-
-
-    reader_thread_ = std::thread(&imu_rx::serialLoop, this);
-
     if (!error)
     {
+      reader_thread_ = std::thread(&imu_rx::serialLoop, this);
       RCLCPP_INFO(this->get_logger(), "imu_rx_node READY");
     }
   }
@@ -117,36 +129,16 @@ private:
   uint8_t frame[FRAME_BUFFER_LENGTH] = { 0 };
   uint16_t frame_length = 0;
   uint16_t state = 0;
+  size_t index = 0; 
 
   bool error = false;
-
-
-
-  struct ecompass 
-  {
-    float yaw;
-    float pitch;
-    float roll;
-    float heading;
-    uint8_t heading_valid;
-  };
-
-  struct environmental
-  {
-    float temperature;
-    float pressure;
-    float humidity;
-  };
-
-  struct ecompass imu_ecompass;
-  struct environmental imu_env;
 
   int openSerialPort(const char* port)
   {
     int fd = open(port, O_RDWR | O_NOCTTY | O_SYNC);
 
     if (fd < 0)
-    {
+    {    
       RCLCPP_FATAL(this->get_logger(), "Unable to open Serial Port");
       return -1;
     }
@@ -209,7 +201,6 @@ private:
   float get_float(uint8_t offset)
   {
     float out;
-
     memcpy(&out, &frame[STATE_FRAME_DATA + offset], sizeof(float));
     return out;
   }
@@ -218,17 +209,19 @@ private:
   {
 
     // Diffuse frame info on topic
-
-    
-
     switch (frame[STATE_FRAME_ID])
     {
     case VERSION :
-      RCLCPP_INFO(this->get_logger(), "Received version"); // ADD version
+      if (frame_length == FRAME_VERSION_SIZE)
+      {
+        RCLCPP_INFO(this->get_logger(), "Received version %u.%u.%u", frame[STATE_FRAME_DATA + 0], 
+                                                                    frame[STATE_FRAME_DATA + 1], 
+                                                                    frame[STATE_FRAME_DATA + 2]);
+      }
       break;
 
     case MOTION :
-      if (frame_length >= 33)
+      if (frame_length == FRAME_MOTION_SIZE)
       {
         auto imu_raw_msg = sensor_msgs::msg::Imu();
 
@@ -243,37 +236,45 @@ private:
         imu_raw_msg.header.stamp = rclcpp::Clock().now();
         publisher_imu_data_raw_->publish(imu_raw_msg);
 
-        // auto imu_mag_msg = sensor_msgs::msg::MagneticField();
+        auto imu_mag_msg = sensor_msgs::msg::MagneticField();
 
-        // imu_mag_msg.magnetic_field.x = get_float(OFFSET_MAG_X) * pow(10,-7);
-        // imu_mag_msg.magnetic_field.y = get_float(OFFSET_MAG_Y) * pow(10,-7);
-        // imu_mag_msg.magnetic_field.z = get_float(OFFSET_MAG_Z) * pow(10,-7);
+        imu_mag_msg.magnetic_field.x = get_float(OFFSET_MAG_X) * pow(10,-7);
+        imu_mag_msg.magnetic_field.y = get_float(OFFSET_MAG_Y) * pow(10,-7);
+        imu_mag_msg.magnetic_field.z = get_float(OFFSET_MAG_Z) * pow(10,-7);
 
-        // imu_mag_msg.header.stamp = rclcpp::Clock().now();
-        // publisher_imu_mag_->publish(imu_mag_msg); 
+        imu_mag_msg.header.stamp = rclcpp::Clock().now();
+        publisher_imu_mag_->publish(imu_mag_msg); 
       }
       else { RCLCPP_ERROR(this->get_logger(), "invalid frame length"); }
       break;
 
     case ECOMPASS : 
-      if (frame_length >= 18)
+      if (frame_length == FRAME_ECOMPASS_SIZE)
       {
-        imu_ecompass.yaw = get_float(0);
-        imu_ecompass.pitch = get_float(4);
-        imu_ecompass.roll = get_float(8);
-        imu_ecompass.heading = get_float(12);
+        auto ecompass_msg = interfaces::msg::ECompass();
 
-        imu_ecompass.heading_valid = frame[STATE_FRAME_DATA + 15];
+        ecompass_msg.yaw = get_float(OFFSET_YAW);
+        ecompass_msg.pitch = get_float(OFFSET_PITCH);
+        ecompass_msg.roll = get_float(OFFSET_ROLL);
+        ecompass_msg.heading = get_float(OFFSET_HEADING);
+
+        ecompass_msg.heading_valid = frame[STATE_FRAME_DATA + OFFSET_HEADING_VALID];
+
+        publisher_imu_ecompass_->publish(ecompass_msg); 
       }
       else { RCLCPP_ERROR(this->get_logger(), "invalid frame length"); }
       break;
 
     case ENV :
-      if (frame_length >= 17)
+      if (frame_length == FRAME_ENV_SIZE)
       {
-        imu_env.temperature = get_float(0);
-        imu_env.pressure = get_float(4);
-        imu_env.humidity = get_float(8);
+        auto env_msg = interfaces::msg::EnvironmentData();
+
+        env_msg.temperature = get_float(OFFSET_TEMPERATURE);
+        env_msg.pressure = get_float(OFFSET_PRESSURE);
+        env_msg.humidity = get_float(OFFSET_HUMIDITY);
+
+        publisher_imu_env_->publish(env_msg); 
       }
       else { RCLCPP_ERROR(this->get_logger(), "invalid frame length"); }
       break;
@@ -287,8 +288,6 @@ private:
     frame_length = 0;
   }
 
-  size_t index = 0; // ADD AS MEMBER
-
   void serialLoop() 
   {
     uint8_t byte = 0;
@@ -300,7 +299,7 @@ private:
 
         if (checkChecksum())
         {
-          RCLCPP_INFO(this->get_logger(), "Checksum successful - Diffusing frame : ID = 0x%02X ", frame[STATE_FRAME_ID]);
+          // RCLCPP_INFO(this->get_logger(), "Checksum successful - Diffusing frame : ID = 0x%02X ", frame[STATE_FRAME_ID]);
           diffuseFrame(); 
         }
         else 
@@ -324,14 +323,14 @@ private:
           index = 0;
           if (byte == FIRST_BYTE)
           {
-            RCLCPP_INFO(this->get_logger(), "Serial frame : Valid first byte 0x%02X !!", byte);
+            // RCLCPP_INFO(this->get_logger(), "Serial frame : Valid first byte 0x%02X !!", byte);
             frame[index++] = byte;
             state = STATE_FRAME_ID;
           }
           else
           {
             // Send reset heading
-            RCLCPP_INFO(this->get_logger(), "Serial frame : Invalid first byte 0x%02X - Resetting Header", byte);
+            // RCLCPP_INFO(this->get_logger(), "Serial frame : Invalid first byte 0x%02X - Resetting Header", byte);
           }
           break;
 
@@ -378,6 +377,9 @@ private:
   }
 
   rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr publisher_imu_data_raw_;
+  rclcpp::Publisher<sensor_msgs::msg::MagneticField>::SharedPtr publisher_imu_mag_;
+  rclcpp::Publisher<interfaces::msg::ECompass>::SharedPtr publisher_imu_ecompass_;
+  rclcpp::Publisher<interfaces::msg::EnvironmentData>::SharedPtr publisher_imu_env_;
 
   rclcpp::TimerBase::SharedPtr timer_;
 

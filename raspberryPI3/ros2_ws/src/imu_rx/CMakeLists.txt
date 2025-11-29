@@ -9,6 +9,7 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(interfaces REQUIRED)
 find_package(std_srvs REQUIRED)
 
 add_executable(imu_rx_node src/imu_rx_node.cpp)
@@ -17,6 +18,7 @@ ament_target_dependencies(imu_rx_node
   rclcpp
   sensor_msgs
   std_srvs
+  interfaces
 )
 
 install(TARGETS

@@ -20,77 +20,7 @@
 #include "interfaces/msg/e_compass.hpp"
 #include "interfaces/msg/environment_data.hpp"
 
-// Serial
-
-#define PORT "/dev/ttyACM0"
-#define BAUD_RATE (B115200)
-
-// SOH
-
-#define GET_VERSION (0x10)
-#define VERSION (0x11)
-#define RESET_HEADING (0x20)
-#define CALIBRATE_MAG (0x21)
-#define MOTION (0x30)
-#define ECOMPASS (0x31)
-#define ENV (0x32)
-
-// Misc
-
-#define FIRST_BYTE (0x01)
-#define HEADER_SIZE (5)
-
-#define FRAME_BUFFER_LENGTH (100)
-
-#define FRAME_VERSION_SIZE (3*1 + HEADER_SIZE)
-
-#define G_CONSTANT (9.80665f)
-#define RAD_S_CONSTANT (M_PI / 180.0f)
-
-// States
-
-#define INITIAL_STATE_SOH (0)
-#define STATE_FRAME_ID (1)
-#define STATE_FRAME_LENGTH_FIRST_BYTE (2)
-#define STATE_FRAME_LENGTH_SECOND_BYTE (3)
-#define STATE_FRAME_DATA (4)
-#define STATE_FRAME_COMPLETE (120)
-
-// Offsets
-
-// -- MOTION
-
-#define FRAME_MOTION_SIZE (9*4 + HEADER_SIZE)
-
-#define OFFSET_ACCELEROMETER_X (0)
-#define OFFSET_ACCELEROMETER_Y (4)
-#define OFFSET_ACCELEROMETER_Z (8)
-
-#define OFFSET_GYROSCOPE_X (12)
-#define OFFSET_GYROSCOPE_Y (16)
-#define OFFSET_GYROSCOPE_Z (20)
-
-#define OFFSET_MAG_X (24)
-#define OFFSET_MAG_Y (28)
-#define OFFSET_MAG_Z (32)
-
-// -- ECOMPASS
-
-#define FRAME_ECOMPASS_SIZE (4*4+1 + HEADER_SIZE)
-
-#define OFFSET_YAW (0)
-#define OFFSET_PITCH (4)
-#define OFFSET_ROLL (8)
-#define OFFSET_HEADING (12)
-#define OFFSET_HEADING_VALID (16)
-
-// -- ENV
-
-#define FRAME_ENV_SIZE (4*3 + HEADER_SIZE)
-
-#define OFFSET_TEMPERATURE (0)
-#define OFFSET_PRESSURE (4)
-#define OFFSET_HUMIDITY (8)
+#include "imu_rx/imu_rx_node.hpp"
 
 using std::placeholders::_1;
 
@@ -137,6 +67,7 @@ private:
 
   bool error = false;
 
+  // Opens the serial port
   int openSerialPort(const char* port)
   {
     int fd = open(port, O_RDWR | O_NOCTTY | O_SYNC);
@@ -150,6 +81,7 @@ private:
     return fd;
   }
 
+  // Configuring the serial port
   bool configureSerialPort(int fd, int speed)
   {
     struct termios tty;
@@ -186,6 +118,7 @@ private:
     return true;
   }
 
+  // Checks if checksum is correct
   bool checkChecksum()
   {
     // Check if the frame is correct
@@ -195,13 +128,11 @@ private:
       sum = static_cast<uint8_t>(sum + frame[i]);
     }
 
-    // RCLCPP_INFO(this->get_logger(), "Checksum found is : 0x%02X", sum);
-    // RCLCPP_INFO(this->get_logger(), "Actual checksum is : 0x%02X", frame[frame_length - 1]);
-
     return sum == frame[frame_length - 1];
 
   }
 
+  // Function to extract 4 data bytes into a float
   float get_float(uint8_t offset)
   {
     float out;
@@ -209,6 +140,7 @@ private:
     return out;
   }
 
+  // Function to send frames into their appropriate topic
   void diffuseFrame()
   {
 
@@ -292,6 +224,7 @@ private:
     frame_length = 0;
   }
 
+  // Loop that receives each byte and transforms it
   void serialLoop() 
   {
     uint8_t byte = 0;
@@ -320,28 +253,25 @@ private:
 
       if (n > 0) 
       {
-        // RCLCPP_DEBUG(this->get_logger(), "Received 0x%02X", byte);
         switch (state)
         {
         case INITIAL_STATE_SOH :
           index = 0;
           if (byte == FIRST_BYTE)
           {
-            // RCLCPP_INFO(this->get_logger(), "Serial frame : Valid first byte 0x%02X !!", byte);
             frame[index++] = byte;
             state = STATE_FRAME_ID;
           }
           else
           {
             // Send reset heading
-            // RCLCPP_INFO(this->get_logger(), "Serial frame : Invalid first byte 0x%02X - Resetting Header", byte);
+            RCLCPP_ERROR(this->get_logger(), "Serial frame : Invalid first byte 0x%02X - Resetting Header", byte);
           }
           break;
 
         case STATE_FRAME_ID :
           frame[index++] = byte;
           state = STATE_FRAME_LENGTH_FIRST_BYTE;
-          // RCLCPP_INFO(this->get_logger(), "Received frame ID 0x%02X", byte);
           break;
 
         case STATE_FRAME_LENGTH_FIRST_BYTE : 
@@ -349,7 +279,6 @@ private:
           frame_length = byte;
           frame[index++] = byte;
           state = STATE_FRAME_LENGTH_SECOND_BYTE;
-          // RCLCPP_INFO(this->get_logger(), "Received frame length first byte 0x%02X", byte);
           break;
 
         case STATE_FRAME_LENGTH_SECOND_BYTE : 
@@ -357,8 +286,6 @@ private:
           frame_length = (byte | (frame_length << 8)) + HEADER_SIZE;
           frame[index++] = byte;
           state++;
-          // RCLCPP_INFO(this->get_logger(), "Received frame length second byte 0x%02X", byte);
-          // RCLCPP_INFO(this->get_logger(), "Received frame length %d", frame_length);
           break;
 
         default : 

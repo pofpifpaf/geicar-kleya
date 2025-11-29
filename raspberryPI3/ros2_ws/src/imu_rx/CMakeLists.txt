@@ -21,6 +21,10 @@ ament_target_dependencies(imu_rx_node
   interfaces
 )
 
+include_directories(
+  include
+) 
+
 install(TARGETS
   imu_rx_node
   DESTINATION lib/${PROJECT_NAME}

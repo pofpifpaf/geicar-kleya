@@ -1,13 +1,17 @@
 import streamlit as st
 from streamlit_extras.switch_page_button import switch_page
 import json
+from pathlib import Path
+
+current_dir = Path(__file__).parent
+data_json = current_dir / "../../../../../share/hmidata/data.json"
 
 
-def save_config(data, path="../data/data.json"):
+def save_config(data, path=data_json):
     with open(path, "w") as f:
         json.dump(data, f, indent=4)
 
-def load_config(path="../data/data.json"):
+def load_config(path=data_json):
     with open(path, "r") as f:
         return json.load(f)
 adas_value = load_config()

@@ -3,11 +3,15 @@ from math import radians, cos, sin
 import time
 import json
 from streamlit_autorefresh import st_autorefresh
+from pathlib import Path
 
+# Chemin vers le dossier où se trouve ce fichier Python
+current_dir = Path(__file__).parent
+data_json = current_dir / "../../../../../share/hmidata/data.json"
 
 def generate_dashboard():
   st_autorefresh(interval=200, key="dashboard_refresh")
-  def load_config(path="../data/data.json"):
+  def load_config(path=data_json):
       with open(path, "r") as f:
           return json.load(f)
   jason_data = load_config()

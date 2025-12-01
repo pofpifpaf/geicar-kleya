@@ -1,6 +1,6 @@
 import math
 import rclpy
-import _json
+import json
 from rclpy.node import Node
 
 from interfaces.msg import MotorsFeedback, GeneralData
@@ -11,7 +11,7 @@ from pathlib import Path
 current_dir = Path(__file__).parent
 
 # Chemin vers ton fichier JSON dans le même dossier
-data_json = current_dir / "../../install/hmi/share/hmidata/data.json"
+data_json = current_dir / "../../../../share/hmidata/data.json"
 
 class hmi_node(Node):
 
@@ -23,6 +23,15 @@ class hmi_node(Node):
 
         self.subscription = self.create_subscription(MotorsFeedback,'motors_feedback', self.motorsfeedback_callback, 10)
         self.subscription = self.create_subscription(GeneralData,'general_data', self.generaldata_callback, 10)
+    
+        self.left_rear_RPM  = 0  
+        self.right_rear_RPM   = 0
+        self.left_speed = 5
+        self.right_speed = 5
+        self.speed = 5
+        self.battery_level  = 0 
+        self.temperature  = 0
+        self.pressure  = 0
 
         self.get_logger().info("hmi_node READY")
 
@@ -58,7 +67,7 @@ class hmi_node(Node):
         #Open data file
         with open(data_json, "r") as f:
             data = json.load(f)
-        
+         
         #Write data
         data["battery"] = self.battery_level
         data["pressure"] = self.pressure

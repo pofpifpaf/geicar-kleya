@@ -11,7 +11,7 @@ from pathlib import Path
 current_dir = Path(__file__).parent
 
 # Chemin vers ton fichier JSON dans le même dossier
-data_json = current_dir / "../../../install/hmi/share/data/data.json"
+data_json = current_dir / "../../../install/hmi/lib/python3.10/site-packages/hmi/data.json"
 
 class hmi_node(Node):
 

@@ -21,6 +21,7 @@
   <exec_depend>system_check</exec_depend>
   <exec_depend>ros2launch</exec_depend>
   <exec_depend>adas</exec_depend>
+  <exec_depend>imu_rx</exec_depend>
 
 
   <export>

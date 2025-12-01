@@ -28,7 +28,7 @@ class hmi_node(Node):
 
     #Circonference function : 2*pie*rayon
     def circonference(self,rayon):
-        return 2*math.pi.rayon
+        return 2*math.pi*rayon
 
     def motorsfeedback_callback(self, motors_feedback : MotorsFeedback):
 

@@ -23,32 +23,34 @@ class Esp(Node):
 
         self.get_logger().info("esp_node READY")
 
-        self.get_logger().info("Esp_node READY")
-
+    ####################################
+    ######### Callback Section #########
+    ####################################
     def motors_order_callback(self, motors_order : MotorsOrder):
 
         self.motor_right_rear_pwm = motors_order.right_rear_pwm
         self.motor_left_rear_pwm = motors_order.left_rear_pwm
         self.motor_steering_angle = motors_order.steering_angle
 
-# remplacer par la boussole
-#def boussole_callback(self, boussole : MotorsOrder):
-#    self.trajectory_control(self)
+    def joystick_order_callback(self, joystick_order : JoystickOrder):
+        self.steer = joystick_order.steer
+        self.reverse = joystick_order.reverse
 
+    def imu_callback(self, msg):
+        angular_velocity = msg.angular_velocity.z
 
-
-def trajectory_control(self):
-    """if pas de probleme d'angle :
-            msg = MotorsOrder()
-            msg.right_rear_pwm = self.motor_right_rear_pwm
-            msg.left_rear_pwm = self.motor_left_rear_pwm
-            msg.steering_angle = self.motor_steering_angle
-            self.publisher_motors_order.publish(msg)
-            return
-        else 
-            angle actuel - angle de reference
-            faire +/- 180"""
-    self.get_logger().info("Trajectory deviation: °")
+    def trajectory_control(self):
+        """if pas de probleme d'angle :
+                msg = MotorsOrder()
+                msg.right_rear_pwm = self.motor_right_rear_pwm
+                msg.left_rear_pwm = self.motor_left_rear_pwm
+                msg.steering_angle = self.motor_steering_angle
+                self.publisher_motors_order.publish(msg)
+                return
+            else 
+                angle actuel - angle de reference
+                faire +/- 180"""
+        self.get_logger().info("Trajectory deviation: °")
 
 
 def main(args=None):

@@ -7,7 +7,7 @@ from pathlib import Path
 
 # Chemin vers le dossier où se trouve ce fichier Python
 current_dir = Path(__file__).parent
-data_json = current_dir / "../../../../../share/hmidata/data.json"
+data_json = current_dir / "../../../../install/hmi/share/hmidata/data.json"
 
 def generate_dashboard():
   st_autorefresh(interval=200, key="dashboard_refresh")

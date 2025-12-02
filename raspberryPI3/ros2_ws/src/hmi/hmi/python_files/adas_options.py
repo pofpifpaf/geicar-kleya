@@ -1,10 +1,9 @@
 import streamlit as st
-from streamlit_extras.switch_page_button import switch_page
 import json
 from pathlib import Path
 
 current_dir = Path(__file__).parent
-data_json = current_dir / "../../../../../share/hmidata/data.json"
+data_json = current_dir / "../../../../install/hmi/share/hmidata/data.json"
 
 
 def save_config(data, path=data_json):

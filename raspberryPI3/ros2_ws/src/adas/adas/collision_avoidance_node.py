@@ -70,12 +70,12 @@ class collision_avoidance(Node):
             min_front = min(self.ultra_front_left, self.ultra_front_center, self.ultra_front_right)
 
             if min_front < SAFE_DISTANCE_FRONT_STOP:
-            #if self.ultra_front_left < 20 or self.ultra_front_right < 20 or self.ultra_front_center < 20:
+                #if self.ultra_front_left < 20 or self.ultra_front_right < 20 or self.ultra_front_center < 20:
                 self.motor_right_rear_pwm = STOP
                 self.motor_left_rear_pwm = STOP
                 self.get_logger().info("Obstacle avant < 20 cm : Arret immédiat")
 
-             #elif ((20 < self.ultra_front_left < 100) or
+                  #elif ((20 < self.ultra_front_left < 100) or
                    #(20 < self.ultra_front_right < 100) or
                    #(20 < self.ultra_front_center < 100)):
             elif min_front < SAFE_DISTANCE_FRONT_SLOW:       
@@ -90,7 +90,7 @@ class collision_avoidance(Node):
                 self.motor_right_rear_pwm = STOP
                 self.motor_left_rear_pwm = STOP
                 self.get_logger().info("Obstacle arrière < 20 cm : STOP immédiat")
-         elif min_rear < SAFE_DISTANCE_REAR_SLOW:
+            elif min_rear < SAFE_DISTANCE_REAR_SLOW:
                 reduced_pwm = min(self.motor_right_rear_pwm, REAR_MAX)
                 self.motor_right_rear_pwm = reduced_pwm
                 self.motor_left_rear_pwm = reduced_pwm
@@ -100,7 +100,7 @@ class collision_avoidance(Node):
         # Empêcher accélération en virage si obstacle proche sur un côté
         if self.motor_steering_angle > 10 and min_front < 50:  # tourne à droite
             self.motor_right_rear_pwm = min(self.motor_right_rear_pwm, STOP)
-         elif self.motor_steering_angle < -10 and min_front < 50:  # tourne à gauche
+        elif self.motor_steering_angle < -10 and min_front < 50:  # tourne à gauche
             self.motor_left_rear_pwm = min(self.motor_left_rear_pwm, STOP)
        
        

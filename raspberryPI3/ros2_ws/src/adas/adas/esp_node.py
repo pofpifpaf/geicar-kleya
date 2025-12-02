@@ -5,21 +5,30 @@ import math
 from interfaces.msg import MotorsOrder, JoystickOrder 
 from sensor_msgs.msg import Imu         #IMU
 
+#Global Variable
+MIN_DEVIATION_DETECTION = 5 #deg/seconds
+
 class Esp(Node):
     def __init__(self):
         #Initialization of the node
         super().__init__('esp_node')
         #Create a topic for the control/command of the ESP
         self.publisher_motors_order = self.create_publisher(MotorsOrder, 'motors_order_ESP', 10)
+
         #Subscription to the node ESP need
         self.subscription = self.create_subscription(MotorsOrder,'motors_order_raw', self.motors_order_callback, 10)
         self.subscription = self.create_subscription(Imu,'/imu/data', self.imu_callback,10)
         self.subscription = self.create_subscription(JoystickOrder,'joystick_order', self.joystick_order_callback,10)
+        """TO DO : Add the subscription to ECompass"""
         self.subscription  # prevent unused variable warning
+
         #init variable des commandes moteurs
         self.motor_right_rear_pwm = 50
         self.motor_left_rear_pwm = 50
         self.motor_steering_angle = 0
+        #init variable for command
+        self.command_error = 0
+        """TO DO : Init the desired_cap ?"""
 
         self.get_logger().info("esp_node READY")
 
@@ -38,8 +47,25 @@ class Esp(Node):
 
     def imu_callback(self, msg):
         angular_velocity = msg.angular_velocity.z
+    """"
+    def ecompass_callback(self,ecompass : ECcompass)
+        #TO DO: Get the value of desired_cap
+        #TO DO: Convertir la valeur en relatif
+        #TO DO: Appel de detect deviation
+    """
+    ####################################
+    ######## ESP Implementation ########
+    ####################################
 
-    def trajectory_control(self):
+    def detect_deviation(self): #TO DO: Add arg of the ecompass
+        #Calculation of delta si MIN_DEVIATION_DETECTION
+        #if true call trajectory_control(error_command)
+        #command_error = steer - desiredcap
+        self.get_logger().info("Deviation of ° detected")
+
+    # For now a simple feedback no control law
+    def trajectory_control(self):       #Arguments to be added : command_error
+        # Command to be defined
         """if pas de probleme d'angle :
                 msg = MotorsOrder()
                 msg.right_rear_pwm = self.motor_right_rear_pwm
@@ -50,7 +76,7 @@ class Esp(Node):
             else 
                 angle actuel - angle de reference
                 faire +/- 180"""
-        self.get_logger().info("Trajectory deviation: °")
+        self.get_logger().info("ESP Trajectory Control Activated")
 
 
 def main(args=None):

@@ -2,24 +2,26 @@ import rclpy
 from rclpy.node import Node
 import math
 
-from interfaces.msg import MotorsOrder #, sensor_msgs/boussole
+from interfaces.msg import MotorsOrder, JoystickOrder 
+from sensor_msgs.msg import Imu         #IMU
 
 class Esp(Node):
     def __init__(self):
-        super().__init__('Esp_node')
-
-        self.publisher_motors_order = self.create_publisher(MotorsOrder, 'motors_order', 10)
+        #Initialization of the node
+        super().__init__('esp_node')
+        #Create a topic for the control/command of the ESP
+        self.publisher_motors_order = self.create_publisher(MotorsOrder, 'motors_order_ESP', 10)
+        #Subscription to the node ESP need
         self.subscription = self.create_subscription(MotorsOrder,'motors_order_raw', self.motors_order_callback, 10)
-        #self.subscription = self.create_subscription(sensor_msgs/boussole,'boussole/data_raw', self.boussole_callback, 10)
+        self.subscription = self.create_subscription(Imu,'/imu/data', self.imu_callback,10)
+        self.subscription = self.create_subscription(JoystickOrder,'joystick_order', self.joystick_order_callback,10)
         self.subscription  # prevent unused variable warning
-
+        #init variable des commandes moteurs
         self.motor_right_rear_pwm = 50
         self.motor_left_rear_pwm = 50
         self.motor_steering_angle = 0
 
-        #en attendant la boussole
-        #self.boussole = angle actuel
-        #self.boussole = angle de reference
+        self.get_logger().info("esp_node READY")
 
         self.get_logger().info("Esp_node READY")
 

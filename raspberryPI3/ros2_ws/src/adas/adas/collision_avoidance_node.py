@@ -66,9 +66,9 @@ class collision_avoidance(Node):
 
     def detect_collision(self):
         # Détection avant 
+        min_front = min(self.ultra_front_left, self.ultra_front_center, self.ultra_front_right)
         if self.motor_right_rear_pwm > STOP or self.motor_left_rear_pwm > STOP:
-            min_front = min(self.ultra_front_left, self.ultra_front_center, self.ultra_front_right)
-
+            
             if min_front < SAFE_DISTANCE_FRONT_STOP:
                 #if self.ultra_front_left < 20 or self.ultra_front_right < 20 or self.ultra_front_center < 20:
                 self.motor_right_rear_pwm = STOP

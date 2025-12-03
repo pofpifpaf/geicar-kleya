@@ -1,0 +1,77 @@
+#ifndef IMU_RX_NODE_HPP
+#define IMU_RX_NODE_HPP
+
+// Serial
+
+#define PORT "/dev/ttyACM0"
+#define BAUD_RATE (B115200)
+
+// SOH
+
+#define GET_VERSION (0x10)
+#define VERSION (0x11)
+#define RESET_HEADING (0x20)
+#define CALIBRATE_MAG (0x21)
+#define MOTION (0x30)
+#define ECOMPASS (0x31)
+#define ENV (0x32)
+
+// Misc
+
+#define FIRST_BYTE (0x01)
+#define HEADER_SIZE (5)
+
+#define FRAME_BUFFER_LENGTH (100)
+
+#define FRAME_VERSION_SIZE (3*1 + HEADER_SIZE)
+
+#define G_CONSTANT (9.80665f)
+#define RAD_S_CONSTANT (M_PI / 180.0f)
+
+// States
+
+#define INITIAL_STATE_SOH (0)
+#define STATE_FRAME_ID (1)
+#define STATE_FRAME_LENGTH_FIRST_BYTE (2)
+#define STATE_FRAME_LENGTH_SECOND_BYTE (3)
+#define STATE_FRAME_DATA (4)
+#define STATE_FRAME_COMPLETE (120)
+
+// Offsets
+
+// -- MOTION
+
+#define FRAME_MOTION_SIZE (9*4 + HEADER_SIZE)
+
+#define OFFSET_ACCELEROMETER_X (0)
+#define OFFSET_ACCELEROMETER_Y (4)
+#define OFFSET_ACCELEROMETER_Z (8)
+
+#define OFFSET_GYROSCOPE_X (12)
+#define OFFSET_GYROSCOPE_Y (16)
+#define OFFSET_GYROSCOPE_Z (20)
+
+#define OFFSET_MAG_X (24)
+#define OFFSET_MAG_Y (28)
+#define OFFSET_MAG_Z (32)
+
+// -- ECOMPASS
+
+#define FRAME_ECOMPASS_SIZE (4*4+1 + HEADER_SIZE)
+
+#define OFFSET_YAW (0)
+#define OFFSET_PITCH (4)
+#define OFFSET_ROLL (8)
+#define OFFSET_HEADING (12)
+#define OFFSET_HEADING_VALID (16)
+
+// -- ENV
+
+#define FRAME_ENV_SIZE (4*3 + HEADER_SIZE)
+
+#define OFFSET_TEMPERATURE (0)
+#define OFFSET_PRESSURE (4)
+#define OFFSET_HUMIDITY (8)
+
+
+#endif

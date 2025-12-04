@@ -2,9 +2,7 @@ import math
 import rclpy
 import json
 from rclpy.node import Node
-
-from interfaces.msg import MotorsFeedback, GeneralData
-
+from interfaces.msg import MotorsFeedback, GeneralData, Hmifeatures
 from pathlib import Path
 
 # Chemin vers le dossier où se trouve ce fichier Python
@@ -18,12 +16,16 @@ class hmi_node(Node):
     def __init__(self):
 
         super().__init__('hmi_node')
-        # on doit publish dans le topic de control_activation
-        #self.publisher_motors_order = self.create_publisher(MotorsOrder, 'motors_order', 10)
 
+        # Publishers
+        self.publisher_active_features_hmi = self.create_publisher(Hmifeatures, 'active_features_hmi', 10)
+        
+        # Suscribers
         self.subscription = self.create_subscription(MotorsFeedback,'motors_feedback', self.motorsfeedback_callback, 10)
         self.subscription = self.create_subscription(GeneralData,'general_data', self.generaldata_callback, 10)
-    
+        self.subscription = self.create_subscription(Hmifeatures,'features_priority_hmi', self.hmifeatures_callback, 10)
+
+        # Variables initialisation
         self.left_rear_RPM  = 0  
         self.right_rear_RPM   = 0
         self.left_speed = 5
@@ -78,7 +80,12 @@ class hmi_node(Node):
         with open(data_json, "w") as f:
             json.dump(data, f, indent=4)
 
-        #self.publisher_motors_order.publish(msg)
+        msg = Hmifeatures()
+        # Ici changer les valeurs des différentes variables 
+        ##
+
+        # On a juste à publish (pour savoir qui est activé ou pas)
+        #self.publisher_active_features_hmi.publish(msg)
 
 
 

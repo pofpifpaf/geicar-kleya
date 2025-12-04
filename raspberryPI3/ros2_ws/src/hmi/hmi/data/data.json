@@ -1,7 +1,10 @@
 {
-    "LCA": false,
+    "LCA": true,
     "ACC": true,
     "LDW": true,
+    "ESP": true,
+    "Airbag": true,
+    "Collision": true,
     "speed" : 0,
     "battery" : 0,
     "pressure" : 0,

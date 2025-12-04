@@ -4,7 +4,7 @@ import Home, adas_options, Dashboard, contactus
 st.set_page_config(page_title="Tableau de bord", layout="wide")
 if 'go_to_dashboard' not in st.session_state:
     st.session_state['go_to_dashboard'] = False
-page = st.sidebar.radio("Menu", ["Home", "Dashboard", "ADAS OPTIONS","contact us"])
+page = st.sidebar.radio("Menu", ["Home", "Dashboard", "ADAS OPTIONS","contact us"], key="main_menu")
 
 if st.session_state['go_to_dashboard']:
     page = "Dashboard"

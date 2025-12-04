@@ -26,6 +26,7 @@ setup(
         'console_scripts': [
             'collision_avoidance_node = adas.collision_avoidance_node:main',
             'airbag_shock_detection = adas.airbag.airbag_shock_detect:main',
+            'adas_priority_node = adas.adas_priority_node.main',
         ],
     },
 )

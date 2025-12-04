@@ -1,4 +1,4 @@
 # A boolean for each feature
-bool collision_avoidance
-bool airbag 
-bool esp
+int8 collision_avoidance
+int8 airbag 
+int8 esp

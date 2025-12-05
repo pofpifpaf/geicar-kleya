@@ -3,10 +3,11 @@
     "ACC": true,
     "LDW": true,
     "ESP": true,
-    "Airbag": true,
+    "Airbag": false ,
     "Collision": true,
     "speed" : 0,
     "battery" : 0,
     "pressure" : 0,
-    "temperature" : 0
+    "temperature" : 0, 
+    "AirbagDeployed": false 
 }

@@ -6,7 +6,8 @@ from interfaces.msg import MotorsOrder, JoystickOrder
 from sensor_msgs.msg import Imu         #IMU
 
 #Global Variable
-MIN_DEVIATION_DETECTION = 5 #deg/seconds
+MIN_DETECTION_DEVIATION = 0.7  #rad/s
+ 
 
 class Esp(Node):
     def __init__(self):
@@ -19,7 +20,7 @@ class Esp(Node):
         self.subscription = self.create_subscription(MotorsOrder,'motors_order_raw', self.motors_order_callback, 10)
         self.subscription = self.create_subscription(Imu,'/imu/data', self.imu_callback,10)
         self.subscription = self.create_subscription(JoystickOrder,'joystick_order', self.joystick_order_callback,10)
-        """TO DO : Add the subscription to ECompass"""
+        self.subscription = self.create_subscription(ECompass,'imu/ecompass', self.ecompass_callback,10)
         self.subscription  # prevent unused variable warning
 
         #init variable des commandes moteurs
@@ -51,17 +52,23 @@ class Esp(Node):
     def ecompass_callback(self,ecompass : ECcompass)
         #TO DO: Get the value of desired_cap
         #TO DO: Convertir la valeur en relatif
-        #TO DO: Appel de detect deviation
+        self.detect_deviation(self, msg: Imu)
     """
     ####################################
     ######## ESP Implementation ########
     ####################################
 
-    def detect_deviation(self): #TO DO: Add arg of the ecompass
-        #Calculation of delta si MIN_DEVIATION_DETECTION
-        #if true call trajectory_control(error_command)
-        #command_error = steer - desiredcap
-        self.get_logger().info("Deviation of ° detected")
+    def detect_deviation(self, msg: Imu): 
+        #utilisez l'angular velocity plus grand que 0.7
+        angular_velocity = msg.angular_velocity.z
+        if abs(angular_velocity) >= MIN_DETECTION_DEVIATION:
+            angular_velocity_deg = math.degrees(angular_velocity_z) #je switch rad en degré
+            self.get_logger().info(f"Deviation : {angular_velocity_deg:.2f} °/s detected")
+            #self.trajectory_control(command_err) TO DO
+            return True
+        return False
+
+
 
     # For now a simple feedback no control law
     def trajectory_control(self):       #Arguments to be added : command_error

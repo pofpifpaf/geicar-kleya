@@ -8,25 +8,16 @@ import threading
 
 
 current_dir = Path(__file__).parent
-data_json = current_dir / "../../../../install/hmi/share/hmidata/data.json"
-#data_json = current_dir / "../data/data_test.json"
-shared_data = {"speed": 0}
+#data_json = current_dir / "../../../../install/hmi/share/hmidata/data.json"
+data_json = current_dir / "../data/data_test.json"
 
 
 def generate_dashboard():
   def load_config(path=data_json):
       with open(path, "r") as f:
           return json.load(f)
-  
-  def background_reader():
-    while True :
-        try:
-            j = load_config(data_json)
-            shared_data["speed"] = j["speed"]
-        except:
-            pass
-        time.sleep(0.2)
-  
+  shared_data = load_config(data_json)
+
   def svg_mini_gauge(width=120, height=100, percent=0.5, ticks=5, primary_color="#FFD36E"):
       # On peut juste réutiliser svg_semi_gauge avec des dimensions réduites
       return svg_semi_gauge(width=width, height=height, percent=percent, ticks=ticks, primary_color=primary_color)
@@ -153,9 +144,8 @@ def generate_dashboard():
       adas_value = load_config()
       status_html = f"""
       <div class="status-row">
-        {indicator("ACC", adas_value["LCA"])}
-        {indicator("LCA", adas_value["ACC"])}
-        {indicator("LDW", adas_value["LDW"])}
+        {indicator("ESP", adas_value["ESP"])}
+        {indicator("FCTA", adas_value["Collision"])}
       </div>
       """
       return f"""
@@ -303,15 +293,12 @@ def generate_dashboard():
     }
     </style>
     """, unsafe_allow_html=True)
-  
-  if "thread_started" not in st.session_state:
-    threading.Thread(target=background_reader, daemon=True).start()
-    st.session_state.thread_started = True
+
   html = generate_dashboard_html(
       power_val=120,
       rpm_val=3500,
       speed_val=shared_data["speed"],
-      batt_percent=78,
+      batt_percent=shared_data["battery"],
       fuel_percent=56,
       airbag=False
   )

@@ -6,7 +6,7 @@ from interfaces.msg import MotorsOrder, JoystickOrder, ECompass
 from sensor_msgs.msg import Imu          #IMU
 
 #Global Variable
-MIN_DETECTION_DEVIATION = 0.7  #rad/s
+MIN_DETECTION_DEVIATION = 0.5  #rad/s
  
 
 class Esp(Node):
@@ -48,7 +48,8 @@ class Esp(Node):
 
     def imu_callback(self, msg):
         angular_velocity = msg.angular_velocity.z
-    
+        self.detect_deviation(msg)
+
     def ecompass_callback(self,ecompass : ECompass):
         #TO DO: Get the value of desired_cap
         #TO DO: Convertir la valeur en relatif
@@ -59,7 +60,7 @@ class Esp(Node):
     ####################################
 
     def detect_deviation(self, msg: Imu): 
-        #utilisez l'angular velocity plus grand que 0.7
+        #utilisez l'angular velocity plus grand que 0.5
         angular_velocity = msg.angular_velocity.z
         if abs(angular_velocity) >= MIN_DETECTION_DEVIATION:
             angular_velocity_deg = math.degrees(angular_velocity) #je switch rad en degré

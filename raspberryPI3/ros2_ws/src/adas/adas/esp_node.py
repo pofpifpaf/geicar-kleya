@@ -28,7 +28,10 @@ class Esp(Node):
         self.motor_left_rear_pwm = 50
         self.motor_steering_angle = 0
         #init variable for command
+        self.deviation_rate = None
+        self.last_heading = None
         self.command_error = 0
+        self.deviation_rate = 0
         """TO DO : Init the desired_cap ?"""
 
         self.get_logger().info("esp_node READY")
@@ -52,8 +55,14 @@ class Esp(Node):
 
     def ecompass_callback(self,ecompass : ECompass):
         #TO DO: Get the value of desired_cap
-        #TO DO: Convertir la valeur en relatif
-        pass
+        if self.last_heading == None :
+            self.last_heading = ecompass.heading
+        else:
+            heading = ecompass.heading
+            self.deviation_rate = (self.last_heading-heading)/T_SAMPLE    #heading rate calculation
+            self.last_heading = heading         #update for next iteration
+
+        self.trajectory_control()
     
     ####################################
     ######## ESP Implementation ########

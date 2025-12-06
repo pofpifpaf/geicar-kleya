@@ -2,8 +2,8 @@ import rclpy
 from rclpy.node import Node
 import math
 
-from interfaces.msg import MotorsOrder, JoystickOrder 
-from sensor_msgs.msg import Imu         #IMU
+from interfaces.msg import MotorsOrder, JoystickOrder, ECompass 
+from sensor_msgs.msg import Imu          #IMU
 
 #Global Variable
 MIN_DETECTION_DEVIATION = 0.7  #rad/s
@@ -48,12 +48,12 @@ class Esp(Node):
 
     def imu_callback(self, msg):
         angular_velocity = msg.angular_velocity.z
-    """"
-    def ecompass_callback(self,ecompass : ECcompass)
+    
+    def ecompass_callback(self,ecompass : ECompass):
         #TO DO: Get the value of desired_cap
         #TO DO: Convertir la valeur en relatif
-        self.detect_deviation(self, msg: Imu)
-    """
+        pass
+    
     ####################################
     ######## ESP Implementation ########
     ####################################
@@ -62,7 +62,7 @@ class Esp(Node):
         #utilisez l'angular velocity plus grand que 0.7
         angular_velocity = msg.angular_velocity.z
         if abs(angular_velocity) >= MIN_DETECTION_DEVIATION:
-            angular_velocity_deg = math.degrees(angular_velocity_z) #je switch rad en degré
+            angular_velocity_deg = math.degrees(angular_velocity) #je switch rad en degré
             self.get_logger().info(f"Deviation : {angular_velocity_deg:.2f} °/s detected")
             #self.trajectory_control(command_err) TO DO
             return True

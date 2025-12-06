@@ -84,12 +84,14 @@ class hmi_node(Node):
         data["temperature"] = self.temperature
         data["speed"] = self.speed
         data["AirbagDeployed"] = self.shockdetected
-        
+        data["RPMright"] = self.right_rear_RPM
+        data["RPMleft"] = self.left_rear_RPM
+
         #Save data
         with open(data_json, "w") as f:
             json.dump(data, f, indent=4)
 
-        msg = Hmifeatures()
+        #msg = Hmifeatures()
         # Ici changer les valeurs des différentes variables 
         ##
 

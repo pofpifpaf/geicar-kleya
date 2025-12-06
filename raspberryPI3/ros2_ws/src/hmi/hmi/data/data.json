@@ -14,5 +14,6 @@
     "RPMleft" : 0,
     "front_left" : 0,
     "front_right" : 0,
-    "front_center" : 0    
+    "front_center" : 0,
+    "collision_stop" : false
 }

@@ -181,7 +181,7 @@ private:
         imu_mag_msg.header.stamp = rclcpp::Clock().now();
         publisher_imu_mag_->publish(imu_mag_msg); 
       }
-      else { RCLCPP_ERROR(this->get_logger(), "invalid frame length"); }
+      else { RCLCPP_DEBUG(this->get_logger(), "invalid frame length"); }
       break;
 
     case ECOMPASS : 
@@ -198,7 +198,7 @@ private:
 
         publisher_imu_ecompass_->publish(ecompass_msg); 
       }
-      else { RCLCPP_ERROR(this->get_logger(), "invalid frame length"); }
+      else { RCLCPP_DEBUG(this->get_logger(), "invalid frame length"); }
       break;
 
     case ENV :
@@ -212,11 +212,11 @@ private:
 
         publisher_imu_env_->publish(env_msg); 
       }
-      else { RCLCPP_ERROR(this->get_logger(), "invalid frame length"); }
+      else { RCLCPP_DEBUG(this->get_logger(), "invalid frame length"); }
       break;
 
     default :
-      RCLCPP_ERROR(this->get_logger(), "invalid frame ID");
+      RCLCPP_DEBUG(this->get_logger(), "invalid frame ID");
       break;
     }
 
@@ -265,7 +265,7 @@ private:
           else
           {
             // Send reset heading
-            RCLCPP_ERROR(this->get_logger(), "Serial frame : Invalid first byte 0x%02X - Resetting Header", byte);
+            RCLCPP_DEBUG(this->get_logger(), "Serial frame : Invalid first byte 0x%02X - Resetting Header", byte);
           }
           break;
 

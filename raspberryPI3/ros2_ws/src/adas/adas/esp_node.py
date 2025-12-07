@@ -64,7 +64,7 @@ class Esp(Node):
             self.deviation_rate = (self.last_heading-heading)/T_SAMPLE    #heading rate calculation
             self.last_heading = heading         #update for next iteration
 
-        self.trajectory_control()
+        #self.trajectory_control()
     
     ####################################
     ######## ESP Implementation ########
@@ -107,7 +107,6 @@ class Esp(Node):
             steer = 0.6 * direction
         # No deviation
         else:
-            None
             return False #ESP was not activated, joystick order only
 
         # Update motors order

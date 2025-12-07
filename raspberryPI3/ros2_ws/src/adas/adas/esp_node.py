@@ -15,7 +15,7 @@ class Esp(Node):
         #Initialization of the node
         super().__init__('esp_node')
         #Create a topic for the control/command of the ESP
-        self.publisher_motors_order = self.create_publisher(MotorsOrder, 'motors_order_esp', 10)
+        self.publisher_motors_order = self.create_publisher(MotorsOrder, 'motors_order', 10)
 
         #Subscription to the node ESP need
         self.subscription = self.create_subscription(MotorsOrder,'motors_order_raw', self.motors_order_callback, 10)

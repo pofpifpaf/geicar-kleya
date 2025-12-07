@@ -241,7 +241,7 @@ private:
         }
         else 
         {
-          RCLCPP_ERROR(this->get_logger(), "Error : frame failed checksum");
+          RCLCPP_DEBUG(this->get_logger(), "Error : frame failed checksum");
           state = INITIAL_STATE_SOH;
           memset(frame, 0, sizeof(frame));
           index = 0;

@@ -23,6 +23,8 @@ set(msg_files
   "msg/SystemCheck.msg"
   "msg/ECompass.msg"
   "msg/EnvironmentData.msg"
+  "msg/HmiFeatures.msg"
+  "msg/MotorsOrderAdas.msg"
 )
 
 rosidl_generate_interfaces(${PROJECT_NAME}

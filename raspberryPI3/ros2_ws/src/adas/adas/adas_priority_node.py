@@ -4,11 +4,11 @@ from interfaces.msg import MotorsOrder, MotorsOrderAdas, HmiFeatures
 
 
 #Priorities
-COLLISION_AVOIDANCE_PRIO 1
-AIRBAG_PRIO 1
-ESP_PRIO 2
+COLLISION_AVOIDANCE_PRIO = 1
+AIRBAG_PRIO = 1
+ESP_PRIO = 2
 
-NOT_USED_FEATURE 10
+NOT_USED_FEATURE = 10
 
 
 

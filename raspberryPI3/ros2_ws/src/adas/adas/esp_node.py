@@ -48,7 +48,6 @@ class Esp(Node):
 
     def joystick_order_callback(self, joystick_order : JoystickOrder):
         self.steer = joystick_order.steer
-        self.reverse = joystick_order.reverse
 
     def imu_callback(self, msg):
          # Commented this out to test the trajectory control only
@@ -86,11 +85,6 @@ class Esp(Node):
         # Security for initialisation
         if self.deviation_rate is None:
             return False
-        # Value for Motors Control
-        msg = MotorsOrder()
-        msg.right_rear_pwm = self.motor_right_rear_pwm
-        msg.left_rear_pwm = self.motor_left_rear_pwm
-        msg.steering_angle = self.motor_steering_angle
 
         # Intermediate variables for the motors order modification
         rate = abs(self.deviation_rate) # Used as a reference for deviation severity
@@ -110,8 +104,10 @@ class Esp(Node):
             return False #ESP was not activated, joystick order only
 
         # Update motors order
-        #msg.right_rear_pwm = 
-        #msg.left_rear_pwm  = int(msg.left_rear_pwm *SPEED_PERCENTAGE)
+                # Value for Motors Control
+        msg = MotorsOrder()
+        msg.right_rear_pwm = self.motor_right_rear_pwm
+        msg.left_rear_pwm = self.motor_left_rear_pwm
         msg.steering_angle = int(steer*127) # Angle [-128;127]
 
         # Publish output

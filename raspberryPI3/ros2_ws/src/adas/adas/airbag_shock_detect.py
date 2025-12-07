@@ -4,7 +4,7 @@ from rclpy.node import Node
 from sensor_msgs.msg import Imu
 from std_msgs.msg import Bool
 
-min_linear_acceleration = 2.5
+min_linear_acceleration = 5
 
 class airbag_shock_detection(Node):
 

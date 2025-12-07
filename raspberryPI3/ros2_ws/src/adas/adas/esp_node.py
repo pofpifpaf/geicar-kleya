@@ -98,13 +98,13 @@ class Esp(Node):
 
         # Drifting like in movies yeeeeeeeeeh
         if rate > 60:
-            steer = 0.75 * direction
+            steer = 1 * direction
         # Driving on ice
-        elif rate > 40:
+        elif rate > 0.8:
             steer = 0.4 * direction
         # Driving like a Marseillais
         elif rate > 20:
-            steer = 0.25 * direction
+            steer = 0.6 * direction
         # No deviation
         else:
             None

@@ -110,8 +110,8 @@ class Esp(Node):
             return False #ESP was not activated, joystick order only
 
         # Update motors order
-        msg.right_rear_pwm = int(msg.right_rear_pwm * SPEED_PERCENTAGE)
-        msg.left_rear_pwm  = int(msg.left_rear_pwm *SPEED_PERCENTAGE)
+        #msg.right_rear_pwm = 
+        #msg.left_rear_pwm  = int(msg.left_rear_pwm *SPEED_PERCENTAGE)
         msg.steering_angle = int(steer*127) # Angle [-128;127]
 
         # Publish output

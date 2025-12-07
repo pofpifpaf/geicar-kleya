@@ -7,7 +7,7 @@ from sensor_msgs.msg import Imu          #IMU
 
 #Global Variable
 T_SAMPLE = 0.1 #s ou 100ms
-MIN_DETECTION_DEVIATION = 0.5  #rad/s
+MIN_DETECTION_DEVIATION = 1  #rad/s
 SPEED_PERCENTAGE = 0.5
 
 class Esp(Node):
@@ -33,6 +33,7 @@ class Esp(Node):
         self.last_heading = None
         self.command_error = 0
         self.deviation_rate = 0
+        self.steer = 0
         """TO DO : Init the desired_cap ?"""
 
         self.get_logger().info("esp_node READY")
@@ -51,8 +52,7 @@ class Esp(Node):
 
     def imu_callback(self, msg):
          # Commented this out to test the trajectory control only
-         if (self.detect_deviation(msg) == True): 
-            self.trajectory_control()
+         self.trajectory_control()
 
     def ecompass_callback(self,ecompass : ECompass):
         #TO DO: Get the value of desired_cap
@@ -74,7 +74,6 @@ class Esp(Node):
         angular_velocity = msg.angular_velocity.z
         if abs(angular_velocity) >= MIN_DETECTION_DEVIATION:
             angular_velocity_deg = math.degrees(angular_velocity) #je switch rad en degré
-            self.get_logger().info(f"Deviation : {angular_velocity_deg:.2f} °/s detected")
             return True
         return False
 
@@ -92,29 +91,28 @@ class Esp(Node):
 
         # Drifting like in movies yeeeeeeeeeh
         if rate > 60:
-            steer = 1 * direction
+            self.steer = 1 * direction
         # Driving on ice
-        elif rate > 0.8:
-            steer = 0.4 * direction
+        elif rate > 40:
+            self.steer = 0.4 * direction
+            self.get_logger().info(f"Deviation : {angular_velocity_deg:.2f} °/s detected, Changing steering")
         # Driving like a Marseillais
         elif rate > 20:
-            steer = 0.6 * direction
-        # No deviation
-        else:
-            return False #ESP was not activated, joystick order only
+            self.steer = 0.6 * direction
+            self.get_logger().info(f"Deviation : {angular_velocity_deg:.2f} °/s detected, Changing steering")
 
         # Update motors order
                 # Value for Motors Control
         msg = MotorsOrder()
         msg.right_rear_pwm = self.motor_right_rear_pwm
         msg.left_rear_pwm = self.motor_left_rear_pwm
-        msg.steering_angle = int(steer*127) # Angle [-128;127]
+        msg.steering_angle = int(self.steer*127) # Angle [-128;127]
 
         # Publish output
         self.publisher_motors_order.publish(msg)
         # Message in the logger only if deviation
         self.get_logger().info(
-            f"ESP Activated | rate={self.deviation_rate:.1f} deg/s | steer={steer:.2f}"
+            f"ESP Activated | rate={self.deviation_rate:.1f} deg/s | steer={self.steer:.2f}"
         )
         self.get_logger().info(f"New Motors Order: {msg}")
 

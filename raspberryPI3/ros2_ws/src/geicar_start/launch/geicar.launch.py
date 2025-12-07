@@ -35,13 +35,13 @@ def generate_launch_description():
         executable="car_control_node",
         emulate_tty=True
     )
-
+    """
     collision_avoidance_node = Node(
         package="adas",
         executable="collision_avoidance_node",
         emulate_tty=True
     )
-
+    """
     shock_detection_node = Node(
         package="adas",
         executable="airbag_shock_detection",
@@ -83,7 +83,7 @@ def generate_launch_description():
     ld.add_action(can_rx_node)
     ld.add_action(can_tx_node)
     ld.add_action(car_control_node)
-    ld.add_action(collision_avoidance_node)
+    #ld.add_action(collision_avoidance_node)
     ld.add_action(shock_detection_node)
     ld.add_action(imu_rx_node)
     ld.add_action(esp_node)

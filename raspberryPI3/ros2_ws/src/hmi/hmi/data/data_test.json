@@ -1,0 +1,13 @@
+{
+    "LCA": true,
+    "ACC": true,
+    "LDW": true,
+    "ESP": false,
+    "Airbag": false,
+    "Collision": true,
+    "speed": 409,
+    "battery": 363,
+    "pressure": 0,
+    "temperature": 0,
+    "AirbagDeployed": false
+}

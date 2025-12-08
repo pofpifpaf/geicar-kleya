@@ -3,8 +3,8 @@ import json
 from pathlib import Path
 
 current_dir = Path(__file__).parent
-#data_json = current_dir / "../../../../install/hmi/share/hmidata/data.json"
-data_json = current_dir / "../data/data_test.json"
+data_json = current_dir / "../../../../install/hmi/share/hmidata/data.json"
+#data_json = current_dir / "../data/data_test.json"
 
 def save_config(data, path=data_json):
     with open(path, "w") as f:

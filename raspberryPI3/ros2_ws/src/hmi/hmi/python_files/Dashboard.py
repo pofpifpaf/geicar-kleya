@@ -8,8 +8,8 @@ import textwrap
 
 
 current_dir = Path(__file__).parent
-#data_json = current_dir / "../../../../install/hmi/share/hmidata/data.json"
-data_json = current_dir / "../data/data_test.json"
+data_json = current_dir / "../../../../install/hmi/share/hmidata/data.json"
+#data_json = current_dir / "../data/data_test.json"
 
 
 def generate_dashboard():

@@ -4,7 +4,7 @@ import time
 import json
 from streamlit_autorefresh import st_autorefresh
 from pathlib import Path
-import threading
+import textwrap
 
 
 current_dir = Path(__file__).parent
@@ -62,43 +62,7 @@ def generate_dashboard():
       </svg>
       """
 
-  def show_ldw_popup(duration=3, direction=None, left_departure=False):
-      placeholder = st.empty()  
-      with placeholder.container():
-          st.markdown(f"""
-          <div style="
-              position:fixed; top:500px; right:100px;
-              background-color:orange; color:black;
-              padding:12px 18px; border-radius:8px;
-              font-weight:bold; font-family:Arial, sans-serif;
-              box-shadow:0 0 15px rgba(255,165,0,0.7);
-              z-index:1000;
-          ">
-              ⚠ Lane Departure {"left" if left_departure else "Right"}
-          </div>
-          """, unsafe_allow_html=True)
-      time.sleep(duration) 
-      placeholder.empty()    
-
-  def show_collision_popup(duration=3, direction=None):
-      placeholder = st.empty()  
-      with placeholder.container():
-          st.markdown(f"""
-          <div style="
-              position:fixed; top:500px; right:100px;
-              background-color:red; color:black;
-              padding:12px 18px; border-radius:8px;
-              font-weight:bold; font-family:Arial, sans-serif;
-              box-shadow:0 0 15px rgba(255,165,0,0.7);
-              z-index:1000;
-          ">
-              ⚠ Obstacle in 1 meter
-          </div>
-          """, unsafe_allow_html=True)
-      time.sleep(duration)
-      placeholder.empty()   
-
-  def generate_dashboard_html(power_val, rpm_val, speed_val, batt_percent, fuel_percent, airbag=False):
+  def generate_dashboard_html(power_val, rpm_val, speed_val, batt_percent, fuel_percent, AirbagDeployed=False, ldw=False, Collision=False):
       power_norm = min(power_val / 200.0, 1.0)
       batt_norm = min(batt_percent / 100.0, 1.0)
       rpm_norm = min(rpm_val / 7000.0, 1.0)
@@ -136,7 +100,10 @@ def generate_dashboard():
         <div class="unit">km/h</div>
       </div>
       """
-      overlay = '<div class="airbag-overlay"> ⚠ AIRBAG DEPLOYED ⚠ </div>' if airbag else ""
+      collision_overlay = '<div class="collision-overlay">⚠ Obstacle in 1 meter</div>' if Collision else ""
+      airbag_overlay = '<div class="airbag-overlay">⚠ AIRBAG DEPLOYED ⚠</div>' if AirbagDeployed else ""
+      ldw_overlay = '<div class="ldw-overlay">⚠ Lane Departure Left</div>' if ldw else ""
+      
 
       def indicator(label, active):
           cls = "indicator active" if active else "indicator"
@@ -151,7 +118,9 @@ def generate_dashboard():
       return f"""
       <div class="main-container">
         <div class="dashboard">
-          {overlay}
+          {airbag_overlay}
+          {ldw_overlay}
+          {collision_overlay}
           {left_gauge}
           {center_html}
           {right_gauge}
@@ -291,8 +260,56 @@ def generate_dashboard():
     color:white;
     text-shadow:0 0 25px black;
     }
-    </style>
-    """, unsafe_allow_html=True)
+  @keyframes popupBlink {
+          0%   { opacity:0.5; transform:translateY(0); }
+          50%  { opacity:1; transform:translateY(-4px); }
+          100% { opacity:0.5; transform:translateY(0); }
+      }              
+  .ldw-overlay {
+      position:relative;
+      bottom:40px;
+      left:40px;
+      min-width:380px;
+      padding:20px 28px;
+      background:rgba(255,165,0,0.25);
+      border:2px solid rgba(255,165,0,0.5);
+      border-radius:14px;
+      backdrop-filter:blur(4px);
+      font-size:32px;
+      font-weight:bold;
+      color:orange;
+      text-shadow:0 0 12px black;
+      z-index:850;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      animation:popupBlink 1.1s infinite;
+  }
+
+              
+  .collision-overlay {
+      position:relative;
+      bottom:40px !important;
+      left:40px !important;
+      min-width:380px;
+      padding:20px 28px;
+      background:rgba(255,0,0,0.25);
+      border:2px solid rgba(255,0,0,0.5);
+      border-radius:14px;
+      backdrop-filter:blur(5px);
+      font-size:32px;
+      font-weight:bold;
+      color:#ff3030;
+      text-shadow:0 0 15px black;
+      z-index:860;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      animation:popupBlink 0.8s infinite;
+      }
+      
+      </style>
+      """, unsafe_allow_html=True)
 
   html = generate_dashboard_html(
       power_val=120,
@@ -300,15 +317,11 @@ def generate_dashboard():
       speed_val=shared_data["speed"],
       batt_percent=shared_data["battery"],
       fuel_percent=56,
-      airbag=False
+      AirbagDeployed=shared_data["AirbagDeployed"],
+      ldw = False,
+      Collision=shared_data["Collision"]
   )
+
   st.markdown(html, unsafe_allow_html=True)
-  ldw_popup = False
-  collision_popup = False
-  left_departure = False
-  if ldw_popup:
-    show_ldw_popup(duration=6)
-  elif collision_popup:
-    show_collision_popup(duration=3)
   st_autorefresh(interval=100)
     

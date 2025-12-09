@@ -9,7 +9,8 @@ from sensor_msgs.msg import Imu          #IMU
 T_SAMPLE = 0.1 #s ou 100ms
 MIN_DETECTION_DEVIATION = 1  #rad/s
 SPEED_PERCENTAGE = 0.5
-
+HEADING_TOLERANCE = 3.0            # tolerance for the heading
+MAX_STEER = 127                    # steer range
 class Esp(Node):
     def __init__(self):
         #Initialization of the node
@@ -28,19 +29,16 @@ class Esp(Node):
         self.motor_right_rear_pwm = 50
         self.motor_left_rear_pwm = 50
         self.motor_steering_angle = 0
+        
         #init variable for command
         self.deviation_rate = None
         self.last_heading = None
-        self.command_error = 0
-        self.deviation_rate = 0
-        self.steer = 0
-        """TO DO : Init the desired_cap ?"""
-
+        self.esp_active = False
+        self.reference_heading = None
+        self.manual_steer = 0.0 # user input
         self.get_logger().info("esp_node READY")
 
-    ####################################
-    ######### Callback Section #########
-    ####################################
+    # ------------------ CALLBACKS ------------------
     def motors_order_callback(self, motors_order : MotorsOrder):
 
         self.motor_right_rear_pwm = motors_order.right_rear_pwm
@@ -48,32 +46,45 @@ class Esp(Node):
         self.motor_steering_angle = motors_order.steering_angle
 
     def joystick_order_callback(self, joystick_order : JoystickOrder):
-        self.steer = joystick_order.steer
+        self.manual_steer = joystick_order.steer
 
     def imu_callback(self, msg):
-         # Commented this out to test the trajectory control only
-         self.trajectory_control()
+        rotation_rate = msg.angular_velocity.z
+        
+        # deviation detection
+        if abs(rotation_rate) > MIN_DETECTION_DEVIATION:
+            if not self.esp_active and self.last_heading is not None:
+                self.esp_active = True
+                self.reference_heading = self.last_heading
+                self.get_logger().info(
+                    f"ESP ACTIVATED | ref_heading = {self.reference_heading:.2f}°"
+                )
+
 
     def ecompass_callback(self,ecompass : ECompass):
         #TO DO: Get the value of desired_cap
+        heading = ecompass.heading
         if self.last_heading == None :
-            self.last_heading = ecompass.heading
+            self.last_heading = heading
         else:
-            heading = ecompass.heading
             self.deviation_rate = (self.last_heading-heading)/T_SAMPLE    #heading rate calculation
             self.last_heading = heading         #update for next iteration
+            # Run ESP only when active
+            if self.esp_active:
+                self.trajectory_control()
 
-        #self.trajectory_control()
-    
-    ####################################
-    ######## ESP Implementation ########
-    ####################################
+                # Deactivation condition
+                if abs(self.reference_heading - heading) < HEADING_TOLERANCE:
+                    self.esp_active = False
+                    self.get_logger().info("ESP DEACTIVATED — heading corrected")
+
+
+    # ------------------ ESP Implementation ------------------ 
 
     def detect_deviation(self, msg: Imu): 
         #utilisez l'angular velocity plus grand que 0.5
         angular_velocity = msg.angular_velocity.z
         if abs(angular_velocity) >= MIN_DETECTION_DEVIATION:
-            angular_velocity_deg = math.degrees(angular_velocity) #je switch rad en degré
             return True
         return False
 
@@ -81,38 +92,21 @@ class Esp(Node):
         return -1 if num < 0 else 1
 
     def trajectory_control(self):
-        # Security for initialisation
-        if self.deviation_rate is None:
-            return False
-
-        # Intermediate variables for the motors order modification
-        rate = abs(self.deviation_rate) # Used as a reference for deviation severity
-        direction = self.sign(self.deviation_rate)
-
-        # Drifting like in movies yeeeeeeeeeh
-        if rate > 60:
-            self.steer = 1 * direction
-        # Driving on ice
-        elif rate > 40:
-            self.steer = 0.4 * direction
-            self.get_logger().info(f"Deviation : {angular_velocity_deg:.2f} °/s detected, Changing steering")
-        # Driving like a Marseillais
-        elif rate > 20:
-            self.steer = 0.6 * direction
-            self.get_logger().info(f"Deviation : {angular_velocity_deg:.2f} °/s detected, Changing steering")
+        #Complete change in the command
 
         # Update motors order
-                # Value for Motors Control
+        # Value for Motors Control
         msg = MotorsOrder()
         msg.right_rear_pwm = self.motor_right_rear_pwm
         msg.left_rear_pwm = self.motor_left_rear_pwm
-        msg.steering_angle = int(self.steer*127) # Angle [-128;127]
+        msg.steering_angle = 0 # Angle [-128;127]
 
         # Publish output
         self.publisher_motors_order.publish(msg)
+        
         # Message in the logger only if deviation
         self.get_logger().info(
-            f"ESP Activated | rate={self.deviation_rate:.1f} deg/s | steer={self.steer:.2f}"
+            f"ESP Activated | rate={self.deviation_rate:.1f} deg/s"
         )
         self.get_logger().info(f"New Motors Order: {msg}")
 

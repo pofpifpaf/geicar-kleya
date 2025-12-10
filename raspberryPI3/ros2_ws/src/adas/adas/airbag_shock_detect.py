@@ -1,18 +1,9 @@
 import rclpy
 from rclpy.node import Node
-import json
+
 
 from sensor_msgs.msg import Imu
 from std_msgs.msg import Bool
-
-from pathlib import Path
-
-
-# Chemin vers le dossier où se trouve ce fichier Python
-current_dir = Path(__file__).parent
-
-# Chemin vers ton fichier JSON dans le même dossier
-data_json = current_dir / "../../../install/hmi/share/hmidata/data.json"
 
 
 min_linear_acceleration = 2.5
@@ -33,8 +24,8 @@ class airbag_shock_detection(Node):
     # true if val >= min_linear_acceleration
     def imu_callback(self, msg):
 
-        # Define a variable with the minimal value for shock detection
-        
+        # Define a variable with the minimal value for shock detection 
+
         # get the data  from the imu topic
         ax = msg.linear_acceleration.x
         ay = msg.linear_acceleration.y
@@ -50,18 +41,8 @@ class airbag_shock_detection(Node):
         else:
             shock = False
 
-        if shock == True:
-            #Open data file
-            with open(data_json, "r") as f:
-                data = json.load(f)
-            data_json["AirbagDeployed"] = True
 
-            #Save data
-            with open(data_json, "w") as f:
-                json.dump(data, f, indent=4)
-
-
-        # publish the message with shock state
+        #publish the message with shock state
         shock_msg = Bool()
         shock_msg.data = shock
         self.publisher_.publish(shock_msg)

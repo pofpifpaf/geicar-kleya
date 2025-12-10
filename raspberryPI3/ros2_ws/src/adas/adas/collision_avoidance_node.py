@@ -1,7 +1,9 @@
 import rclpy
 from rclpy.node import Node
 
+
 from interfaces.msg import Ultrasonic, MotorsOrder
+
 
 STOP = 50
 FIRST_MAX = 65
@@ -52,6 +54,7 @@ class collision_avoidance(Node):
                 self.motor_left_rear_pwm = STOP
                 self.get_logger().info("Detecting obstacle <20 cm: Stopping car")
 
+
             elif ((20 < self.ultra_front_left < 100) or
                   (20 < self.ultra_front_right < 100) or
                   (20 < self.ultra_front_center < 100)):
@@ -59,6 +62,8 @@ class collision_avoidance(Node):
                 self.motor_right_rear_pwm = min(self.motor_right_rear_pwm, FIRST_MAX)
                 self.motor_left_rear_pwm = min(self.motor_left_rear_pwm, FIRST_MAX)
                 self.get_logger().info("Detecting obstacle: Speed limit 30%")
+
+
 
 
         msg = MotorsOrder()

@@ -4,10 +4,17 @@
     "LDW": true,
     "ESP": false,
     "Airbag": false,
-    "Collision": true,
-    "speed": 409,
-    "battery": 363,
-    "pressure": 0,
-    "temperature": 0,
-    "AirbagDeployed": false
+    "Collision": false,
+    "speed": 30,
+    "battery": 40,
+    "pressure": 30,
+    "temperature": 40,
+    "AirbagDeployed": false,
+    "RPMright": 0,
+    "RPMleft": 0,
+    "RPM": 400,
+    "front_left": 0,
+    "front_right": 0,
+    "front_center": 0,
+    "collision_stop": false
 }

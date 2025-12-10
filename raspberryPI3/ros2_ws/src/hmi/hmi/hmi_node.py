@@ -3,7 +3,7 @@ import rclpy
 import json
 from rclpy.node import Node
 from interfaces.msg import MotorsFeedback, GeneralData
-from std_msgs.msg import Bool
+#from std_msgs.msg import Bool
 from pathlib import Path
 
 # Chemin vers le dossier où se trouve ce fichier Python
@@ -25,7 +25,7 @@ class hmi_node(Node):
         self.subscription = self.create_subscription(MotorsFeedback,'motors_feedback', self.motorsfeedback_callback, 10)
         self.subscription = self.create_subscription(GeneralData,'general_data', self.generaldata_callback, 10)
         #self.subscription = self.create_subscription(Hmifeatures,'features_priority_hmi', self.hmifeatures_callback, 10)
-        self.subscription = self.create_subscription(Bool,'isShockDetected', self.isshockdetected_callback, 10)
+        #self.subscription = self.create_subscription(Bool,'isShockDetected', self.isshockdetected_callback, 10)
 
         # Variables initialisation
         self.left_rear_RPM  = 0  
@@ -49,6 +49,7 @@ class hmi_node(Node):
         # RPM variables
         self.left_rear_RPM  = motors_feedback.left_rear_speed  
         self.right_rear_RPM   = motors_feedback.right_rear_speed  
+        self.RPM = (self.left_rear_RPM + self.right_rear_RPM) / 2
 
         # Speed variables
         self.left_speed = (self.left_rear_RPM * self.circonference(0.95) * 0.06)
@@ -84,9 +85,10 @@ class hmi_node(Node):
         data["pressure"] = self.pressure
         data["temperature"] = self.temperature
         data["speed"] = self.speed
-        data["AirbagDeployed"] = self.shockdetected
+        #data["AirbagDeployed"] = self.shockdetected
         data["RPMright"] = self.right_rear_RPM
         data["RPMleft"] = self.left_rear_RPM
+        data["RPM"] = self.RPM
 
         #Save data
         with open(data_json, "w") as f:

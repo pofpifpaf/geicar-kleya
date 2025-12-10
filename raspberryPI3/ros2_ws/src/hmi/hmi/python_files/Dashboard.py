@@ -7,7 +7,10 @@ from pathlib import Path
 import threading
 shared_data = {"speed": 0,
                "AirbagDeployed" : False,
-               "RPMright" : 0}
+               "RPM" : 0,
+               "battery" : 0,
+               "pressure": 0,
+               "temperature":0}
 
 
 current_dir = Path(__file__).parent
@@ -26,9 +29,11 @@ def generate_dashboard():
             with open(data_json, "r") as f:
                 j = json.load(f)
                 shared_data["speed"] = j["speed"]
-                if (shared_data["AirbagDeployed"]==False):
-                  shared_data["AirbagDeployed"] = j["AirbagDeployed"]
-                shared_data["RPMright"] = j["RPMright"]
+                shared_data["AirbagDeployed"] = j["AirbagDeployed"]
+                shared_data["RPM"] = j["RPM"]
+                shared_data["battery"] = j["battery"]
+                shared_data["pressure"] = j["pressure"]
+                shared_data["temperature"] = j["temperature"]
         except:
             pass
         time.sleep(0.2)
@@ -81,21 +86,20 @@ def generate_dashboard():
       </svg>
       """
 
-  def generate_dashboard_html(power_val, rpm_val, speed_val, batt_percent, fuel_percent, AirbagDeployed=False, ldw=False, Collision=False):
+  def generate_dashboard_html(power_val, rpm_val, speed_val, batt_percent, fuel_percent, pressure_value, temperature_value, AirbagDeployed=False, ldw=False, Collision=False):
       power_norm = min(power_val / 200.0, 1.0)
       batt_norm = min(batt_percent / 100.0, 1.0)
       rpm_norm = min(rpm_val / 7000.0, 1.0)
       fuel_norm = min(fuel_percent / 10000.0, 1.0)
+      temperature_norm = min(temperature_value/100, 1.0)
+      pressure_norm =  min(pressure_value/100, 1.0)
           
       left_gauge = f"""
       <div class="gauge-container" style="position:relative;">
-        <div class="gauge-label-top">{power_val:.0f} kW</div>
-        {svg_semi_gauge(percent=power_norm, primary_color="#6EF2B0")}
-        <!-- Mini-jauge RPM au centre de la grande jauge -->
-        <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -25%);">
-          {svg_mini_gauge(percent=batt_norm, primary_color="#FFD36E")}
-        </div>
-        <div class="gauge-label-bottom">{batt_percent:.0f} %</div>
+        <div class="gauge-label-top">Battery</div>
+        {svg_semi_gauge(percent=batt_norm, primary_color="#6EF2B0")}
+
+        <div class="gauge-label-bottom">{batt_percent:.0f}% battery</div>
       </div>
       """
 
@@ -103,11 +107,8 @@ def generate_dashboard():
       <div class="gauge-container" style="position:relative;">
         <div class="gauge-label-top"> RPM x100 </div>
         {svg_semi_gauge(percent=rpm_norm, primary_color="#6EE6FF")}
-        <!-- Mini-jauge Carburant au centre de la grande jauge -->
-        <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -25%);">
-          {svg_mini_gauge(percent=fuel_norm, primary_color="#FF6E6E")}
-        </div>
-        <div class="gauge-label-bottom"> 0%</div>
+
+        <div class="gauge-label-bottom">{rpm_val:.0f} RPM</div>
       </div>
       """
       
@@ -116,7 +117,10 @@ def generate_dashboard():
       <div class="center-panel">
         <div style="color:#4EE6FF; font-size:18px;">Hold My Wheel</div>
         <div class="speed-value">{int(speed_val):02d}</div>
-        <div class="unit">km/h</div>
+        <div class="unit">km/h</div>    
+        <div class="generaltempandpressure">    
+          <div class="tempandpressure">🌡️ : {temperature_value :.0f} degrees</div>
+        </div>
       </div>
       """
       collision_overlay = '<div class="collision-overlay">⚠ Obstacle in 1 meter</div>' if Collision else ""
@@ -218,6 +222,23 @@ def generate_dashboard():
     }
     .speed-value { font-size:120px; font-weight:700; color:#fff; text-shadow:0 2px 18px rgba(0,160,255,0.5); }
     .unit { font-size:24px; color:#b8d7ff; opacity:0.85; }
+
+    .generaltempandpressure{
+      margin-top: 10px;        
+      padding: 6px 10px;       
+      border: 1px solid #b8d7ff55;   
+      border-radius: 6px;     
+      display: inline-block;   
+      text-align: center;
+    } 
+    .tempandpressure {
+      font-size:14px;
+      color:#b8d7ff;
+      opacity:0.85;
+      line-height:18px;
+      margin:0;
+      padding:0;
+    }
 
     .status-row {
     grid-column:1/4;
@@ -332,10 +353,12 @@ def generate_dashboard():
 
   html = generate_dashboard_html(
       power_val=120,
-      rpm_val=shared_data["RPMright"],
+      rpm_val=shared_data["RPM"],
       speed_val=shared_data["speed"],
-      batt_percent=0, #shared_data["battery"],
+      batt_percent=shared_data["battery"],
       fuel_percent=56,
+      temperature_value= shared_data["temperature"],
+      pressure_value= shared_data["pressure"],
       AirbagDeployed=shared_data["AirbagDeployed"],
       ldw = False,
       Collision=False #shared_data["Collision"]

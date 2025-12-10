@@ -12,6 +12,7 @@
     "AirbagDeployed": false,
     "RPMright" : 0,
     "RPMleft" : 0,
+    "RPM" : 0,
     "front_left" : 0,
     "front_right" : 0,
     "front_center" : 0,

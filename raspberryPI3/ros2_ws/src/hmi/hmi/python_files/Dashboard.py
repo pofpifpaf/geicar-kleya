@@ -4,7 +4,10 @@ import time
 import json
 from streamlit_autorefresh import st_autorefresh
 from pathlib import Path
-import textwrap
+import threading
+shared_data = {"speed": 0,
+               "AirbagDeployed" : False,
+               "RPMright" : 0}
 
 
 current_dir = Path(__file__).parent
@@ -16,7 +19,23 @@ def generate_dashboard():
   def load_config(path=data_json):
       with open(path, "r") as f:
           return json.load(f)
-  shared_data = load_config(data_json)
+  #shared_data = load_config(data_json)
+  def background_reader():
+    while True:
+        try:
+            with open(data_json, "r") as f:
+                j = json.load(f)
+                shared_data["speed"] = j["speed"]
+                if (shared_data["AirbagDeployed"]==False):
+                  shared_data["AirbagDeployed"] = j["AirbagDeployed"]
+                shared_data["RPMright"] = j["RPMright"]
+        except:
+            pass
+        time.sleep(0.2)
+
+  if "thread_started" not in st.session_state:
+    threading.Thread(target=background_reader, daemon=True).start()
+    st.session_state.thread_started = True
 
   def svg_mini_gauge(width=120, height=100, percent=0.5, ticks=5, primary_color="#FFD36E"):
       # On peut juste réutiliser svg_semi_gauge avec des dimensions réduites
@@ -313,15 +332,15 @@ def generate_dashboard():
 
   html = generate_dashboard_html(
       power_val=120,
-      rpm_val=3500,
+      rpm_val=shared_data["RPMright"],
       speed_val=shared_data["speed"],
-      batt_percent=shared_data["battery"],
+      batt_percent=0, #shared_data["battery"],
       fuel_percent=56,
       AirbagDeployed=shared_data["AirbagDeployed"],
       ldw = False,
-      Collision=shared_data["Collision"]
+      Collision=False #shared_data["Collision"]
   )
 
   st.markdown(html, unsafe_allow_html=True)
-  st_autorefresh(interval=100)
+  st_autorefresh(interval=400)
     

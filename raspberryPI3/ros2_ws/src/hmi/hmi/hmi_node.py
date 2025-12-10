@@ -2,7 +2,8 @@ import math
 import rclpy
 import json
 from rclpy.node import Node
-from interfaces.msg import MotorsFeedback, GeneralData, Hmifeatures, Bool
+from interfaces.msg import MotorsFeedback, GeneralData
+from std_msgs.msg import Bool
 from pathlib import Path
 
 # Chemin vers le dossier où se trouve ce fichier Python
@@ -18,12 +19,12 @@ class hmi_node(Node):
         super().__init__('hmi_node')
 
         # Publishers
-        self.publisher_active_features_hmi = self.create_publisher(Hmifeatures, 'active_features_hmi', 10)
+        #self.publisher_active_features_hmi = self.create_publisher(Hmifeatures, 'active_features_hmi', 10)
         
         # Suscribers
         self.subscription = self.create_subscription(MotorsFeedback,'motors_feedback', self.motorsfeedback_callback, 10)
         self.subscription = self.create_subscription(GeneralData,'general_data', self.generaldata_callback, 10)
-        self.subscription = self.create_subscription(Hmifeatures,'features_priority_hmi', self.hmifeatures_callback, 10)
+        #self.subscription = self.create_subscription(Hmifeatures,'features_priority_hmi', self.hmifeatures_callback, 10)
         self.subscription = self.create_subscription(Bool,'isShockDetected', self.isshockdetected_callback, 10)
 
         # Variables initialisation

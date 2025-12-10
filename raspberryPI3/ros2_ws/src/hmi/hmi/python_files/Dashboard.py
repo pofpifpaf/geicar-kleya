@@ -29,7 +29,8 @@ def generate_dashboard():
             with open(data_json, "r") as f:
                 j = json.load(f)
                 shared_data["speed"] = j["speed"]
-                shared_data["AirbagDeployed"] = j["AirbagDeployed"]
+                if j["AirbagDeployed"] == True:
+                  shared_data["AirbagDeployed"] = j["AirbagDeployed"]
                 shared_data["RPM"] = j["RPM"]
                 shared_data["battery"] = j["battery"]
                 shared_data["pressure"] = j["pressure"]

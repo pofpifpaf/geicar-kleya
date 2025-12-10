@@ -28,7 +28,6 @@ class Esp(Node):
         #Subscription to the node ESP need
         self.subscription = self.create_subscription(MotorsOrder,'motors_order_raw', self.motors_order_callback, 10)
         self.subscription = self.create_subscription(Imu,'/imu/data', self.imu_callback,10)
-        self.subscription = self.create_subscription(JoystickOrder,'joystick_order', self.joystick_order_callback,10)
         self.subscription = self.create_subscription(ECompass,'imu/ecompass', self.ecompass_callback,10)
         self.subscription  # prevent unused variable warning
 
@@ -50,8 +49,6 @@ class Esp(Node):
         self.esp_intermediate_state = False
         self.esp_active = False
         
-
-        self.manual_steer = 0.0 # user input
         self.get_logger().info("esp_node READY")
 
     # ------------------ CALLBACKS ------------------
@@ -61,8 +58,6 @@ class Esp(Node):
         self.motor_left_rear_pwm = motors_order.left_rear_pwm
         self.motor_steering_angle = motors_order.steering_angle
 
-    def joystick_order_callback(self, joystick_order : JoystickOrder):
-        self.manual_steer = joystick_order.steer
 
     def imu_callback(self, msg):
 

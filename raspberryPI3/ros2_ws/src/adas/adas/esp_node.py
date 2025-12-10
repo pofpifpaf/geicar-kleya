@@ -9,15 +9,15 @@ from sensor_msgs.msg import Imu
 #Global Variable
 # Variables from the car characteristics
 T_SAMPLE = 0.1 #s ou 100ms
-MIN_DEVIATION_Z_ANG_VEL = 0.5  #rad/s
+MIN_DEVIATION_Z_ANG_VEL = 0.75  #rad/s
 MAX_STEER = 127                    # steer range
 INTERMEDIATE_TIMEOUT = 0.2         # seconds
 MIN_ESP_ACTIVE_TIME = 0.5          # seconds before disabling
 # ESP parameters
 SPEED_PERCENTAGE = 0.5
-HEADING_TOLERANCE = 3.0            # tolerance for the heading
+HEADING_TOLERANCE = 1.0            # tolerance for the heading
 SIZE_BUFFER_HEADING = 20
-REF_HEADING_RATE = 15.0                    # heading difference to activate ESP
+REF_HEADING_RATE = 9.0                    # heading difference to activate ESP
 class Esp(Node):
     def __init__(self):
         #Initialization of the node
@@ -139,7 +139,7 @@ class Esp(Node):
         if abs(rotation_rate) > MIN_DEVIATION_Z_ANG_VEL and not self.esp_active :
                 self.esp_active = True
                 self.get_logger().info(
-                    f"ESP ACTIVATED | ref_heading = {self.reference_heading:.2f}°"
+                    f"ESP ACTIVATED | ref_heading = {self.reference_heading:.2f}° | angular_velocity_z = {rotation_rate:.2f} rad/s"
                 )
 
     def trajectory_control(self):

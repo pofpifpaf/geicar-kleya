@@ -1,5 +1,6 @@
 import rclpy
 from rclpy.node import Node
+import time
 from interfaces.msg import MotorsOrder, MotorsOrderAdas, HmiFeatures
 
 #Priorities
@@ -12,6 +13,7 @@ NOT_USED_FEATURE = 10
 STOP = 50
 
 REFRESH_PERIOD = 0.002
+AIRBAG_BLOCK_DURATION = 10
 
 class adas_priority(Node):
 
@@ -35,7 +37,9 @@ class adas_priority(Node):
                          "airbag":AIRBAG_PRIO,
                          "esp":ESP_PRIO}
 
-        self.hmi_priorities = {}
+        self.hmi_priorities = {"collision":True,
+                             "airbag":True,
+                             "esp":True}
 
         # Active features on HMI
         self.collision_avoidance_active_HMI = 0
@@ -46,6 +50,9 @@ class adas_priority(Node):
         self.motor_right_rear_pwm = 50
         self.motor_left_rear_pwm = 50
         self.steering_angle = 0
+
+        self.state_airbag_deployed = False
+        self.time_airbag_deployed = 0
 
         self.timer = self.create_timer(REFRESH_PERIOD, self.publish_motors_order_decision)
 
@@ -71,8 +78,8 @@ class adas_priority(Node):
         self.hmi_priorities = {"collision":msg.collision_avoidance_active, "airbag":msg.airbag_active, "esp":msg.esp_active}
 
     def motors_order_raw_callback(self, msg):
-        self.motor_left_rear_pwm = msg.motor_left_rear_pwm
-        self.motor_right_rear_pwm = msg.motor_right_rear_pwm
+        self.motor_left_rear_pwm = msg.left_rear_pwm
+        self.motor_right_rear_pwm = msg.right_rear_pwm
         self.steering_angle = msg.steering_angle
 
     def publish_motors_order_decision(self):
@@ -81,20 +88,24 @@ class adas_priority(Node):
 
         for key, msg in self.last_offsets.items():
 
-            if msg.active and hmi_priorities[key]:
+            if msg.active and self.hmi_priorities[key]:
 
                 min_prio = min(self.priorities[key], min_prio)
                 
                 if (self.priorities[key] == min_prio):
 
-                    if emergency_stop and key == "airbag":
+                    if msg.emergency_stop and key == "airbag":
 
                         self.motor_left_rear_pwm = STOP
                         self.motor_right_rear_pwm = STOP
 
-                        self.get_logger().info(f"Emergency stop detected from {key} node")
+                        if not self.state_airbag_deployed:
+                            self.get_logger().info(f"Emergency stop detected from airbag node")
+                            self.time_airbag_deployed = time.time()
+                            self.state_airbag_deployed = True
 
-                    elif emergency_stop:
+
+                    elif msg.emergency_stop:
 
                         if self.motor_right_rear_pwm > STOP and self.motor_left_rear_pwm > STOP:
 
@@ -113,10 +124,18 @@ class adas_priority(Node):
                             self.motor_right_rear_pwm = min(self.motor_right_rear_pwm, msg.max_pwm + STOP)
 
         motors_msg = MotorsOrder()
-        motors_msg.right_rear_pwm = self.motor_right_rear_pwm
-        motors_msg.left_rear_pwm = self.motor_left_rear_pwm
-        motors_msg.steering_angle = self.steering_angle
 
+        if (time.time() - self.time_airbag_deployed < AIRBAG_BLOCK_DURATION) and self.state_airbag_deployed:
+            # self.get_logger().info(f"airbag deployed for time = {time.time() - self.time_airbag_deployed}")
+            motors_msg.right_rear_pwm = STOP
+            motors_msg.left_rear_pwm = STOP
+            motors_msg.steering_angle = self.steering_angle
+        else:
+            motors_msg.right_rear_pwm = self.motor_right_rear_pwm
+            motors_msg.left_rear_pwm = self.motor_left_rear_pwm
+            motors_msg.steering_angle = self.steering_angle
+            self.state_airbag_deployed = False
+            
         self.pub_final.publish(motors_msg)        
         
 

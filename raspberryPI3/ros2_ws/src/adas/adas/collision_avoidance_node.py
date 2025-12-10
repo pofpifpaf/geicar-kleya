@@ -58,10 +58,10 @@ class collision_avoidance(Node):
 
     def motors_order_raw_callback(self, msg):
 
-        self.motor_right_rear_pwm = msg.motor_right_rear_pwm
-        self.motor_left_rear_pwm = msg.motor_left_rear_pwm
+        self.motor_right_rear_pwm = msg.right_rear_pwm
+        self.motor_left_rear_pwm = msg.left_rear_pwm
 
-        self.motor_steering_angle = msg.steering_angles
+        self.motor_steering_angle = msg.steering_angle
 
     def detect_collision(self):
 
@@ -74,9 +74,11 @@ class collision_avoidance(Node):
             if self.ultra_front_left < 20 or self.ultra_front_right < 20 or self.ultra_front_center < 20:
 
                 self.emergency_stop = True
-                self.get_logger().info("Detecting obstacle <20 cm: Stopping car")
                 self.active = True
                 self.state = STATE_20CM
+                
+                if self.state != self.prev_state:
+                    self.get_logger().info("Detecting obstacle <20 cm: Stopping car")
 
 
             elif ((20 < self.ultra_front_left < 100) or
@@ -84,9 +86,11 @@ class collision_avoidance(Node):
                   (20 < self.ultra_front_center < 100)):
 
                 self.max_pwm = 30
-                self.get_logger().info("Detecting obstacle: Speed limit 30%")
                 self.active = True
                 self.state = STATE_1M
+
+                if self.state != self.prev_state:
+                    self.get_logger().info("Detecting obstacle: Speed limit 30%")
 
 
         # Publishing
@@ -102,7 +106,7 @@ class collision_avoidance(Node):
 
             msg.emergency_stop = self.emergency_stop
 
-            msg.changes = self.active
+            msg.active = self.active
 
             self.publisher_motors_order.publish(msg)
 

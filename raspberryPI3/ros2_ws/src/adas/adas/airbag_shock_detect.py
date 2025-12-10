@@ -5,7 +5,7 @@ from sensor_msgs.msg import Imu
 
 from interfaces.msg import MotorsOrderAdas
 
-min_linear_acceleration = 5
+min_linear_acceleration = 2.5
 
 STATE_SHOCK = "shock"
 STATE_NOTHING = "nothing"
@@ -15,7 +15,7 @@ class airbag_shock_detection(Node):
     def __init__(self):
         #Initialization of the shock_detection_node Node
         super().__init__('shock_detection_node')
-        self.publisher_ = self.create_publisher(MotorsOrderAdas, 'motors_order_airbag', 10)
+        self.publisher_motors_order = self.create_publisher(MotorsOrderAdas, 'motors_order_airbag', 10)
 
         #Subscription to the IMU topic
         self.subscription = self.create_subscription(Imu,'/imu/data', self.imu_callback, 10)
@@ -41,6 +41,7 @@ class airbag_shock_detection(Node):
     def imu_callback(self, msg):
 
         self.emergency_stop = False
+        self.active = False
 
         self.state = STATE_NOTHING
 
@@ -55,6 +56,7 @@ class airbag_shock_detection(Node):
             ay >= min_linear_acceleration ):
             self.emergency_stop = True
             self.state = STATE_SHOCK
+            self.active = True
 
             # log to debug
             self.get_logger().info(f"Accel = ({ax:.2f}, {ay:.2f}), Shock detected")
@@ -73,7 +75,7 @@ class airbag_shock_detection(Node):
 
             msg.emergency_stop = self.emergency_stop
 
-            msg.changes = self.active
+            msg.active = self.active
 
             self.publisher_motors_order.publish(msg)
 

@@ -18,6 +18,8 @@ SPEED_PERCENTAGE = 0.5
 HEADING_TOLERANCE = 1.0            # tolerance for the heading
 SIZE_BUFFER_HEADING = 20
 REF_HEADING_RATE = 9.0                    # heading difference to activate ESP
+DELAY_INDEX = SIZE_BUFFER_HEADING                   # number of samples to confirm stability
+
 class Esp(Node):
     def __init__(self):
         #Initialization of the node
@@ -106,7 +108,7 @@ class Esp(Node):
         # )
         # Check for sudden heading change
         if abs(heading_rate) > REF_HEADING_RATE and not self.esp_active:
-            self.reference_heading = prev # set reference to previous stable heading 
+            self.reference_heading = self.heading_buffer[-DELAY_INDEX] # set reference to previous stable heading 
             self.esp_intermediate_state = True
             self.get_logger().info("ESP IN INTERMEDIATE STATE — heading drift detected")
 
@@ -121,7 +123,7 @@ class Esp(Node):
         else:
             self.stable_count = 0  # reset if unstable
         
-        if self.stable_count >= 5:  # stable for required samples
+        if self.stable_count >= DELAY_INDEX:  # stable for required samples
             self.esp_active = False
             self.reference_heading = self.last_heading # update reference
             self.get_logger().info("ESP DEACTIVATED — heading stable")

@@ -1,7 +1,4 @@
-# TO DO : Buffer pour le heading
 # TO DO : La commande
-# TO DO : Double detection avec le heading en premier critère puis timer pour voir si angular velocity
-#               Pour distinguer le tournant du choc
 # T_SAMPLE changer avec les vrais trames reçu
 # TO DO : Ajouter un timer pour sortir de l'état intermédiaire si pas de déviation après un certain temps
 import rclpy
@@ -10,13 +7,17 @@ from interfaces.msg import MotorsOrder, JoystickOrder, ECompass
 from sensor_msgs.msg import Imu
 
 #Global Variable
+# Variables from the car characteristics
 T_SAMPLE = 0.1 #s ou 100ms
-MIN_DETECTION_DEVIATION = 1  #rad/s
+MIN_DEVIATION_Z_ANG_VEL = 0.5  #rad/s
+MAX_STEER = 127                    # steer range
+INTERMEDIATE_TIMEOUT = 0.2         # seconds
+MIN_ESP_ACTIVE_TIME = 0.5          # seconds before disabling
+# ESP parameters
 SPEED_PERCENTAGE = 0.5
 HEADING_TOLERANCE = 3.0            # tolerance for the heading
-MAX_STEER = 127                    # steer range
 SIZE_BUFFER_HEADING = 20
-REF_HEADING_DIFF = 5.0                    # heading difference to activate ESP
+REF_HEADING_RATE = 15.0                    # heading difference to activate ESP
 class Esp(Node):
     def __init__(self):
         #Initialization of the node
@@ -35,14 +36,16 @@ class Esp(Node):
         self.motor_right_rear_pwm = 50
         self.motor_left_rear_pwm = 50
         self.motor_steering_angle = 0
-        
-        #init variable for command
-        self.deviation_rate = None
+
+        # Heading variables to detect sudden deviation
         self.last_heading = None
         self.heading = None
+        # Reference heading when ESP is activated
         self.reference_heading = None
+        # Buffer for heading stability check
         self.heading_buffer = []
-        
+        self.stable_count = 0
+
         # ESP state variables
         self.esp_intermediate_state = False
         self.esp_active = False
@@ -67,67 +70,96 @@ class Esp(Node):
             self.deviation_confirmation(msg)
 
     def ecompass_callback(self, ecompass: ECompass):
-        self.heading = ecompass.heading     
-        # Initialization of last heading
-        if self.last_heading is None:
-            self.last_heading = self.heading
-            return
-        # Compare heading variation
-        self.compare_heading_variation(self.last_heading, self.heading)
-        # Mise à jour pour la prochaine itération
-        self.last_heading = self.heading
+        current = ecompass.heading
+
+        if self.last_heading is not None:
+            self.detect_heading_jump(self.last_heading, current)
+
+        # Now update last heading
+        self.last_heading = current
+
+        # Update buffer & check deactivation
+        self.update_heading_buffer(current)
+        self.check_esp_deactivation()
 
 
+    # ------- HEADING BUFFER FOR DEACTIVATION CONDITION -------
+
+    def update_heading_buffer(self, heading):
+        self.heading_buffer.append(heading)
+        if len(self.heading_buffer) > SIZE_BUFFER_HEADING:
+            self.heading_buffer.pop(0)
+
+    def is_heading_stable(self):
+        if len(self.heading_buffer) < SIZE_BUFFER_HEADING:
+            return False
+        
+        avg = sum(self.heading_buffer) / len(self.heading_buffer)
+        return abs(avg - self.reference_heading) < HEADING_TOLERANCE
+    
 
     # ------------------ ESP Implementation ------------------ 
 
     def sign(self, num):
         return -1 if num < 0 else 1
 
-    def compare_heading_variation(self, prev, current):
-        if abs(prev - current) > REF_HEADING_DIFF:
+    def detect_heading_jump(self, prev, current):
+        heading_rate = (current - prev) / T_SAMPLE  # deg/s
+        # debug log
+        # self.get_logger().info(
+        #     f"In detect_heading_jump | prev={prev:.2f}° current={current:.2f}° rate={heading_rate:.2f}°/s"
+        # )
+        # Check for sudden heading change
+        if abs(heading_rate) > REF_HEADING_RATE and not self.esp_active:
+            self.reference_heading = prev # set reference to previous stable heading 
             self.esp_intermediate_state = True
-            self.get_logger().info("ESP IN INTERMEDIATE STATE — heading change detected")
+            self.get_logger().info("ESP IN INTERMEDIATE STATE — heading drift detected")
 
-        elif self.esp_active:
-            # ToDO: Compare the headings buffer to see if the heading is stable
-            self.esp_intermediate_state = False
+
+    def check_esp_deactivation(self):
+        if not self.esp_active:
+            return
+        
+        # Check heading stability using buffer average
+        if abs(self.last_heading - self.reference_heading) < HEADING_TOLERANCE :
+            self.stable_count += 1
+        else:
+            self.stable_count = 0  # reset if unstable
+        
+        if self.stable_count >= 5:  # stable for required samples
             self.esp_active = False
+            self.reference_heading = self.last_heading # update reference
             self.get_logger().info("ESP DEACTIVATED — heading stable")
-            # Deactivation condition
-            # if abs(self.reference_heading - current) < HEADING_TOLERANCE:
-            #     self.esp_active = False
-            #     self.get_logger().info("ESP DEACTIVATED — heading corrected")
+
+
 
     def deviation_confirmation(self, msg):
         # deviation detection
         rotation_rate = msg.angular_velocity.z
-        if abs(rotation_rate) > MIN_DETECTION_DEVIATION:
-            if not self.esp_active and self.last_heading is not None:
+        if abs(rotation_rate) > MIN_DEVIATION_Z_ANG_VEL and not self.esp_active :
                 self.esp_active = True
-                self.reference_heading = self.last_heading
                 self.get_logger().info(
                     f"ESP ACTIVATED | ref_heading = {self.reference_heading:.2f}°"
                 )
 
     def trajectory_control(self):
-        #Complete change in the command with pallier
+        # #Complete change in the command with pallier
+        pass
+        # # Update motors order
+        # # Value for Motors Control
+        # msg = MotorsOrder()
+        # msg.right_rear_pwm = self.motor_right_rear_pwm
+        # msg.left_rear_pwm = self.motor_left_rear_pwm
+        # msg.steering_angle = 0 # Angle [-128;127]
 
-        # Update motors order
-        # Value for Motors Control
-        msg = MotorsOrder()
-        msg.right_rear_pwm = self.motor_right_rear_pwm
-        msg.left_rear_pwm = self.motor_left_rear_pwm
-        msg.steering_angle = 0 # Angle [-128;127]
-
-        # Publish output
-        self.publisher_motors_order.publish(msg)
+        # # Publish output
+        # self.publisher_motors_order.publish(msg)
         
-        # Message in the logger only if deviation
-        self.get_logger().info(
-            f"ESP Activated | rate={self.deviation_rate:.1f} deg/s"
-        )
-        self.get_logger().info(f"New Motors Order: {msg}")
+        # # Message in the logger only if deviation
+        # self.get_logger().info(
+        #     f"ESP Activated | rate={self.deviation_rate:.1f} deg/s"
+        # )
+        # self.get_logger().info(f"New Motors Order: {msg}")
 
 
 def main(args=None):

@@ -1,10 +1,16 @@
 import rclpy
 from rclpy.node import Node
 
-from interfaces.msg import Ultrasonic, MotorsOrderAdas
+from interfaces.msg import Ultrasonic, MotorsOrder, MotorsOrderAdas
 
 STOP = 50
 FIRST_MAX = 65
+
+STATE_20CM = "state_20cm"
+STATE_NOTHING = "state_nothing"
+STATE_1M = "state_1m"
+
+REFRESH_PERIOD = 0.002
 
 class collision_avoidance(Node):
 
@@ -14,6 +20,7 @@ class collision_avoidance(Node):
         self.publisher_motors_order = self.create_publisher(MotorsOrderAdas, 'motors_order_collision', 10)
 
         self.subscription = self.create_subscription(Ultrasonic,'us_data', self.ultrasonic_callback, 10)
+        self.subscription = self.create_subscription(MotorsOrder,'motors_order_raw', self.motors_order_raw_callback, 10)
         self.subscription  # prevent unused variable warning
 
         self.ultra_front_left = 300
@@ -22,12 +29,21 @@ class collision_avoidance(Node):
 
         self.motor_right_rear_pwm_offset = 0
         self.motor_left_rear_pwm_offset = 0
-        self.motor_steering_angle_offset = 0
+        self.steering_angle_offset = 0
+
+        self.motor_right_rear_pwm = 0
+        self.motor_left_rear_pwm = 0
+        self.steering_angle = 0
 
         self.max_pwm = 100
         self.emergency_stop = False
 
+        self.state = STATE_NOTHING
+        self.prev_state = STATE_NOTHING
+
         self.active = False
+
+        self.timer = self.create_timer(REFRESH_PERIOD, self.detect_collision)
 
         self.get_logger().info("collision_avoidance_node READY")
 
@@ -40,9 +56,17 @@ class collision_avoidance(Node):
 
         self.detect_collision()
 
+    def motors_order_raw_callback(self, msg):
+
+        self.motor_right_rear_pwm = msg.motor_right_rear_pwm
+        self.motor_left_rear_pwm = msg.motor_left_rear_pwm
+
+        self.motor_steering_angle = msg.steering_angles
+
     def detect_collision(self):
 
         self.active = False
+        self.state = STATE_NOTHING
         self.emergency_stop = False
 
         if self.motor_right_rear_pwm > STOP or self.motor_left_rear_pwm > STOP:
@@ -52,6 +76,8 @@ class collision_avoidance(Node):
                 self.emergency_stop = True
                 self.get_logger().info("Detecting obstacle <20 cm: Stopping car")
                 self.active = True
+                self.state = STATE_20CM
+
 
             elif ((20 < self.ultra_front_left < 100) or
                   (20 < self.ultra_front_right < 100) or
@@ -60,23 +86,27 @@ class collision_avoidance(Node):
                 self.max_pwm = 30
                 self.get_logger().info("Detecting obstacle: Speed limit 30%")
                 self.active = True
+                self.state = STATE_1M
 
 
         # Publishing
-        msg = MotorsOrderAdas()
+        if self.state != self.prev_state:
+            msg = MotorsOrderAdas()
 
-        msg.offset_right_rear_pwm = self.motor_right_rear_pwm_offset
-        msg.offset_left_rear_pwm = self.motor_left_rear_pwm_offset
+            msg.offset_right_rear_pwm = self.motor_right_rear_pwm_offset
+            msg.offset_left_rear_pwm = self.motor_left_rear_pwm_offset
 
-        msg.offset_steering_angle = self.motor_steering_angle_offset
+            msg.offset_steering_angle = self.steering_angle_offset
 
-        msg.max_pwm = self.max_pwm
+            msg.max_pwm = self.max_pwm
 
-        msg.emergency_stop = self.emergency_stop
+            msg.emergency_stop = self.emergency_stop
 
-        msg.changes = self.active
+            msg.changes = self.active
 
-        self.publisher_motors_order.publish(msg)
+            self.publisher_motors_order.publish(msg)
+
+        self.prev_state = self.state
 
 
 

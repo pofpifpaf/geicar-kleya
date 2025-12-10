@@ -7,6 +7,9 @@ from interfaces.msg import MotorsOrderAdas
 
 min_linear_acceleration = 5
 
+STATE_SHOCK = "shock"
+STATE_NOTHING = "nothing"
+
 class airbag_shock_detection(Node):
 
     def __init__(self):
@@ -27,12 +30,19 @@ class airbag_shock_detection(Node):
 
         self.active = False
 
+        self.state = STATE_NOTHING
+        self.prev_state = STATE_NOTHING
+
+        self.get_logger().info("Shock detection node READY")
+
 
     # function that get called when an IMU value is received and send in the topic isShockDetect
     # true if val >= min_linear_acceleration
     def imu_callback(self, msg):
 
         self.emergency_stop = False
+
+        self.state = STATE_NOTHING
 
         # Define a variable with the minimal value for shock detection
         
@@ -44,25 +54,30 @@ class airbag_shock_detection(Node):
         if (ax >= min_linear_acceleration or 
             ay >= min_linear_acceleration ):
             self.emergency_stop = True
+            self.state = STATE_SHOCK
 
             # log to debug
             self.get_logger().info(f"Accel = ({ax:.2f}, {ay:.2f}), Shock detected")
 
         # Publishing
-        msg = MotorsOrderAdas()
+        if self.prev_state != self.state:
 
-        msg.offset_right_rear_pwm = self.motor_right_rear_pwm_offset
-        msg.offset_left_rear_pwm = self.motor_left_rear_pwm_offset
+            msg = MotorsOrderAdas()
 
-        msg.offset_steering_angle = self.motor_steering_angle_offset
+            msg.offset_right_rear_pwm = self.motor_right_rear_pwm_offset
+            msg.offset_left_rear_pwm = self.motor_left_rear_pwm_offset
 
-        msg.max_pwm = self.max_pwm
+            msg.offset_steering_angle = self.motor_steering_angle_offset
 
-        msg.emergency_stop = self.emergency_stop
+            msg.max_pwm = self.max_pwm
 
-        msg.changes = self.active
+            msg.emergency_stop = self.emergency_stop
 
-        self.publisher_motors_order.publish(msg)
+            msg.changes = self.active
+
+            self.publisher_motors_order.publish(msg)
+
+        self.prev_state = self.state
 
 
 def main(args=None):

@@ -11,13 +11,15 @@ NOT_USED_FEATURE = 10
 
 STOP = 50
 
+REFRESH_PERIOD = 0.002
+
 class adas_priority(Node):
 
     def __init__(self):
-        super().__init__('adas_priority')
+        super().__init__('adas_priority_node')
 
         # Subscribers 
-        self.sub_raw = self.create_publisher(MotorsOrder, 'motors_order_raw', self.motors_order_raw_callback, 10)
+        self.sub_raw = self.create_subscription(MotorsOrder, 'motors_order_raw', self.motors_order_raw_callback, 10)
 
         self.sub_collision = self.create_subscription(MotorsOrderAdas, 'motors_order_collision', self.collision_callback, 10)
         self.sub_airbag = self.create_subscription(MotorsOrderAdas, 'motors_order_airbag', self.airbag_callback, 10)
@@ -45,6 +47,8 @@ class adas_priority(Node):
         self.motor_left_rear_pwm = 50
         self.steering_angle = 0
 
+        self.timer = self.create_timer(REFRESH_PERIOD, self.publish_motors_order_decision)
+
         self.get_logger().info("node adas_priority READY")
 
     # Collision avoidance callback
@@ -61,15 +65,14 @@ class adas_priority(Node):
     def airbag_callback(self, msg):
         # self.last_airbag = msg
         self.last_offsets["airbag"] = msg
-    
         
     # Active features HMI callback
     def active_features_HMI_callback(self, msg):
         self.hmi_priorities = {"collision":msg.collision_avoidance_active, "airbag":msg.airbag_active, "esp":msg.esp_active}
 
     def motors_order_raw_callback(self, msg):
-        self.motor_left_rear_pwm = msg.left_rear_pwm
-        self.motor_right_rear_pwm = msg.right_rear_pwm
+        self.motor_left_rear_pwm = msg.motor_left_rear_pwm
+        self.motor_right_rear_pwm = msg.motor_right_rear_pwm
         self.steering_angle = msg.steering_angle
 
     def publish_motors_order_decision(self):
@@ -110,8 +113,8 @@ class adas_priority(Node):
                             self.motor_right_rear_pwm = min(self.motor_right_rear_pwm, msg.max_pwm + STOP)
 
         motors_msg = MotorsOrder()
-        motors_msg.motor_right_rear_pwm = self.right_rear_pwm
-        motors_msg.motor_left_rear_pwm = self.left_rear_pwm
+        motors_msg.right_rear_pwm = self.motor_right_rear_pwm
+        motors_msg.left_rear_pwm = self.motor_left_rear_pwm
         motors_msg.steering_angle = self.steering_angle
 
         self.pub_final.publish(motors_msg)        
@@ -119,13 +122,13 @@ class adas_priority(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = adas_priority()
-    rclpy.spin(node)
+    adas_priority_node = adas_priority()
+    rclpy.spin(adas_priority_node)
 
     # Destroy the node explicitly
     # (optional - otherwise it will be done automatically
     # when the garbage collector destroys the node object)
-    node.destroy_node()
+    adas_priority_node.destroy_node()
     rclpy.shutdown()
 
 

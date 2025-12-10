@@ -2,25 +2,37 @@ import rclpy
 from rclpy.node import Node
 
 from sensor_msgs.msg import Imu
-from std_msgs.msg import Bool
 
-min_linear_acceleration = 2.5
+from interfaces.msg import MotorsOrderAdas
+
+min_linear_acceleration = 5
 
 class airbag_shock_detection(Node):
 
     def __init__(self):
         #Initialization of the shock_detection_node Node
         super().__init__('shock_detection_node')
-        self.publisher_ = self.create_publisher(Bool, 'isShockDetected', 10)
+        self.publisher_ = self.create_publisher(MotorsOrderAdas, 'motors_order_airbag', 10)
 
         #Subscription to the IMU topic
-        self.subscription = self.create_subscription(Imu,'/imu/data', self.imu_callback,10)
+        self.subscription = self.create_subscription(Imu,'/imu/data', self.imu_callback, 10)
         self.subscription  # prevent unused variable warning
+
+        self.motor_right_rear_pwm_offset = 0
+        self.motor_left_rear_pwm_offset = 0
+        self.motor_steering_angle_offset = 0
+
+        self.max_pwm = 100
+        self.emergency_stop = False
+
+        self.active = False
 
 
     # function that get called when an IMU value is received and send in the topic isShockDetect
     # true if val >= min_linear_acceleration
     def imu_callback(self, msg):
+
+        self.emergency_stop = False
 
         # Define a variable with the minimal value for shock detection
         
@@ -31,23 +43,27 @@ class airbag_shock_detection(Node):
         # Compare the value with the min we defined
         if (ax >= min_linear_acceleration or 
             ay >= min_linear_acceleration ):
-            shock = True
+            self.emergency_stop = True
 
             # log to debug
             self.get_logger().info(f"Accel = ({ax:.2f}, {ay:.2f}), Shock detected")
 
-        else:
-            shock = False
+        # Publishing
+        msg = MotorsOrderAdas()
 
-        # publish the message with shock state
-        shock_msg = Bool()
-        shock_msg.data = shock
-        self.publisher_.publish(shock_msg)
+        msg.offset_right_rear_pwm = self.motor_right_rear_pwm_offset
+        msg.offset_left_rear_pwm = self.motor_left_rear_pwm_offset
 
+        msg.offset_steering_angle = self.motor_steering_angle_offset
 
+        msg.max_pwm = self.max_pwm
 
+        msg.emergency_stop = self.emergency_stop
 
- 
+        msg.changes = self.active
+
+        self.publisher_motors_order.publish(msg)
+
 
 def main(args=None):
     rclpy.init(args=args)

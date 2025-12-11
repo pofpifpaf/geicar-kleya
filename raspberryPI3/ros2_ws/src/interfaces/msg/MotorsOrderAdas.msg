@@ -7,4 +7,6 @@ int8 max_pwm 0 					#PWM relatif [0;50]
 
 bool emergency_stop False
 
+string state
+
 bool active False        		#if any information has been changed from previous motors_orders

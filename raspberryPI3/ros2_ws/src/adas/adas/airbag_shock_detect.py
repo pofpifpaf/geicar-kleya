@@ -5,7 +5,7 @@ from sensor_msgs.msg import Imu
 
 from interfaces.msg import MotorsOrderAdas
 
-min_linear_acceleration = 2.5
+from rcl_interfaces.msg import SetParametersResult
 
 STATE_SHOCK = "shock"
 STATE_NOTHING = "nothing"
@@ -33,7 +33,20 @@ class airbag_shock_detection(Node):
         self.state = STATE_NOTHING
         self.prev_state = STATE_NOTHING
 
+        # Parameters
+        self.declare_parameter("airbag_threshold", 2.5)
+        self.min_linear_acceleration = self.get_parameter("airbag_threshold").value
+
+        self.add_on_set_parameters_callback(self.param_callback)
+
         self.get_logger().info("Shock detection node READY")
+
+    def param_callback(self, params):
+        for p in params:
+            if p.name == "airbag_threshold":
+                self.min_linear_acceleration = max(min(p.value, 50.0), 1.0)
+                self.get_logger().info(f"Parameter airbag_threshold changed to {self.min_linear_acceleration}")
+        return SetParametersResult(successful=True)
 
 
     # function that get called when an IMU value is received and send in the topic isShockDetect
@@ -52,8 +65,8 @@ class airbag_shock_detection(Node):
         ay = msg.linear_acceleration.y
 
         # Compare the value with the min we defined
-        if (ax >= min_linear_acceleration or 
-            ay >= min_linear_acceleration ):
+        if (ax >= self.min_linear_acceleration or 
+            ay >= self.min_linear_acceleration ):
             self.emergency_stop = True
             self.state = STATE_SHOCK
             self.active = True
@@ -76,6 +89,8 @@ class airbag_shock_detection(Node):
             msg.emergency_stop = self.emergency_stop
 
             msg.active = self.active
+
+            msg.state = self.state
 
             self.publisher_motors_order.publish(msg)
 

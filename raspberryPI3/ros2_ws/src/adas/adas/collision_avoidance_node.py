@@ -76,7 +76,7 @@ class collision_avoidance(Node):
                 self.emergency_stop = True
                 self.active = True
                 self.state = STATE_20CM
-                
+
                 if self.state != self.prev_state:
                     self.get_logger().info("Detecting obstacle <20 cm: Stopping car")
 
@@ -105,6 +105,8 @@ class collision_avoidance(Node):
             msg.max_pwm = self.max_pwm
 
             msg.emergency_stop = self.emergency_stop
+
+            msg.state = self.state
 
             msg.active = self.active
 

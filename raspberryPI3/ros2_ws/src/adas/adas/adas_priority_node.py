@@ -1,19 +1,17 @@
 import rclpy
 from rclpy.node import Node
 import time
-from interfaces.msg import MotorsOrder, MotorsOrderAdas, HmiFeatures
+from interfaces.msg import MotorsOrder, MotorsOrderAdas, HmiFeatures, HmiStates
 
-#Priorities
-COLLISION_AVOIDANCE_PRIO = 1
-AIRBAG_PRIO = 0
-ESP_PRIO = 2
-
-NOT_USED_FEATURE = 10
+from rcl_interfaces.msg import SetParametersResult
 
 STOP = 50
-
+NOT_USED_FEATURE = 10
 REFRESH_PERIOD = 0.002
-AIRBAG_BLOCK_DURATION = 10
+
+INDEX_COLLISION = 0
+INDEX_AIRBAG = 1
+INDEX_ESP = 2
 
 class adas_priority(Node):
 
@@ -31,15 +29,29 @@ class adas_priority(Node):
 
         # Publishers
         self.pub_final = self.create_publisher(MotorsOrder, 'motors_order', 10)
+        self.pub_states = self.create_publisher(HmiStates, 'hmi_states', 10)
+
+        # Parameters
+        self.declare_parameter("airbag_priority", 0)
+        self.declare_parameter("collision_priority", 1)
+        self.declare_parameter("esp_priority", 2)
+
+        self.declare_parameter("airbag_block_duration", 10)
+
+        self.priorities = {"collision": self.get_parameter("collision_priority").value,
+                         "airbag": self.get_parameter("airbag_priority").value,
+                         "esp": self.get_parameter("esp_priority").value}
+
+        self.airbag_block_duration = self.get_parameter("airbag_block_duration").value
 
         self.last_offsets = {}
-        self.priorities = {"collision":COLLISION_AVOIDANCE_PRIO,
-                         "airbag":AIRBAG_PRIO,
-                         "esp":ESP_PRIO}
-
-        self.hmi_priorities = {"collision":True,
+        self.hmi_active = {"collision":True,
                              "airbag":True,
                              "esp":True}
+
+        self.states = {"collision": "state_nothing",
+                         "airbag": "state_nothing",
+                         "esp": "state_nothing"}
 
         # Active features on HMI
         self.collision_avoidance_active_HMI = 0
@@ -54,28 +66,39 @@ class adas_priority(Node):
         self.state_airbag_deployed = False
         self.time_airbag_deployed = 0
 
+        self.add_on_set_parameters_callback(self.param_callback)
+
         self.timer = self.create_timer(REFRESH_PERIOD, self.publish_motors_order_decision)
 
         self.get_logger().info("node adas_priority READY")
 
+    # Parameters callback
+    def param_callback(self, params):
+        for p in params:
+            if p.name == "airbag_block_duration":
+                self.airbag_block_duration = p.value
+            if p.name in self.priorities:
+                self.priorities[p.name] = p.value
+        return SetParametersResult(successful=True)
+
     # Collision avoidance callback
     def collision_callback(self, msg):
-        # self.last_collision = msg
         self.last_offsets["collision"] = msg
+        self.states["collision"] = msg.state
 
     # ESP callback
     def esp_callback(self, msg):
-        # self.last_esp = msg
         self.last_offsets["esp"] = msg
+        self.states["esp"] = msg.state
 
     #AIRBAG callback
     def airbag_callback(self, msg):
-        # self.last_airbag = msg
         self.last_offsets["airbag"] = msg
+        self.states["airbag"] = msg.state
         
     # Active features HMI callback
     def active_features_HMI_callback(self, msg):
-        self.hmi_priorities = {"collision":msg.collision_avoidance_active, "airbag":msg.airbag_active, "esp":msg.esp_active}
+        self.hmi_active = {"collision":msg.collision_avoidance_active, "airbag":msg.airbag_active, "esp":msg.esp_active}
 
     def motors_order_raw_callback(self, msg):
         self.motor_left_rear_pwm = msg.left_rear_pwm
@@ -88,7 +111,7 @@ class adas_priority(Node):
 
         for key, msg in self.last_offsets.items():
 
-            if msg.active and self.hmi_priorities[key]:
+            if msg.active and self.hmi_active[key]:
 
                 min_prio = min(self.priorities[key], min_prio)
                 
@@ -125,7 +148,7 @@ class adas_priority(Node):
 
         motors_msg = MotorsOrder()
 
-        if (time.time() - self.time_airbag_deployed < AIRBAG_BLOCK_DURATION) and self.state_airbag_deployed:
+        if (time.time() - self.time_airbag_deployed < self.airbag_block_duration) and self.state_airbag_deployed:
             # self.get_logger().info(f"airbag deployed for time = {time.time() - self.time_airbag_deployed}")
             motors_msg.right_rear_pwm = STOP
             motors_msg.left_rear_pwm = STOP
@@ -136,10 +159,18 @@ class adas_priority(Node):
             motors_msg.steering_angle = self.steering_angle
             self.state_airbag_deployed = False
             
-        self.pub_final.publish(motors_msg)        
+        self.pub_final.publish(motors_msg)
+
+        states_msg = HmiStates()
+
+        states_msg.states[INDEX_COLLISION] = self.states["collision"]      
+        states_msg.states[INDEX_AIRBAG] = self.states["airbag"]      
+        states_msg.states[INDEX_ESP] = self.states["esp"]      
         
+        self.pub_states.publish(states_msg)
 
 def main(args=None):
+
     rclpy.init(args=args)
     adas_priority_node = adas_priority()
     rclpy.spin(adas_priority_node)

@@ -2,7 +2,7 @@ import math
 import rclpy
 import json
 from rclpy.node import Node
-from interfaces.msg import MotorsFeedback, GeneralData, HmiFeatures
+from interfaces.msg import MotorsFeedback, GeneralData, HmiFeatures, HmiStates
 from std_msgs.msg import Bool
 from pathlib import Path
 
@@ -24,8 +24,7 @@ class hmi_node(Node):
         # Suscribers
         self.subscription = self.create_subscription(MotorsFeedback,'motors_feedback', self.motorsfeedback_callback, 10)
         self.subscription = self.create_subscription(GeneralData,'general_data', self.generaldata_callback, 10)
-        #self.subscription = self.create_subscription(Hmifeatures,'features_priority_hmi', self.hmifeatures_callback, 10)
-        self.subscription = self.create_subscription(Bool,'isShockDetected', self.isshockdetected_callback, 10)
+        self.subscription = self.create_subscription(HmiStates,'hmi_states', self.hmistates_callback, 10)
 
         # Variables initialisation
         self.left_rear_RPM  = 0  
@@ -38,6 +37,10 @@ class hmi_node(Node):
         self.pressure  = 0
         self.shockdetected = False
         self.RPM = 0
+
+        self.airbag_state  = "None"
+        self.collision_state  = "None"
+        self.esp_collision  = "None"
 
         self.get_logger().info("hmi_node READY")
 
@@ -68,11 +71,15 @@ class hmi_node(Node):
 
         self.save_datas()
 
-    def isshockdetected_callback(self, isShockDetected : Bool):
-        # shock detection
-        self.shockdetected = isShockDetected.data
+    
+    def hmistates_callback(self, hmi_states : HmiStates):
+        # state des adas temps reel
+        self.airbag_state  = hmi_states.states[1]  #index_airbag
+        self.collision_state  = hmi_states.states[0] #index collsion
+        self.esp_state  = hmi_states.states[2] #index esp
 
         self.save_datas()
+
 
 
     def save_datas(self):
@@ -88,7 +95,9 @@ class hmi_node(Node):
         data["RPMright"] = self.right_rear_RPM
         data["RPMleft"] = self.left_rear_RPM
         data["RPM"] = self.RPM
-        data["AirbagDeployed"] = self.shockdetected
+        data["airbag_state"] = self.airbag_state
+        data["collision_state"] = self.collision_state
+        data["esp_state"] = self.esp_state
         #Save data
         with open(data_json, "w") as f:
             json.dump(data, f, indent=4)

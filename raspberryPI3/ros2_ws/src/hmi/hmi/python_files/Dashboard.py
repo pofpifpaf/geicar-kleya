@@ -6,11 +6,13 @@ from streamlit_autorefresh import st_autorefresh
 from pathlib import Path
 import threading
 shared_data = {"speed": 0,
-               "AirbagDeployed" : False,
                "RPM" : 0,
                "battery" : 0,
                "pressure": 0,
-               "temperature":0}
+               "temperature":0,
+               "airbag_state" : "None",
+               "collision_state" : "None",
+               "esp_state" : "None"}
 
 
 current_dir = Path(__file__).parent
@@ -29,12 +31,14 @@ def generate_dashboard():
             with open(data_json, "r") as f:
                 j = json.load(f)
                 shared_data["speed"] = j["speed"]
-                if j["AirbagDeployed"] == True:
-                  shared_data["AirbagDeployed"] = j["AirbagDeployed"]
+                #if j["airbag_state"] == True:
+                shared_data["airbag_state"] = j["airbag_state"]
                 shared_data["RPM"] = j["RPM"]
                 shared_data["battery"] = j["battery"]
                 shared_data["pressure"] = j["pressure"]
                 shared_data["temperature"] = j["temperature"]
+                shared_data["collision_state"] = j["collision_state"]
+                shared_data["esp_state"] = j["esp_state"]
         except:
             pass
         time.sleep(0.2)
@@ -87,13 +91,19 @@ def generate_dashboard():
       </svg>
       """
 
-  def generate_dashboard_html(power_val, rpm_val, speed_val, batt_percent, fuel_percent, pressure_value, temperature_value, AirbagDeployed=False, ldw=False, Collision=False):
+  def generate_dashboard_html(power_val, rpm_val, speed_val, batt_percent, fuel_percent, pressure_value, temperature_value, airbag_state="None", ldw=False, collision_state="None", esp_state="None"):
       power_norm = min(power_val / 200.0, 1.0)
       batt_norm = min(batt_percent / 100.0, 1.0)
-      rpm_norm = min(rpm_val / 7000.0, 1.0)
+      rpm_norm = min(rpm_val / 10.0, 1.0)
       fuel_norm = min(fuel_percent / 10000.0, 1.0)
       temperature_norm = min(temperature_value/100, 1.0)
       pressure_norm =  min(pressure_value/100, 1.0)
+      if collision_state == "state_1m":
+        collision_html = "<div class='collisionmessages'>⚠️ Obstacle in 1 meter </div>"
+      elif collision_state == "state_20cm" :
+        collision_html = "<div class='collisionmessages'>⚠️ Obstacle in 20 cm : Car stopped </div>"
+      else:
+        collision_html = ""
           
       left_gauge = f"""
       <div class="gauge-container" style="position:relative;">
@@ -117,9 +127,8 @@ def generate_dashboard():
         <div class="">{rpm_val:.0f} RPM</div>
       </div>
       </div>
-
-      <div class="collisionmessages">collision</div>
-      
+      {collision_html}
+    
       """
       
       # Centre et status inchangés
@@ -133,10 +142,11 @@ def generate_dashboard():
         </div>
       </div>
       """
-      collision_overlay = '<div class="collision-overlay">⚠ Obstacle in 1 meter</div>' if Collision else ""
-      airbag_overlay = '<div class="airbag-overlay">⚠ AIRBAG DEPLOYED ⚠</div>' if AirbagDeployed else ""
-      ldw_overlay = '<div class="ldw-overlay">⚠ Lane Departure Left</div>' if ldw else ""
       
+
+      airbag_overlay = '<div class="airbag-overlay">⚠ AIRBAG DEPLOYED ⚠</div>' if airbag_state == "shock" else ""
+      ldw_overlay = '<div class="ldw-overlay">⚠ Lane Departure Left</div>' if ldw else ""
+  
 
       def indicator(label, active):
           cls = "indicator active" if active else "indicator"
@@ -146,6 +156,7 @@ def generate_dashboard():
       <div class="status-row">
         {indicator("ESP", adas_value["ESP"])}
         {indicator("FCTA", adas_value["Collision"])}
+        {indicator("ABG", adas_value["Airbag"])}
       </div>
       """
       return f"""
@@ -153,7 +164,6 @@ def generate_dashboard():
         <div class="dashboard">
           {airbag_overlay}
           {ldw_overlay}
-          {collision_overlay}
           {left_gauge}
           {center_html}
           {right_gauge}
@@ -363,27 +373,6 @@ def generate_dashboard():
       animation:popupBlink 1.1s infinite;
   }
 
-              
-  .collision-overlay {
-      position:relative;
-      bottom:40px !important;
-      left:40px !important;
-      min-width:380px;
-      padding:20px 28px;
-      background:rgba(255,0,0,0.25);
-      border:2px solid rgba(255,0,0,0.5);
-      border-radius:14px;
-      backdrop-filter:blur(5px);
-      font-size:32px;
-      font-weight:bold;
-      color:#ff3030;
-      text-shadow:0 0 15px black;
-      z-index:860;
-      display:flex;
-      justify-content:center;
-      align-items:center;
-      animation:popupBlink 0.8s infinite;
-      }
       
       </style>
       """, unsafe_allow_html=True)
@@ -396,9 +385,10 @@ def generate_dashboard():
       fuel_percent=56,
       temperature_value= shared_data["temperature"],
       pressure_value= shared_data["pressure"],
-      AirbagDeployed=shared_data["AirbagDeployed"],
+      airbag_state=shared_data["airbag_state"],
       ldw = False,
-      Collision=False #shared_data["Collision"]
+      collision_state=shared_data["collision_state"],
+      esp_state =shared_data["esp_state"]
   )
 
   st.markdown(html, unsafe_allow_html=True)

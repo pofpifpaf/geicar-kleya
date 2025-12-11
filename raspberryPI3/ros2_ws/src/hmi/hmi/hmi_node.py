@@ -2,7 +2,7 @@ import math
 import rclpy
 import json
 from rclpy.node import Node
-from interfaces.msg import MotorsFeedback, GeneralData
+from interfaces.msg import MotorsFeedback, GeneralData, HmiFeatures
 from std_msgs.msg import Bool
 from pathlib import Path
 
@@ -19,7 +19,7 @@ class hmi_node(Node):
         super().__init__('hmi_node')
 
         # Publishers
-        #self.publisher_active_features_hmi = self.create_publisher(Hmifeatures, 'active_features_hmi', 10)
+        self.publisher_active_features_hmi = self.create_publisher(HmiFeatures, 'active_features_hmi', 10)
         
         # Suscribers
         self.subscription = self.create_subscription(MotorsFeedback,'motors_feedback', self.motorsfeedback_callback, 10)
@@ -80,7 +80,6 @@ class hmi_node(Node):
         #Open data file
         with open(data_json, "r") as f:
             data = json.load(f)
-         
         #Write data
         data["battery"] = self.battery_level
         data["pressure"] = self.pressure
@@ -90,17 +89,17 @@ class hmi_node(Node):
         data["RPMleft"] = self.left_rear_RPM
         data["RPM"] = self.RPM
         data["AirbagDeployed"] = self.shockdetected
-
         #Save data
         with open(data_json, "w") as f:
             json.dump(data, f, indent=4)
 
-        #msg = Hmifeatures()
+        msg = HmiFeatures()
         # Ici changer les valeurs des différentes variables 
-        ##
-
+        msg.collision_avoidance_active = data["Collision"]
+        msg.esp_active = data["ESP"]
+        msg.airbag_active = data["Airbag"]
         # On a juste à publish (pour savoir qui est activé ou pas)
-        #self.publisher_active_features_hmi.publish(msg)
+        self.publisher_active_features_hmi.publish(msg)
 
 
 

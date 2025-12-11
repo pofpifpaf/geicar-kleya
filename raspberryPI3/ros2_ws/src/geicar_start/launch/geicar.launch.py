@@ -35,46 +35,35 @@ def generate_launch_description():
         executable="car_control_node",
         emulate_tty=True
     )
-    """
+    
     collision_avoidance_node = Node(
         package="adas",
         executable="collision_avoidance_node",
         emulate_tty=True
     )
-<<<<<<< HEAD
-    """
-=======
-
->>>>>>> 02ab1c5d523e0a2767feb1e5713234f2480c01ff
+    
     shock_detection_node = Node(
         package="adas",
         executable="airbag_shock_detection",
         emulate_tty=True
     )
-<<<<<<< HEAD
     
-=======
-    adas_priority_node = Node(
-        package="adas",
-        executable="adas_priority_node",
-        emulate_tty=True
-    )
-
->>>>>>> 02ab1c5d523e0a2767feb1e5713234f2480c01ff
     imu_rx_node = Node(
         package = 'imu_rx',
         executable='imu_rx_node',
         emulate_tty=True
     )
-<<<<<<< HEAD
 
     esp_node = Node(
         package="adas",
         executable="esp_node",
         emulate_tty=True
     )
-=======
->>>>>>> 02ab1c5d523e0a2767feb1e5713234f2480c01ff
+    adas_priority_node = Node(
+        package="adas",
+        executable="adas_priority_node",
+        emulate_tty=True
+    )
 
 
     config_dir = os.path.join(get_package_share_directory('imu_filter_madgwick'), 'config')
@@ -99,20 +88,12 @@ def generate_launch_description():
     ld.add_action(can_rx_node)
     ld.add_action(can_tx_node)
     ld.add_action(car_control_node)
-<<<<<<< HEAD
-    #ld.add_action(collision_avoidance_node)
-    ld.add_action(shock_detection_node)
+    ld.add_action(collision_avoidance_node)
     ld.add_action(imu_rx_node)
     ld.add_action(esp_node)
     ld.add_action(imu_filter_madgwick_node)
     ld.add_action(system_check_node)
-=======
-    ld.add_action(collision_avoidance_node)
     ld.add_action(shock_detection_node)
-    ld.add_action(imu_rx_node)
-    ld.add_action(imu_filter_madgwick_node)
-    ld.add_action(system_check_node)
     ld.add_action(adas_priority_node)
->>>>>>> 02ab1c5d523e0a2767feb1e5713234f2480c01ff
 
     return ld

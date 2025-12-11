@@ -138,7 +138,7 @@ def generate_dashboard():
         <div class="speed-value">{int(speed_val):02d}</div>
         <div class="unit">km/h</div>    
         <div class="generaltempandpressure">    
-          <div class="tempandpressure">🌡️ : {temperature_value :.0f} degrees</div>
+          <div class="tempandpressure">🌡️ : {temperature_value :.0f} °C </div>
         </div>
       </div>
       """
@@ -244,12 +244,12 @@ def generate_dashboard():
     position:relative;
       min-width:380px;
       padding:3px 0px;
-      background:rgba(255,0,0,0.25);
-      border:2px solid rgba(255,0,0,0.5);
-      border-radius:14px;
+      background:rgb(184, 77, 0);
+      border:2px solid rgba(255,255,255,0.5);
+      border-radius:5px;
       backdrop-filter:blur(5px);
       font-weight:bold;
-      color:#ff3030;
+      color:#ffffff;
       text-shadow:0 0 15px black;
       z-index:860;
       display:flex;
@@ -272,9 +272,7 @@ def generate_dashboard():
 
     .generaltempandpressure{
       margin-top: 10px;        
-      padding: 6px 10px;       
-      border: 1px solid #b8d7ff55;   
-      border-radius: 6px;     
+      padding: 6px 10px;         
       display: inline-block;   
       text-align: center;
     } 

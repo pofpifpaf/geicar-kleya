@@ -80,15 +80,13 @@ class hmi_node(Node):
 
         self.save_datas()
 
-
-
     def save_datas(self):
         
         #Open data file
         with open(data_json, "r") as f:
             data = json.load(f)
         #Write data
-        data["battery"] = self.battery_level
+        data["battery"] = ((self.battery_level-8)/(14-8))*100
         data["pressure"] = self.pressure
         data["temperature"] = self.temperature
         data["speed"] = self.speed

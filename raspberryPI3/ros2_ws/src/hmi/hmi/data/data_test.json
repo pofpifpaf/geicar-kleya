@@ -6,7 +6,7 @@
     "Airbag": true,
     "Collision": true,
     "speed": 0,
-    "battery": 0,
+    "battery": 30,
     "pressure": 0,
     "temperature": 0,
     "RPMright": 0,

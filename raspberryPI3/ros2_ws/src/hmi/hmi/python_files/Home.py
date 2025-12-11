@@ -111,7 +111,7 @@ def generate_home():
     st.markdown(f"""
         <div class="home-wrap">
         <div class="home-overlay">
-            <div class="home-title">CarConnect</div>
+            <div class="home-title">Kleya Team Car</div>
             <div class="home-sub">Get real time feedback about your car</div>
         </div>
         </div>

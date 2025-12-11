@@ -3,7 +3,7 @@
 # TO DO : Ajouter un timer pour sortir de l'état intermédiaire si pas de déviation après un certain temps
 import rclpy
 from rclpy.node import Node
-from interfaces.msg import MotorsOrder, JoystickOrder, ECompass 
+from interfaces.msg import MotorsOrder, ECompass 
 from sensor_msgs.msg import Imu
 
 #Global Variable
@@ -102,13 +102,9 @@ class Esp(Node):
 
     def detect_heading_jump(self, prev, current):
         heading_rate = (current - prev) / T_SAMPLE  # deg/s
-        # debug log
-        # self.get_logger().info(
-        #     f"In detect_heading_jump | prev={prev:.2f}° current={current:.2f}° rate={heading_rate:.2f}°/s"
-        # )
         # Check for sudden heading change
-        if abs(heading_rate) > REF_HEADING_RATE and not self.esp_active:
-            self.reference_heading = self.heading_buffer[-DELAY_INDEX] # set reference to previous stable heading 
+        if abs(heading_rate) > REF_HEADING_RATE and not self.esp_active and not self.esp_intermediate_state :
+            self.reference_heading = prev # set reference to previous stable heading 
             self.esp_intermediate_state = True
             self.get_logger().info("ESP IN INTERMEDIATE STATE — heading drift detected")
 

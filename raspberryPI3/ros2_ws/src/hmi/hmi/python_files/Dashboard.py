@@ -14,8 +14,8 @@ shared_data = {"speed": 0,
 
 
 current_dir = Path(__file__).parent
-data_json = current_dir / "../../../../install/hmi/share/hmidata/data.json"
-#data_json = current_dir / "../data/data_test.json"
+#data_json = current_dir / "../../../../install/hmi/share/hmidata/data.json"
+data_json = current_dir / "../data/data_test.json"
 
 
 def generate_dashboard():
@@ -101,16 +101,25 @@ def generate_dashboard():
         {svg_semi_gauge(percent=batt_norm, primary_color="#6EF2B0")}
 
         <div class="gauge-label-bottom">{batt_percent:.0f}% battery</div>
+
       </div>
+
+      
       """
 
       right_gauge = f"""
+      
       <div class="gauge-container" style="position:relative;">
+      <div class="gauge-container right-gauge-container" style="position:relative;">
         <div class="gauge-label-top"> RPM x100 </div>
         {svg_semi_gauge(percent=rpm_norm, primary_color="#6EE6FF")}
 
-        <div class="gauge-label-bottom">{rpm_val:.0f} RPM</div>
+        <div class="">{rpm_val:.0f} RPM</div>
       </div>
+      </div>
+
+      <div class="collisionmessages">collision</div>
+      
       """
       
       # Centre et status inchangés
@@ -189,6 +198,10 @@ def generate_dashboard():
     position:relative;
     }
 
+    .right-gauge-container {
+    grid-column: 3;
+    }
+              
     .gauge-container {
     display:flex;
     flex-direction:column;
@@ -210,6 +223,29 @@ def generate_dashboard():
     font-size:16px;
     text-align:center;
     margin-top:-10px;
+    }
+              
+    .collisionmessages {
+    grid-column: 3;  
+    font-size:14px;
+    opacity:0.85;
+    text-align:center;
+    margin-top:10px;       /* distance depuis le texte au-dessus */
+    position:relative;
+      min-width:380px;
+      padding:3px 0px;
+      background:rgba(255,0,0,0.25);
+      border:2px solid rgba(255,0,0,0.5);
+      border-radius:14px;
+      backdrop-filter:blur(5px);
+      font-weight:bold;
+      color:#ff3030;
+      text-shadow:0 0 15px black;
+      z-index:860;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      animation:popupBlink 2s infinite;
     }
 
     .tick { stroke:rgba(255,255,255,0.09); stroke-linecap:round; }

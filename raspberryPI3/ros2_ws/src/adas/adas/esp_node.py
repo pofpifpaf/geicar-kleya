@@ -1,6 +1,4 @@
-# TO DO : La commande
-# T_SAMPLE changer avec les vrais trames reçu
-# TO DO : Ajouter un timer pour sortir de l'état intermédiaire si pas de déviation après un certain temps
+# TO DO : La commande et verifier les machines à états
 import rclpy
 from rclpy.node import Node
 from interfaces.msg import MotorsOrder, ECompass 
@@ -11,14 +9,14 @@ from sensor_msgs.msg import Imu
 T_SAMPLE = 0.1 #s ou 100ms
 MIN_DEVIATION_Z_ANG_VEL = 0.75  #rad/s
 MAX_STEER = 127                    # steer range
-INTERMEDIATE_TIMEOUT = 0.2         # seconds
+INTERMEDIATE_TIMEOUT = 2           # seconds
 MIN_ESP_ACTIVE_TIME = 0.5          # seconds before disabling
 # ESP parameters
 SPEED_PERCENTAGE = 0.5
 HEADING_TOLERANCE = 1.0            # tolerance for the heading
 SIZE_BUFFER_HEADING = 20
 REF_HEADING_RATE = 9.0                    # heading difference to activate ESP
-DELAY_INDEX = SIZE_BUFFER_HEADING                   # number of samples to confirm stability
+DELAY_INDEX = 10                   # wait for 1 sec stability before deactivating ESP
 
 class Esp(Node):
     def __init__(self):
@@ -50,7 +48,8 @@ class Esp(Node):
         # ESP state variables
         self.esp_intermediate_state = False
         self.esp_active = False
-        
+        self.intermediate_start_time = None
+
         self.get_logger().info("esp_node READY")
 
     # ------------------ CALLBACKS ------------------
@@ -64,6 +63,9 @@ class Esp(Node):
     def imu_callback(self, msg):
 
         if self.esp_intermediate_state :
+            # Check for timeout before confirming deviation
+            if not self.intermediate_timeout_ok():
+                return  # exit if timeout reached
             self.deviation_confirmation(msg)
 
     def ecompass_callback(self, ecompass: ECompass):
@@ -106,7 +108,22 @@ class Esp(Node):
         if abs(heading_rate) > REF_HEADING_RATE and not self.esp_active and not self.esp_intermediate_state :
             self.reference_heading = prev # set reference to previous stable heading 
             self.esp_intermediate_state = True
+            self.intermediate_start_time = self.get_clock().now()   # START TIMER
             self.get_logger().info("ESP IN INTERMEDIATE STATE — heading drift detected")
+
+    def intermediate_timeout_ok(self):
+        if not self.esp_intermediate_state:
+            return False  # Just in case
+
+        now = self.get_clock().now()
+        elapsed = (now - self.intermediate_start_time).nanoseconds * 1e-9
+
+        if elapsed > INTERMEDIATE_TIMEOUT:
+            self.esp_intermediate_state = False
+            self.get_logger().info("ESP INTERMEDIATE TIMEOUT — no deviation confirmed")
+            return False
+
+        return True
 
 
     def check_esp_deactivation(self):
@@ -131,6 +148,7 @@ class Esp(Node):
         rotation_rate = msg.angular_velocity.z
         if abs(rotation_rate) > MIN_DEVIATION_Z_ANG_VEL and not self.esp_active :
                 self.esp_active = True
+                self.esp_intermediate_state = False
                 self.get_logger().info(
                     f"ESP ACTIVATED | ref_heading = {self.reference_heading:.2f}° | angular_velocity_z = {rotation_rate:.2f} rad/s"
                 )

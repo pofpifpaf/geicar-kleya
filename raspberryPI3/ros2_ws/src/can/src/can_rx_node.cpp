@@ -30,8 +30,8 @@ public:
     : Node("can_rx_node")
     {
         publisher_us_ = this->create_publisher<interfaces::msg::Ultrasonic>("us_data", 10);
-        publisher_imu_raw_ = this->create_publisher<sensor_msgs::msg::Imu>("imu/data_raw", 10);
-        publisher_imu_mag_ = this->create_publisher<sensor_msgs::msg::MagneticField>("imu/mag", 10);
+        // publisher_imu_raw_ = this->create_publisher<sensor_msgs::msg::Imu>("imu/data_raw", 10);
+        // publisher_imu_mag_ = this->create_publisher<sensor_msgs::msg::MagneticField>("imu/mag", 10);
         publisher_gnss_ = this->create_publisher<interfaces::msg::Gnss>("gnss_data", 10);
         publisher_motorsFeedback_ = this->create_publisher<interfaces::msg::MotorsFeedback>("motors_feedback", 10);
         publisher_generalData_ = this->create_publisher<interfaces::msg::GeneralData>("general_data", 10);
@@ -215,31 +215,31 @@ private:
             * Published values in Tesla [T]
             */
             }else if (frame.can_id==ID_IMU1){    
-                RCLCPP_DEBUG(this->get_logger(), "Publishing to imu/mag Topic");
-                auto imu_mag_msg = sensor_msgs::msg::MagneticField();
+                // RCLCPP_DEBUG(this->get_logger(), "Publishing to imu/mag Topic");
+                // auto imu_mag_msg = sensor_msgs::msg::MagneticField();
 
-                int mag_x = (frame.data[0]<<8) + frame.data[1];
-                int mag_y = (frame.data[2]<<8) + frame.data[3];
-                int mag_z = (frame.data[4]<<8) + frame.data[5];
+                // int mag_x = (frame.data[0]<<8) + frame.data[1];
+                // int mag_y = (frame.data[2]<<8) + frame.data[3];
+                // int mag_z = (frame.data[4]<<8) + frame.data[5];
 
-                if ((frame.data[6] & 0x4) == 1){
-                    mag_x = -mag_x;
-                }
+                // if ((frame.data[6] & 0x4) == 1){
+                //     mag_x = -mag_x;
+                // }
 
-                if ((frame.data[6] & 0x2) == 1){
-                    mag_y = -mag_y;
-                }
+                // if ((frame.data[6] & 0x2) == 1){
+                //     mag_y = -mag_y;
+                // }
 
-                if ((frame.data[6] & 0x1) == 1){
-                    mag_z = -mag_z;
-                }
-                imu_mag_msg.magnetic_field.x = mag_x * pow(10,-7);
-                imu_mag_msg.magnetic_field.y = mag_y * pow(10,-7);
-                imu_mag_msg.magnetic_field.z = mag_z * pow(10,-7);
+                // if ((frame.data[6] & 0x1) == 1){
+                //     mag_z = -mag_z;
+                // }
+                // imu_mag_msg.magnetic_field.x = mag_x * pow(10,-7);
+                // imu_mag_msg.magnetic_field.y = mag_y * pow(10,-7);
+                // imu_mag_msg.magnetic_field.z = mag_z * pow(10,-7);
 
-                imu_mag_msg.header.stamp = rclcpp::Clock().now();
+                // imu_mag_msg.header.stamp = rclcpp::Clock().now();
 
-                publisher_imu_mag_->publish(imu_mag_msg); 
+                // publisher_imu_mag_->publish(imu_mag_msg); 
 
             /* Update Angular Velocity
             * Read values in milli degree per second [mdps]
@@ -268,35 +268,35 @@ private:
             * Published values in [m/s²] and [rad/s]
             */
             }else if (frame.can_id==ID_IMU3){ //Update acceleration + publish acceleration and angular velocity
-                RCLCPP_DEBUG(this->get_logger(), "Publishing to imu/raw Topic");
-                auto imu_raw_msg = sensor_msgs::msg::Imu();
+                // RCLCPP_DEBUG(this->get_logger(), "Publishing to imu/raw Topic");
+                // auto imu_raw_msg = sensor_msgs::msg::Imu();
 
-                int acc_x = (frame.data[0]<<8) + frame.data[1];
-                int acc_y = (frame.data[2]<<8) + frame.data[3];
-                int acc_z = (frame.data[4]<<8) + frame.data[5];
+                // int acc_x = (frame.data[0]<<8) + frame.data[1];
+                // int acc_y = (frame.data[2]<<8) + frame.data[3];
+                // int acc_z = (frame.data[4]<<8) + frame.data[5];
 
-                if ((frame.data[6] & 0x4) == 1){
-                    acc_x = -acc_x;
-                }
+                // if ((frame.data[6] & 0x4) == 1){
+                //     acc_x = -acc_x;
+                // }
 
-                if ((frame.data[6] & 0x2) == 1){
-                    acc_y = -acc_y;
-                }
+                // if ((frame.data[6] & 0x2) == 1){
+                //     acc_y = -acc_y;
+                // }
 
-                if ((frame.data[6] & 0x1) == 1){
-                    acc_z = -acc_z;
-                }
+                // if ((frame.data[6] & 0x1) == 1){
+                //     acc_z = -acc_z;
+                // }
 
-                imu_raw_msg.linear_acceleration.x = acc_x * pow(9.80665,-2);    //Conversion to [m/s²]
-                imu_raw_msg.linear_acceleration.y = acc_y * pow(9.80665,-2);    //Conversion to [m/s²]
-                imu_raw_msg.linear_acceleration.z = acc_z * pow(9.80665,-2);    //Conversion to [m/s²]
+                // imu_raw_msg.linear_acceleration.x = acc_x * pow(9.80665,-2);    //Conversion to [m/s²]
+                // imu_raw_msg.linear_acceleration.y = acc_y * pow(9.80665,-2);    //Conversion to [m/s²]
+                // imu_raw_msg.linear_acceleration.z = acc_z * pow(9.80665,-2);    //Conversion to [m/s²]
 
-                imu_raw_msg.angular_velocity.x = ang_vel_x * pow(1.7453,-5);    //Conversion to [rad/s]
-                imu_raw_msg.angular_velocity.y = ang_vel_y * pow(1.7453,-5);    //Conversion to [rad/s]
-                imu_raw_msg.angular_velocity.z = ang_vel_z * pow(1.7453,-5);    //Conversion to [rad/s]
+                // imu_raw_msg.angular_velocity.x = ang_vel_x * pow(1.7453,-5);    //Conversion to [rad/s]
+                // imu_raw_msg.angular_velocity.y = ang_vel_y * pow(1.7453,-5);    //Conversion to [rad/s]
+                // imu_raw_msg.angular_velocity.z = ang_vel_z * pow(1.7453,-5);    //Conversion to [rad/s]
 
-                imu_raw_msg.header.stamp = rclcpp::Clock().now();
-                publisher_imu_raw_->publish(imu_raw_msg);
+                // imu_raw_msg.header.stamp = rclcpp::Clock().now();
+                // publisher_imu_raw_->publish(imu_raw_msg);
 
 
             //Update temperature, pressure, humidity and publish general data (battery, temperature, humidity, pressure)
@@ -390,8 +390,8 @@ private:
     rclcpp::Publisher<interfaces::msg::GeneralData>::SharedPtr publisher_generalData_;
     rclcpp::Publisher<interfaces::msg::SteeringCalibration>::SharedPtr publisher_steeringCalibration_;
 
-    rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr publisher_imu_raw_;
-    rclcpp::Publisher<sensor_msgs::msg::MagneticField>::SharedPtr publisher_imu_mag_;
+    // rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr publisher_imu_raw_;
+    // rclcpp::Publisher<sensor_msgs::msg::MagneticField>::SharedPtr publisher_imu_mag_;
 
     rclcpp::Publisher<interfaces::msg::SystemCheck>::SharedPtr publisher_systemCheck_;
     

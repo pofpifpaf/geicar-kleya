@@ -1,7 +1,7 @@
 # TO DO : La commande et verifier les machines à états
 import rclpy
 from rclpy.node import Node
-from interfaces.msg import MotorsOrder, ECompass 
+from interfaces.msg import MotorsOrder, ECompass , MotorsOrderAdas
 from sensor_msgs.msg import Imu
 
 #Global Variable
@@ -23,7 +23,7 @@ class Esp(Node):
         #Initialization of the node
         super().__init__('esp_node')
         #Create a topic for the control/command of the ESP
-        self.publisher_motors_order = self.create_publisher(MotorsOrder, 'motors_order', 10)
+        self.publisher_motors_order = self.create_publisher(MotorsOrderAdas, 'motors_order_esp', 10)
 
         #Subscription to the node ESP need
         self.subscription = self.create_subscription(MotorsOrder,'motors_order_raw', self.motors_order_callback, 10)
@@ -138,6 +138,10 @@ class Esp(Node):
         
         if self.stable_count >= DELAY_INDEX:  # stable for required samples
             self.esp_active = False
+            
+            #msg state = false
+            self.send_msg ()
+            
             self.reference_heading = self.last_heading # update reference
             self.get_logger().info("ESP DEACTIVATED — heading stable")
 
@@ -156,21 +160,23 @@ class Esp(Node):
     def trajectory_control(self):
         # #Complete change in the command with pallier
         pass
+    
+    def send_msg (self, left_rear=0, right_rear=0, steer=0, pwm=50, state="state_nothing", active=False) :
         # # Update motors order
         # # Value for Motors Control
-        # msg = MotorsOrder()
-        # msg.right_rear_pwm = self.motor_right_rear_pwm
-        # msg.left_rear_pwm = self.motor_left_rear_pwm
-        # msg.steering_angle = 0 # Angle [-128;127]
-
+        msg = MotorsOrderAdas()
+        msg.offset_left_rear_pwm = left_rear
+        msg.offset_right_rear_pwm = right_rear
+        msg.offset_steering_angle = steer # Angle [-128;127]
+        msg.state = state
+        msg.max_pwm = pwm
+        msg.emergency_stop = False
+        msg.active = active
         # # Publish output
-        # self.publisher_motors_order.publish(msg)
+        self.publisher_motors_order.publish(msg)
         
-        # # Message in the logger only if deviation
-        # self.get_logger().info(
-        #     f"ESP Activated | rate={self.deviation_rate:.1f} deg/s"
-        # )
-        # self.get_logger().info(f"New Motors Order: {msg}")
+        # Message in the logger only if deviation
+        self.get_logger().info(f"New Motors Order sent: {msg}")
 
 
 def main(args=None):

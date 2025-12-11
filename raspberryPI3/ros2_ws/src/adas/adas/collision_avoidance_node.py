@@ -68,29 +68,33 @@ class collision_avoidance(Node):
         self.active = False
         self.state = STATE_NOTHING
         self.emergency_stop = False
+        self.max_pwm = 50
 
-        if self.motor_right_rear_pwm > STOP or self.motor_left_rear_pwm > STOP:
+    
+        if self.ultra_front_left < 20 or self.ultra_front_right < 20 or self.ultra_front_center < 20:
 
-            if self.ultra_front_left < 20 or self.ultra_front_right < 20 or self.ultra_front_center < 20:
+            if self.motor_right_rear_pwm > STOP or self.motor_left_rear_pwm > STOP:
 
                 self.emergency_stop = True
                 self.active = True
-                self.state = STATE_20CM
+                
+            self.state = STATE_20CM
 
-                if self.state != self.prev_state:
-                    self.get_logger().info("Detecting obstacle <20 cm: Stopping car")
+            if self.state != self.prev_state:
+                self.get_logger().info("Detecting obstacle <20 cm: Stopping car")
 
 
-            elif ((20 < self.ultra_front_left < 100) or
-                  (20 < self.ultra_front_right < 100) or
-                  (20 < self.ultra_front_center < 100)):
+        elif ((20 < self.ultra_front_left < 100) or
+              (20 < self.ultra_front_right < 100) or
+              (20 < self.ultra_front_center < 100)):
+        
+            self.max_pwm = 15
+            self.active = True
+            
+            self.state = STATE_1M
 
-                self.max_pwm = 30
-                self.active = True
-                self.state = STATE_1M
-
-                if self.state != self.prev_state:
-                    self.get_logger().info("Detecting obstacle: Speed limit 30%")
+            if self.state != self.prev_state:
+                self.get_logger().info("Detecting obstacle: Speed limit 30%")
 
 
         # Publishing

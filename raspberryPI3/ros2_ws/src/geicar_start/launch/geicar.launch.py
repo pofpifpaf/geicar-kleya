@@ -47,6 +47,11 @@ def generate_launch_description():
         executable="airbag_shock_detection",
         emulate_tty=True
     )
+    adas_priority_node = Node(
+        package="adas",
+        executable="adas_priority_node",
+        emulate_tty=True
+    )
 
     imu_rx_node = Node(
         package = 'imu_rx',
@@ -82,5 +87,6 @@ def generate_launch_description():
     ld.add_action(imu_rx_node)
     ld.add_action(imu_filter_madgwick_node)
     ld.add_action(system_check_node)
+    ld.add_action(adas_priority_node)
 
     return ld

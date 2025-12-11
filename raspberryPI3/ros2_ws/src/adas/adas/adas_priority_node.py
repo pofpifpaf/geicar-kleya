@@ -163,8 +163,11 @@ class adas_priority(Node):
 
         states_msg = HmiStates()
 
-        states_msg.states[INDEX_COLLISION] = self.states["collision"]      
-        states_msg.states[INDEX_AIRBAG] = self.states["airbag"]      
+        states_msg.states[INDEX_COLLISION] = self.states["collision"]
+        if (self.state_airbag_deployed):
+            states_msg.states[INDEX_AIRBAG] = "state_deployed"
+        else:
+            states_msg.states[INDEX_AIRBAG] = "state_nothing" 
         states_msg.states[INDEX_ESP] = self.states["esp"]      
         
         self.pub_states.publish(states_msg)

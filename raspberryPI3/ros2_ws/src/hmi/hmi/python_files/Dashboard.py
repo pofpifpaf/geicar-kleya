@@ -236,21 +236,26 @@ def generate_dashboard():
     }
               
     .collisionmessages {
-    grid-column: 3;  
-    font-size:14px;
+    grid-column: 3;
+    justify-self: end;
+    margin-right: 35px;  
+    font-size: 20px;
     opacity:0.85;
     text-align:center;
     margin-top:10px;       /* distance depuis le texte au-dessus */
     position:relative;
-      min-width:380px;
-      padding:3px 0px;
+    width: fit-content;
+    min-width: unset;
+    max-width: fit-content;
+    display: inline-block;
+      padding:3px 8px;
       background:rgb(184, 77, 0);
       border:2px solid rgba(255,255,255,0.5);
       border-radius:5px;
       backdrop-filter:blur(5px);
       font-weight:bold;
       color:#ffffff;
-      text-shadow:0 0 15px black;
+      text-shadow:0 0 0px black;
       z-index:860;
       display:flex;
       justify-content:center;

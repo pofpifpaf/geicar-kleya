@@ -67,6 +67,11 @@ class Esp(Node):
             if not self.intermediate_timeout_ok():
                 return  # exit if timeout reached
             self.deviation_confirmation(msg)
+            
+        if self.esp_active:
+            self.trajectory_control()
+        else:
+            self.send_msg () 
 
     def ecompass_callback(self, ecompass: ECompass):
         current = ecompass.heading
@@ -159,7 +164,15 @@ class Esp(Node):
 
     def trajectory_control(self):
         # #Complete change in the command with pallier
-        pass
+        
+        # 1) Heading error
+        error = self.last_heading - self.reference_heading   # degrees
+        
+        # 2) Steering correction (proportional)
+        Kp = 1.0   # proportional gain
+        steer_correction = int(Kp * error)
+        steer_correction = max(-MAX_STEER, min(MAX_STEER, steer_correction))
+        self.send_msg(steer = steer_correction, active=True)
     
     def send_msg (self, left_rear=0, right_rear=0, steer=0, pwm=50, state="state_nothing", active=False) :
         # # Update motors order
@@ -176,7 +189,7 @@ class Esp(Node):
         self.publisher_motors_order.publish(msg)
         
         # Message in the logger only if deviation
-        self.get_logger().info(f"New Motors Order sent: {msg}")
+        #self.get_logger().info(f"New Motors Order sent: {msg}")
 
 
 def main(args=None):

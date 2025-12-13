@@ -183,7 +183,7 @@ class Esp(Node):
             
             #msg state = false
             self.send_msg ()
-            
+            self.stable_count = 0
             self.reference_heading = self.last_heading # update reference
             self.get_logger().info("ESP DEACTIVATED — heading stable")
 

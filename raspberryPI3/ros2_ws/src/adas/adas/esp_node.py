@@ -16,7 +16,7 @@ SPEED_PERCENTAGE = 0.5
 HEADING_TOLERANCE = 1.0            # tolerance for the heading
 SIZE_BUFFER_HEADING = 20
 REF_HEADING_RATE = 9.0                    # heading difference to activate ESP
-DELAY_INDEX = 10                   # wait for 1 sec stability before deactivating ESP
+DELAY_INDEX = 4                   # wait for 1 sec stability before deactivating ESP
 
 class Esp(Node):
     def __init__(self):
@@ -30,6 +30,13 @@ class Esp(Node):
         self.subscription = self.create_subscription(Imu,'/imu/data', self.imu_callback,10)
         self.subscription = self.create_subscription(ECompass,'imu/ecompass', self.ecompass_callback,10)
         self.subscription  # prevent unused variable warning
+
+        
+        # Callback for the trajectory command
+        self.control_timer = self.create_timer(
+            T_SAMPLE,
+            self.control_loop
+        )
 
         #init variable des commandes moteurs
         self.motor_right_rear_pwm = 50
@@ -68,10 +75,6 @@ class Esp(Node):
                 return  # exit if timeout reached
             self.deviation_confirmation(msg)
             
-        if self.esp_active:
-            self.trajectory_control()
-        else:
-            self.send_msg () 
 
     def ecompass_callback(self, ecompass: ECompass):
         current = ecompass.heading
@@ -86,6 +89,11 @@ class Esp(Node):
         self.update_heading_buffer(current)
         self.check_esp_deactivation()
 
+    def control_loop(self):
+        if self.esp_active:
+            self.trajectory_control()
+        else:
+            self.send_msg()
 
     # ------- HEADING BUFFER FOR DEACTIVATION CONDITION -------
 
@@ -166,13 +174,16 @@ class Esp(Node):
         # #Complete change in the command with pallier
         
         # 1) Heading error
-        error = self.last_heading - self.reference_heading   # degrees
-        
+        error = self.reference_heading - self.last_heading   # degrees
         # 2) Steering correction (proportional)
-        Kp = 1.0   # proportional gain
+        Kp = 60.0   # proportional gain
         steer_correction = int(Kp * error)
         steer_correction = max(-MAX_STEER, min(MAX_STEER, steer_correction))
-        self.send_msg(steer = steer_correction, active=True)
+        # log for the trajectory command
+        self.get_logger().info(
+            f"ESP CTRL | error={error:.2f}° | steer={steer_correction}"
+        )
+        self.send_msg(steer = steer_correction,state="state_active", active=True)
     
     def send_msg (self, left_rear=0, right_rear=0, steer=0, pwm=50, state="state_nothing", active=False) :
         # # Update motors order

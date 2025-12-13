@@ -178,11 +178,11 @@ class Esp(Node):
         direction = self.sign(self.reference_heading - self.last_heading)
         # 2) Steering correction (proportional)
         if abs(error) > 60:
-            steer_correction = direction * MAX_STEER
+            steer_correction = int(direction * MAX_STEER)
         elif abs(error) > 30:
-            steer_correction = direction * MAX_STEER / 1.5
+            steer_correction = int(direction * MAX_STEER / 1.5)
         elif abs(error) > 10:
-            steer_correction = direction * MAX_STEER / 2
+            steer_correction = int(direction * MAX_STEER / 2)
         else:
             steer_correction = 0
         # log for the trajectory command

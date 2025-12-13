@@ -236,16 +236,13 @@ class Esp(Node):
         )
         self.send_msg(steer = steer_correction,state=self.state, active=True)
     
-    def send_msg (self, left_rear=0, right_rear=0, steer=0, pwm=50, state=ESP_STATE_IDLE, active=False) :
+    def send_msg (self, steer=0, state=ESP_STATE_IDLE, active=False) :
         # # Update motors order
         # # Value for Motors Control
         msg = MotorsOrderAdas()
-        msg.offset_left_rear_pwm = left_rear
-        msg.offset_right_rear_pwm = right_rear
-        msg.offset_steering_angle = steer # Angle [-128;127]
+        msg.command_steering_angle = steer
         msg.state = state
-        msg.max_pwm = pwm
-        msg.emergency_stop = False
+        msg.command_steering = active
         msg.active = active
         # # Publish output
         self.publisher_motors_order.publish(msg)

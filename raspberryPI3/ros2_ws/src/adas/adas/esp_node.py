@@ -1,4 +1,19 @@
-# TO DO : La commande et verifier les machines à états
+"""
+ESP Node for Vehicle Stability Control usging State machine for gei-car
+with IDLE, INTERMEDIATE, and ACTIVE states. 
+
+Topics:
+- Subscribed: 
+    - 'motors_order_raw' (MotorsOrder)
+    - '/imu/data' (Imu)
+    - 'imu/ecompass' (ECompass)
+- Published:
+    - 'motors_order_esp' (MotorsOrderAdas)
+
+Author: Caroline Nguyen
+Date: 13/12/2025
+"""
+
 import rclpy
 from rclpy.node import Node
 from interfaces.msg import MotorsOrder, ECompass , MotorsOrderAdas

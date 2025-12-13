@@ -103,45 +103,45 @@ class speed_regulation(Node):
     ####################################
       
 
-def regulate_speed(self):
-    """Régulation avec tolérance ±5 %
-    si pas en mode auto on ne fait rien
-    si tolerance ok fait rien
-    si trop haut/bas on applique un gain de correction
-    """
-    self.state = STATE_NOTHING
-    self.active = False
+    def regulate_speed(self):
+        """Régulation avec tolérance ±5 %
+        si pas en mode auto on ne fait rien
+        si tolerance ok fait rien
+        si trop haut/bas on applique un gain de correction
+        """
+        self.state = STATE_NOTHING
+        self.active = False
 
-    #Vérifie la tolérance
-    actual_speed = (self.left_rear_speed + self.right_rear_speed) / 2.0
-    delta = self.target_speed - actual_speed
-    tolerance = SPEED_TOLERANCE * abs(self.target_speed)
+            #Vérifie la tolérance
+        actual_speed = (self.left_rear_speed + self.right_rear_speed) / 2.0
+        delta = self.target_speed - actual_speed
+        tolerance = SPEED_TOLERANCE * abs(self.target_speed)
 
-    if not self.auto_speed:
-        self.state = STATE_MODE_OFF
-        if self.state != self.prev_state:
-            self.get_logger().info("Automatic mode OFF")
-        return
-    else:
-        #Vitesse ok
-        if abs(delta) < tolerance:
-            self.state = STATE_OK
+        if not self.auto_speed:
+            self.state = STATE_MODE_OFF
             if self.state != self.prev_state:
-                self.get_logger().info("Tolerane respecter")
-
-        #Vitesse trop haute/basse : correction
+                self.get_logger().info("Automatic mode OFF")
+            return
         else:
-            pwm = SPEED_CORRECTION * delta 
+            #Vitesse ok
+            if abs(delta) < tolerance:
+                self.state = STATE_OK
+                if self.state != self.prev_state:
+                    self.get_logger().info("Tolerane respecter")
 
-            self.motor_right_rear_pwm_offset = int(pwm)
-            self.motor_left_rear_pwm_offset = int(pwm)
-            self.active = True
+            #Vitesse trop haute/basse : correction
+            else:
+                pwm = SPEED_CORRECTION * delta 
 
-            self.state = STATE_NOT_OK
-            if self.state != self.prev_state:
-                self.get_logger().info("Tolerance dépassée")
+                self.motor_right_rear_pwm_offset = int(pwm)
+                self.motor_left_rear_pwm_offset = int(pwm)
+                self.active = True
 
-    # Publishing
+                self.state = STATE_NOT_OK
+                if self.state != self.prev_state:
+                    self.get_logger().info("Tolerance dépassée")
+
+        # Publishing
         if self.prev_state != self.state:
 
             msg = MotorsOrderAdas()

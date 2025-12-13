@@ -210,10 +210,8 @@ class Esp(Node):
             steer_correction = int(direction * MAX_STEER)
         elif abs(error) > 30:
             steer_correction = int(direction * MAX_STEER / 1.5)
-        elif abs(error) > 10:
-            steer_correction = int(direction * MAX_STEER / 2)
         else:
-            steer_correction = 0
+            steer_correction = int(direction * MAX_STEER / 2)
         # log for the trajectory command
         self.get_logger().info(
             f"ESP CTRL | error={error:.2f}° | steer={steer_correction}"

@@ -128,8 +128,10 @@ class adas_priority(Node):
         
         min_prio = 50
         selected_offset_msg = None
-        min_prio_command = 50
-        selected_command_msg = None
+        min_prio_command_steering = 50
+        selected_command_msg_steering = None
+        min_prio_command_pwm = 50
+        selected_command_msg_pwm = None
 
         # Getting the things to prioritize
         for key, msg in self.last_offsets.items():
@@ -141,10 +143,15 @@ class adas_priority(Node):
                     min_prio = self.priorities[key]
                     selected_offset_msg = msg
 
-                if self.priorities[key] < min_prio_command and (msg.command_steering or msg.command_pwm):
+                if self.priorities[key] < min_prio_command_pwm and msg.command_pwm:
 
-                    min_prio_command = min(self.priorities[key], min_prio_command)
-                    selected_command_msg = msg
+                    min_prio_command_pwm = min(self.priorities[key], min_prio_command_pwm)
+                    selected_command_msg_pwm = msg
+
+                if self.priorities[key] < min_prio_command_steering and msg.command_steering:
+
+                    min_prio_command_steering = min(self.priorities[key], min_prio_command_steering)
+                    selected_command_msg_steering = msg
 
         # Checking for any offsets and emergency stops
         if selected_offset_msg is not None:   
@@ -159,19 +166,20 @@ class adas_priority(Node):
                 left_pwm = min(left_pwm, selected_offset_msg.max_pwm + STOP)
                 right_pwm = min(right_pwm, selected_offset_msg.max_pwm + STOP)
 
-        # Checking for any strict commands        
-        if selected_command_msg is not None:
+        # Checking for any strict commands for pwm       
+        if selected_command_msg_pwm is not None:
 
-            if (selected_command_msg.command_pwm or selected_command_msg.command_steering):
+            if (selected_command_msg_pwm.command_pwm):
 
-                if (selected_command_msg.command_pwm):
+                left_pwm = selected_command_msg_pwm.command_left_rear_pwm
+                right_pwm = selected_command_msg_pwm.command_right_rear_pwm
 
-                    left_pwm = selected_command_msg.command_left_rear_pwm
-                    right_pwm = selected_command_msg.command_right_rear_pwm
-                
-                if (selected_command_msg.command_steering):
+        # Checking for any strict commands for steering
+        if selected_command_msg_steering is not None:
 
-                    steering_angle = selected_command_msg.command_steering_angle 
+            if (selected_command_msg_steering.command_steering):
+
+                steering_angle = selected_command_msg_steering.command_steering_angle 
 
         # Checking for any emergency stops
         for key, msg in self.last_offsets.items():

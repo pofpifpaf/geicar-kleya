@@ -206,9 +206,9 @@ class Esp(Node):
         error = self.reference_heading - self.last_heading   # degrees
         direction = self.sign(self.reference_heading - self.last_heading)
         # 2) Steering correction (proportional)
-        if abs(error) > 60:
+        if abs(error) > 30:
             steer_correction = int(direction * MAX_STEER)
-        elif abs(error) > 30:
+        elif abs(error) > 15:
             steer_correction = int(direction * MAX_STEER / 1.5)
         else:
             steer_correction = int(direction * MAX_STEER / 2)

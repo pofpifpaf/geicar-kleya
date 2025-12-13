@@ -95,6 +95,7 @@ class collision_avoidance(Node):
 
             if self.state != self.prev_state:
                 self.get_logger().info("Detecting obstacle: Speed limit 30%")
+                changes = True
 
 
         # Publishing

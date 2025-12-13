@@ -58,7 +58,12 @@ class adas_priority(Node):
         self.esp_active_HMI = 0
         self.airbag_active_HMI = 0
 
-        #Raw motor order
+        # Raw motor order
+        self.raw_motor_left_rear_pwm = 50
+        self.raw_motor_right_rear_pwm = 50
+        self.raw_steering_angle = 0
+
+        # Output motor order
         self.motor_right_rear_pwm = 50
         self.motor_left_rear_pwm = 50
         self.steering_angle = 0
@@ -74,11 +79,21 @@ class adas_priority(Node):
 
     # Parameters callback
     def param_callback(self, params):
+
         for p in params:
+
+            key = p.name.replace("_priority", "")
+
             if p.name == "airbag_block_duration":
+
                 self.airbag_block_duration = p.value
-            if p.name in self.priorities:
-                self.priorities[p.name] = p.value
+                self.get_logger().info(f"Parameter airbag_block_duration changed to {self.airbag_block_duration}")
+
+            if key in self.priorities:   
+
+                self.priorities[key] = p.value
+                self.get_logger().info(f"Parameter {p.name} changed to {self.priorities[key]}")
+
         return SetParametersResult(successful=True)
 
     # Collision avoidance callback
@@ -101,59 +116,109 @@ class adas_priority(Node):
         self.hmi_active = {"collision":msg.collision_avoidance_active, "airbag":msg.airbag_active, "esp":msg.esp_active}
 
     def motors_order_raw_callback(self, msg):
-        self.motor_left_rear_pwm = msg.left_rear_pwm
-        self.motor_right_rear_pwm = msg.right_rear_pwm
-        self.steering_angle = msg.steering_angle
+        self.raw_motor_left_rear_pwm = msg.left_rear_pwm
+        self.raw_motor_right_rear_pwm = msg.right_rear_pwm
+        self.raw_steering_angle = msg.steering_angle
 
     def publish_motors_order_decision(self):
+
+        left_pwm = self.raw_motor_left_rear_pwm
+        right_pwm = self.raw_motor_right_rear_pwm
+        steering_angle = self.raw_steering_angle
         
         min_prio = 50
+        selected_offset_msg = None
+        min_prio_command_steering = 50
+        selected_command_msg_steering = None
+        min_prio_command_pwm = 50
+        selected_command_msg_pwm = None
 
+        # Getting the things to prioritize
         for key, msg in self.last_offsets.items():
 
             if msg.active and self.hmi_active[key]:
 
-                min_prio = min(self.priorities[key], min_prio)
-                
-                if (self.priorities[key] == min_prio):
+                if self.priorities[key] < min_prio:
 
-                    if msg.emergency_stop and key == "airbag":
+                    min_prio = self.priorities[key]
+                    selected_offset_msg = msg
 
-                        self.motor_left_rear_pwm = STOP
-                        self.motor_right_rear_pwm = STOP
+                if self.priorities[key] < min_prio_command_pwm and msg.command_pwm:
 
-                        if not self.state_airbag_deployed:
-                            self.get_logger().info(f"Emergency stop detected from airbag node")
-                            self.time_airbag_deployed = time.time()
-                            self.state_airbag_deployed = True
+                    min_prio_command_pwm = min(self.priorities[key], min_prio_command_pwm)
+                    selected_command_msg_pwm = msg
 
+                if self.priorities[key] < min_prio_command_steering and msg.command_steering:
 
-                    elif msg.emergency_stop:
+                    min_prio_command_steering = min(self.priorities[key], min_prio_command_steering)
+                    selected_command_msg_steering = msg
 
-                        if self.motor_right_rear_pwm > STOP and self.motor_left_rear_pwm > STOP:
+        # Checking for any offsets and emergency stops
+        if selected_offset_msg is not None:   
 
-                            self.motor_left_rear_pwm = STOP
-                            self.motor_right_rear_pwm = STOP
+            left_pwm = max(min(selected_offset_msg.offset_left_rear_pwm + left_pwm, 100), 0)
+            right_pwm = max(min(selected_offset_msg.offset_right_rear_pwm + right_pwm, 100), 0)
 
-                    else:
-                        self.motor_left_rear_pwm = max(min(msg.offset_left_rear_pwm + self.motor_left_rear_pwm, 100), 0)
-                        self.motor_right_rear_pwm = max(min(msg.offset_right_rear_pwm + self.motor_right_rear_pwm, 100), 0)
+            steering_angle = max(min(selected_offset_msg.offset_steering_angle + steering_angle, 127), -128)
+            
+            if self.raw_motor_right_rear_pwm > STOP and self.raw_motor_left_rear_pwm > STOP:
 
-                        self.steering_angle = max(min(msg.offset_steering_angle + self.steering_angle, 127), -128)
+                left_pwm = min(left_pwm, selected_offset_msg.max_pwm + STOP)
+                right_pwm = min(right_pwm, selected_offset_msg.max_pwm + STOP)
 
-                        if self.motor_right_rear_pwm > STOP and self.motor_left_rear_pwm > STOP:
+        # Checking for any strict commands for pwm       
+        if selected_command_msg_pwm is not None:
 
-                            self.motor_right_rear_pwm = min(self.motor_left_rear_pwm, msg.max_pwm + STOP)
-                            self.motor_right_rear_pwm = min(self.motor_right_rear_pwm, msg.max_pwm + STOP)
+            if (selected_command_msg_pwm.command_pwm):
+
+                left_pwm = selected_command_msg_pwm.command_left_rear_pwm
+                right_pwm = selected_command_msg_pwm.command_right_rear_pwm
+
+        # Checking for any strict commands for steering
+        if selected_command_msg_steering is not None:
+
+            if (selected_command_msg_steering.command_steering):
+
+                steering_angle = selected_command_msg_steering.command_steering_angle 
+
+        # Checking for any emergency stops
+        for key, msg in self.last_offsets.items():
+
+            if msg.active and self.hmi_active[key]:
+
+                if msg.emergency_stop and key == "airbag":
+
+                    left_pwm = STOP
+                    right_pwm = STOP
+
+                    if not self.state_airbag_deployed:
+                        self.get_logger().info(f"Emergency stop detected from airbag node")
+                        self.time_airbag_deployed = time.time()
+                        self.state_airbag_deployed = True
+
+                elif msg.emergency_stop:
+
+                    if self.raw_motor_right_rear_pwm > STOP and self.raw_motor_left_rear_pwm > STOP:
+
+                        left_pwm = STOP
+                        right_pwm = STOP
+
+        # Sending commands to motors
+        self.motor_right_rear_pwm = right_pwm
+        self.motor_left_rear_pwm = left_pwm
+        self.steering_angle = steering_angle
 
         motors_msg = MotorsOrder()
 
         if (time.time() - self.time_airbag_deployed < self.airbag_block_duration) and self.state_airbag_deployed:
-            # self.get_logger().info(f"airbag deployed for time = {time.time() - self.time_airbag_deployed}")
+
+            # If airbag is deployed, we are timed out of advancing for airbag_block_duration
             motors_msg.right_rear_pwm = STOP
             motors_msg.left_rear_pwm = STOP
             motors_msg.steering_angle = self.steering_angle
+
         else:
+
             motors_msg.right_rear_pwm = self.motor_right_rear_pwm
             motors_msg.left_rear_pwm = self.motor_left_rear_pwm
             motors_msg.steering_angle = self.steering_angle
@@ -161,15 +226,17 @@ class adas_priority(Node):
             
         self.pub_final.publish(motors_msg)
 
+        # State definition for HMI
         states_msg = HmiStates()
 
         states_msg.states[INDEX_COLLISION] = self.states["collision"]
+        states_msg.states[INDEX_ESP] = self.states["esp"]
+
         if (self.state_airbag_deployed):
             states_msg.states[INDEX_AIRBAG] = "state_deployed"
         else:
             states_msg.states[INDEX_AIRBAG] = "state_nothing" 
-        states_msg.states[INDEX_ESP] = self.states["esp"]      
-        
+              
         self.pub_states.publish(states_msg)
 
 def main(args=None):

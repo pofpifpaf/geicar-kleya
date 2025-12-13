@@ -13,10 +13,10 @@ INTERMEDIATE_TIMEOUT = 2           # seconds
 MIN_ESP_ACTIVE_TIME = 0.5          # seconds before disabling
 # ESP parameters
 SPEED_PERCENTAGE = 0.5
-HEADING_TOLERANCE = 1.0            # tolerance for the heading
+HEADING_TOLERANCE = 5.0            # tolerance for the heading
 SIZE_BUFFER_HEADING = 20
 REF_HEADING_RATE = 9.0                    # heading difference to activate ESP
-DELAY_INDEX = 4                   # wait for 1 sec stability before deactivating ESP
+DELAY_INDEX = 4                   # wait for 0.4 sec stability before deactivating ESP
 
 class Esp(Node):
     def __init__(self):
@@ -144,7 +144,7 @@ class Esp(Node):
             return
         
         # Check heading stability using buffer average
-        if abs(self.last_heading - self.reference_heading) < HEADING_TOLERANCE :
+        if abs(self.reference_heading - self.last_heading ) < HEADING_TOLERANCE :
             self.stable_count += 1
         else:
             self.stable_count = 0  # reset if unstable
@@ -175,10 +175,16 @@ class Esp(Node):
         
         # 1) Heading error
         error = self.reference_heading - self.last_heading   # degrees
+        direction = self.sign(self.reference_heading - self.last_heading)
         # 2) Steering correction (proportional)
-        Kp = 60.0   # proportional gain
-        steer_correction = int(Kp * error)
-        steer_correction = max(-MAX_STEER, min(MAX_STEER, steer_correction))
+        if abs(error) > 60:
+            steer_correction = direction * MAX_STEER
+        elif abs(error) > 30:
+            steer_correction = direction * MAX_STEER / 1.5
+        elif abs(error) > 10:
+            steer_correction = direction * MAX_STEER / 2
+        else:
+            steer_correction = 0
         # log for the trajectory command
         self.get_logger().info(
             f"ESP CTRL | error={error:.2f}° | steer={steer_correction}"

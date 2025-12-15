@@ -1,12 +1,7 @@
 import rclpy
 from rclpy.node import Node
 
-<<<<<<< HEAD
-
-from interfaces.msg import Ultrasonic, MotorsOrder
-=======
 from interfaces.msg import Ultrasonic, MotorsOrder, MotorsOrderAdas
->>>>>>> origin/develop
 
 
 STOP = 50

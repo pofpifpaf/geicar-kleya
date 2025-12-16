@@ -131,7 +131,7 @@ private:
         if (mode == 2) // Exit steering calibration mode after request has been sent
             mode = -1;
 
-        if (buttonA || buttonY || buttonDpadBottom || buttonX) {
+        if (buttonA || buttonY || buttonDpadBottom) {
 
             if (buttonY)
                 mode = 0;
@@ -141,13 +141,15 @@ private:
                 mode = 2;
                 start = false;
             }
-            else if (buttonX && !prevButtonX) {
-                RCLCPP_WARN(this->get_logger(), "X pressed -> toggle ACC");
-                auto_speed_mode = !auto_speed_mode;
-                callSpeedRegulationService(auto_speed_mode);
-    }
+        }
+        // --- Toggle ACC on rising edge of X ---
+        if (buttonX && !prevButtonX) {
+            auto_speed_mode = !auto_speed_mode;
+            RCLCPP_WARN(this->get_logger(), "X pressed -> ACC toggle: %s", auto_speed_mode ? "ON" : "OFF");
+            callSpeedRegulationService(auto_speed_mode);
         }
         prevButtonX = buttonX;
+
 
         if (buttonDpadLeft && !systemCheckPrintRequest) { // Request to print the last system check report
             systemCheckPrintRequest = true;

@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.5)
 project(joystick)
 
+
 # Default to C99
 if(NOT CMAKE_C_STANDARD)
   set(CMAKE_C_STANDARD 99)
@@ -22,6 +23,7 @@ find_package(rclcpp REQUIRED)
 find_package(rclpy REQUIRED)
 find_package(interfaces REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(std_srvs REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
@@ -29,7 +31,7 @@ find_package(sensor_msgs REQUIRED)
 include_directories(include)
 
 add_executable(joystick_to_cmd src/joystick_to_cmd_node.cpp)
-ament_target_dependencies(joystick_to_cmd rclcpp interfaces sensor_msgs)
+ament_target_dependencies(joystick_to_cmd rclcpp interfaces sensor_msgs std_srvs)
 
 install(TARGETS
 joystick_to_cmd

@@ -7,7 +7,7 @@ from std_srvs.srv import SetBool  #Service pour ON/OFF
 
 # Global Variable
 SPEED_TOLERANCE = 0.05  #Tolérance vitesse 5%
-SPEED_CORRECTION = 2  #Gain de correction (à ajuster si besoin)
+SPEED_CORRECTION = 1  #Gain de correction (à ajuster si besoin)
 
 STATE_NOTHING = "state_nothing"
 STATE_MODE_OFF = "state_mode_off"

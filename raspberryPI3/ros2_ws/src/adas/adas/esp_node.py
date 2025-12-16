@@ -64,6 +64,8 @@ class Esp(Node):
         # ESP state variables
         self.state = ESP_STATE_IDLE
         self.intermediate_start_time = None
+        
+        self.direction = None
 
 
         # Add environnement variables
@@ -227,6 +229,7 @@ class Esp(Node):
         rotation_rate = msg.angular_velocity.z
         if abs(rotation_rate) > self.min_deviation_z_ang_vel and self.state == ESP_STATE_INTERMEDIATE :
                 self.state = ESP_STATE_ACTIVE
+                self.direction = - self.sign(rotation_rate)
                 self.active_start_time = self.get_clock().now()  # start active timer
                 self.get_logger().info(
                     f"ESP ACTIVATED | ref_heading = {self.reference_heading:.2f}° | angular_velocity_z = {rotation_rate:.2f} rad/s"
@@ -237,14 +240,13 @@ class Esp(Node):
         
         # 1) Heading error
         error = self.reference_heading - self.last_heading   # degrees
-        direction = self.sign(self.reference_heading - self.last_heading)
         # 2) Steering correction (proportional)
         if abs(error) > 30:
-            steer_correction = int(direction * MAX_STEER)
+            steer_correction = int(self.direction * MAX_STEER)
         elif abs(error) > 15:
-            steer_correction = int(direction * MAX_STEER / 1.5)
+            steer_correction = int(self.direction * MAX_STEER / 1.5)
         else:
-            steer_correction = int(direction * MAX_STEER / 2)
+            steer_correction = int(self.direction * MAX_STEER / 2)
         # log for the trajectory command
         self.get_logger().info(
             f"ESP CTRL | error={error:.2f}° | steer={steer_correction}"

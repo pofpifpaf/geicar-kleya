@@ -142,6 +142,7 @@ private:
                 start = false;
             }
             else if (buttonX && !prevButtonX) {
+                RCLCPP_WARN(this->get_logger(), "X pressed -> toggle ACC");
                 auto_speed_mode = !auto_speed_mode;
                 callSpeedRegulationService(auto_speed_mode);
     }

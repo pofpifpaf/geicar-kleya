@@ -229,7 +229,7 @@ class Esp(Node):
         rotation_rate = msg.angular_velocity.z
         if abs(rotation_rate) > self.min_deviation_z_ang_vel and self.state == ESP_STATE_INTERMEDIATE :
                 self.state = ESP_STATE_ACTIVE
-                self.direction = - self.sign(rotation_rate)
+                self.direction = self.sign(rotation_rate)
                 self.active_start_time = self.get_clock().now()  # start active timer
                 self.get_logger().info(
                     f"ESP ACTIVATED | ref_heading = {self.reference_heading:.2f}° | angular_velocity_z = {rotation_rate:.2f} rad/s"

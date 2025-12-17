@@ -1,5 +1,7 @@
 import streamlit as st
-import Home, adas_options, Dashboard, contactus
+import Home, adas_options, contactus, Dashboard
+
+print("Dashboard module contents:", dir(Dashboard))  # <-- add this
 
 st.set_page_config(page_title="Tableau de bord", layout="wide")
 

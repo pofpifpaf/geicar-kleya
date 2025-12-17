@@ -4,26 +4,6 @@ import time
 import requests
 
 from streamlit_autorefresh import st_autorefresh
-
-if "shared_data" not in st.session_state:
-    st.session_state.shared_data = {
-        "speed": 0,
-        "RPM": 0,
-        "battery": 0,
-        "pressure": 0,
-        "temperature": 0,
-        "airbag_state": "None",
-        "collision_state": "None",
-        "esp_state": "None",
-    }
-
-if "adas_data" not in st.session_state:
-    st.session_state.adas_data = {
-        "Collision": False,
-        "ESP": False,
-        "Airbag": False,
-    }
-
    
 @st.cache_data(ttl=0.5)
 def get_state():
@@ -167,6 +147,25 @@ def generate_dashboard_html(shared_data, adas_data, power_val=120):
     """
 
 def generate_dashboard():
+
+  if "shared_data" not in st.session_state:
+    st.session_state.shared_data = {
+        "speed": 0,
+        "RPM": 0,
+        "battery": 0,
+        "pressure": 0,
+        "temperature": 0,
+        "airbag_state": "None",
+        "collision_state": "None",
+        "esp_state": "None",
+    }
+
+  if "adas_data" not in st.session_state:
+      st.session_state.adas_data = {
+          "Collision": False,
+          "ESP": False,
+          "Airbag": False,
+      }
 
   state = get_state()
   if state:

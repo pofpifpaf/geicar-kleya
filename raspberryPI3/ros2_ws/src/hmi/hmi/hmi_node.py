@@ -35,9 +35,34 @@ class HmiNode(Node):
         self.collision_state  = "None"
         self.esp_state  = "None"
 
+        self.active_features = {
+            "Collision": False,
+            "Airbag": False,
+            "ESP": False
+        }
+
         self.timer = self.create_timer(0.3, self.send_to_api)
+        self.timer2 = self.create_timer(1, self.fetch_active_features)
 
         self.get_logger().info("hmi_node READY")
+
+    def fetch_active_features(self):
+        try:
+            r = requests.get("http://localhost:8000/adas", timeout=0.2)
+            data = r.json()
+            # Update active features
+            self.active_features["Collision"] = data.get("Collision", False)
+            self.active_features["Airbag"] = data.get("Airbag", False)
+            self.active_features["ESP"] = data.get("ESP", False)
+        except Exception as e:
+            self.get_logger().warn(f"Failed to fetch ADAS state from FastAPI: {e}")
+
+        # Publish to ROS topic
+        msg = HmiFeatures()
+        msg.collision_avoidance_active = self.active_features["Collision"]
+        msg.airbag_active = self.active_features["Airbag"]
+        msg.esp_active = self.active_features["ESP"]
+        self.publisher_active_features_hmi.publish(msg)
 
     #Circonference function : 2*pie*rayon
     def circonference(self,rayon):

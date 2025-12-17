@@ -118,7 +118,7 @@ def generate_dashboard_html(shared_data, adas_data, power_val=120):
     """
     
 
-    airbag_overlay = '<div class="airbag-overlay">⚠ AIRBAG DEPLOYED ⚠</div>' if shared_data["airbag_state"] == "shock" else ""
+    airbag_overlay = '<div class="airbag-overlay">⚠ AIRBAG DEPLOYED ⚠</div>' if shared_data["airbag_state"] == "state_deployed" else ""
     # ldw_overlay = '<div class="ldw-overlay">⚠ Lane Departure Left</div>' if shared_data["ldw_state"] else ""
     ldw_overlay = ""
 

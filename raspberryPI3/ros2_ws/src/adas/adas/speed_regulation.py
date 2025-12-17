@@ -32,6 +32,7 @@ class speed_regulation(Node):
         #Speed regulation variables
         self.target_speed = 0.0
         self.auto_speed = False  
+        self.prev_correcting = False
 
         # Motors order
         self.motor_right_rear_pwm = 0
@@ -144,6 +145,16 @@ class speed_regulation(Node):
             pwm = max(min(pwm, self.max_pwm), -self.max_pwm)
             self.motor_right_rear_pwm_offset = int(round(pwm))
             self.motor_left_rear_pwm_offset  = int(round(pwm))
+
+        correcting_log = (abs(delta) >= tolerance)
+
+        if correcting_log != self.prev_correcting:
+            if correcting_log:
+                self.get_logger().info("Correcting speed")
+            else:
+                self.get_logger().info("Speed within tolerance")
+
+        self.prev_correcting = correcting_log
 
         correcting = (self.motor_right_rear_pwm_offset != 0 or self.motor_left_rear_pwm_offset != 0)
         self.state = STATE_NOT_OK if correcting else STATE_OK

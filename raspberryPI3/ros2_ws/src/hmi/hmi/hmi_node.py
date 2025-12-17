@@ -5,7 +5,7 @@ from rclpy.node import Node
 from interfaces.msg import MotorsFeedback, GeneralData, HmiFeatures, HmiStates
 from std_msgs.msg import Bool
 
-class hmi_node(Node):
+class HmiNode(Node):
 
     def __init__(self):
 
@@ -15,9 +15,9 @@ class hmi_node(Node):
         self.publisher_active_features_hmi = self.create_publisher(HmiFeatures, 'active_features_hmi', 10)
         
         # Suscribers
-        self.subscription = self.create_subscription(MotorsFeedback,'motors_feedback', self.motorsfeedback_callback, 10)
-        self.subscription = self.create_subscription(GeneralData,'general_data', self.generaldata_callback, 10)
-        self.subscription = self.create_subscription(HmiStates,'hmi_states', self.hmistates_callback, 10)
+        self.subscription_motors_feedback = self.create_subscription(MotorsFeedback,'motors_feedback', self.motorsfeedback_callback, 10)
+        self.subscription_general_data = self.create_subscription(GeneralData,'general_data', self.generaldata_callback, 10)
+        self.subscription_hmi_states = self.create_subscription(HmiStates,'hmi_states', self.hmistates_callback, 10)
 
         # Variables initialisation
         self.left_rear_RPM  = 0  
@@ -33,7 +33,9 @@ class hmi_node(Node):
 
         self.airbag_state  = "None"
         self.collision_state  = "None"
-        self.esp_collision  = "None"
+        self.esp_state  = "None"
+
+        self.timer = self.create_timer(0.3, self.send_to_api)
 
         self.get_logger().info("hmi_node READY")
 
@@ -53,8 +55,6 @@ class hmi_node(Node):
         self.right_speed = (self.right_rear_RPM * self.circonference(0.95) * 0.06)
         self.speed = (self.left_speed+self.right_speed)/2
 
-        self.send_to_api()
-
 
 
     def generaldata_callback(self, general_data : GeneralData):
@@ -62,8 +62,6 @@ class hmi_node(Node):
         self.battery_level  = general_data.battery_level  
         self.temperature  = general_data.temperature
         self.pressure  = general_data.pressure
-
-        self.send_to_api()
 
 
     
@@ -73,14 +71,12 @@ class hmi_node(Node):
         self.collision_state  = hmi_states.states[0] #index collsion
         self.esp_state  = hmi_states.states[2] #index esp
 
-        self.send_to_api()
-
 
     def send_to_api(self):
         payload = {
             "speed": self.speed,
             "RPM": self.RPM,
-            "battery": ((self.battery_level - 8) / (14 - 8)) * 100,
+            "battery": max(0.0, min(100.0, ((self.battery_level - 8) / (14 - 8)) * 100)),
             "pressure": self.pressure,
             "temperature": self.temperature,
             "airbag_state": self.airbag_state,
@@ -103,7 +99,7 @@ class hmi_node(Node):
 def main(args=None):
     rclpy.init(args=args)
 
-    hmi_nodes = hmi_node()
+    hmi_nodes = HmiNode()
 
     rclpy.spin(hmi_nodes)
 

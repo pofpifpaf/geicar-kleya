@@ -5,166 +5,176 @@ import requests
 
 from streamlit_autorefresh import st_autorefresh
 
-shared_data = {"speed": 0,
-               "RPM" : 0,
-               "battery" : 0,
-               "pressure": 0,
-               "temperature":0,
-               "airbag_state" : "None",
-               "collision_state" : "None",
-               "esp_state" : "None"}
+if "shared_data" not in st.session_state:
+    st.session_state.shared_data = {
+        "speed": 0,
+        "RPM": 0,
+        "battery": 0,
+        "pressure": 0,
+        "temperature": 0,
+        "airbag_state": "None",
+        "collision_state": "None",
+        "esp_state": "None",
+    }
 
+if "adas_data" not in st.session_state:
+    st.session_state.adas_data = {
+        "Collision": False,
+        "ESP": False,
+        "Airbag": False,
+    }
 
+   
+@st.cache_data(ttl=0.5)
 def get_state():
     try:
-        r = requests.get("http://localhost:8000/state", timeout=3)
+        r = requests.get("http://localhost:8000/state", timeout=0.3)
         return r.json()
     except:
-        return shared_data
-    
+        return None
+
+@st.cache_data(ttl=0.5)
 def get_adas():
     try:
-        r = requests.get("http://localhost:8000/adas", timeout=3)
+        r = requests.get("http://localhost:8000/adas", timeout=0.3)
         return r.json()
     except:
-        return {
-            "Collision": False,
-            "ESP": False,
-            "Airbag": False,
-        }
+        return None
 
 
+def svg_mini_gauge(width=120, height=100, percent=0.5, ticks=5, primary_color="#FFD36E"):
+    # On peut juste réutiliser svg_semi_gauge avec des dimensions réduites
+    return svg_semi_gauge(width=width, height=height, percent=percent, ticks=ticks, primary_color=primary_color)
+
+def polar_to_cart(cx, cy, r, angle):
+    a = radians(angle)
+    return cx + r * cos(a), cy - r * sin(a)
+
+def svg_semi_gauge(width=450, height=350, percent=0.5, ticks=10, primary_color="#8BE38B"):
+    cx, cy = width / 2, height
+    r = min(width * 0.42, height * 0.85)
+    start_angle, end_angle = 180, 0
+
+    start_x, start_y = polar_to_cart(cx, cy, r, start_angle)
+    end_x, end_y = polar_to_cart(cx, cy, r, end_angle)
+    prog_angle = start_angle - (start_angle - end_angle) * percent
+    prog_x, prog_y = polar_to_cart(cx, cy, r, prog_angle)
+
+    ticks_svg, labels_svg = "", ""
+    for i in range(ticks + 1):
+        ang = start_angle - (start_angle - end_angle) * (i / ticks)
+        x1, y1 = polar_to_cart(cx, cy, r * 0.92, ang)
+        x2, y2 = polar_to_cart(cx, cy, r * 1.02, ang)
+        lx, ly = polar_to_cart(cx, cy, r * 0.78, ang)
+        val = int(i * 100 / ticks)
+        ticks_svg += f'<line class="tick" x1="{x1:.2f}" y1="{y1:.2f}" x2="{x2:.2f}" y2="{y2:.2f}" stroke-width="2"/>'
+        labels_svg += f'<text x="{lx:.2f}" y="{ly:.2f}" text-anchor="middle" fill="#4EE6FF" font-size="14">{val}</text>'
+
+    grad_id = f"g{int(time.time()*1000)%100000}"
+    return f"""
+    <svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="{grad_id}" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#4EE6FF"/>
+          <stop offset="100%" stop-color="{primary_color}"/>
+        </linearGradient>
+      </defs>
+      <path class="arc-bg" d="M {start_x} {start_y} A {r} {r} 0 0 1 {end_x} {end_y}"/>
+      {ticks_svg}
+      {labels_svg}
+      <path class="arc-fill" stroke="url(#{grad_id})" d="M {start_x} {start_y} A {r} {r} 0 0 1 {prog_x} {prog_y}"/>
+    </svg>
+    """
+def generate_dashboard_html(shared_data, adas_data, power_val=120):
+    # power_norm = min(power_val / 200.0, 1.0)
+    batt_norm = min(shared_data["battery"] / 100.0, 1.0)
+    rpm_norm = min(shared_data["RPM"] / 10.0, 1.0)
+    # fuel_norm = min(fuel_percent / 10000.0, 1.0)
+    # temperature_norm = min(temperature_value/100, 1.0)
+    # pressure_norm =  min(pressure_value/100, 1.0)
+    if shared_data["collision_state"] == "state_1m":
+      collision_html = "<div class='collisionmessages'>⚠️ Obstacle in 1 meter </div>"
+    elif shared_data["collision_state"] == "state_20cm" :
+      collision_html = "<div class='collisionmessages'>⚠️ Obstacle in 20 cm : Car stopped </div>"
+    else:
+      collision_html = ""
+        
+    left_gauge = f"""
+    <div class="gauge-container" style="position:relative;">
+      <div class="gauge-label-top">Battery</div>
+      {svg_semi_gauge(percent=batt_norm, primary_color="#6EF2B0")}
+
+      <div class="gauge-label-bottom">{shared_data["battery"]:.0f}% battery</div>
+
+    </div>
+
+    
+    """
+
+    right_gauge = f"""
+    
+    <div class="gauge-container" style="position:relative;">
+    <div class="gauge-container right-gauge-container" style="position:relative;">
+      <div class="gauge-label-top"> RPM x100 </div>
+      {svg_semi_gauge(percent=rpm_norm, primary_color="#6EE6FF")}
+
+      <div class="">{shared_data["RPM"]:.0f} RPM</div>
+    </div>
+    </div>
+    {collision_html}
+  
+    """
+    
+    # Centre et status inchangés
+    center_html = f"""
+    <div class="center-panel">
+      <div style="color:#4EE6FF; font-size:18px;">Hold My Wheel</div>
+      <div class="speed-value">{int(shared_data["speed"]):02d}</div>
+      <div class="unit">km/h</div>    
+      <div class="generaltempandpressure">    
+        <div class="tempandpressure">🌡️ : {shared_data["temperature"] :.0f} °C </div>
+      </div>
+    </div>
+    """
+    
+
+    airbag_overlay = '<div class="airbag-overlay">⚠ AIRBAG DEPLOYED ⚠</div>' if shared_data["airbag_state"] == "shock" else ""
+    # ldw_overlay = '<div class="ldw-overlay">⚠ Lane Departure Left</div>' if shared_data["ldw_state"] else ""
+    ldw_overlay = ""
+
+    def indicator(label, active):
+        cls = "indicator active" if active else "indicator"
+        return f'<div class="{cls}">{label}</div>'
+    
+    status_html = f"""
+    <div class="status-row">
+      {indicator("ESP", adas_data["ESP"])}
+      {indicator("FCTA", adas_data["Collision"])}
+      {indicator("ABG", adas_data["Airbag"])}
+    </div>
+    """
+    return f"""
+    <div class="main-container">
+      <div class="dashboard">
+        {airbag_overlay}
+        {ldw_overlay}
+        {left_gauge}
+        {center_html}
+        {right_gauge}
+        {status_html}
+      </div>
+    </div>
+    """
 
 def generate_dashboard():
 
-  shared_data.update(get_state())
-  adas_value = get_adas()
+  state = get_state()
+  if state:
+    st.session_state.shared_data.update(state)
 
-
-  def svg_mini_gauge(width=120, height=100, percent=0.5, ticks=5, primary_color="#FFD36E"):
-      # On peut juste réutiliser svg_semi_gauge avec des dimensions réduites
-      return svg_semi_gauge(width=width, height=height, percent=percent, ticks=ticks, primary_color=primary_color)
-
-  def svg_semi_gauge(width=450, height=350, percent=0.5, ticks=10, primary_color="#8BE38B"):
-      cx, cy = width / 2, height
-      r = min(width * 0.42, height * 0.85)
-      start_angle, end_angle = 180, 0
-
-      def polar_to_cart(cx, cy, r, angle):
-          a = radians(angle)
-          return cx + r * cos(a), cy - r * sin(a)
-
-      start_x, start_y = polar_to_cart(cx, cy, r, start_angle)
-      end_x, end_y = polar_to_cart(cx, cy, r, end_angle)
-      prog_angle = start_angle - (start_angle - end_angle) * percent
-      prog_x, prog_y = polar_to_cart(cx, cy, r, prog_angle)
-
-      ticks_svg, labels_svg = "", ""
-      for i in range(ticks + 1):
-          ang = start_angle - (start_angle - end_angle) * (i / ticks)
-          x1, y1 = polar_to_cart(cx, cy, r * 0.92, ang)
-          x2, y2 = polar_to_cart(cx, cy, r * 1.02, ang)
-          lx, ly = polar_to_cart(cx, cy, r * 0.78, ang)
-          val = int(i * 100 / ticks)
-          ticks_svg += f'<line class="tick" x1="{x1:.2f}" y1="{y1:.2f}" x2="{x2:.2f}" y2="{y2:.2f}" stroke-width="2"/>'
-          labels_svg += f'<text x="{lx:.2f}" y="{ly:.2f}" text-anchor="middle" fill="#4EE6FF" font-size="14">{val}</text>'
-
-      grad_id = f"g{int(time.time()*1000)%100000}"
-      return f"""
-      <svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient id="{grad_id}" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stop-color="#4EE6FF"/>
-            <stop offset="100%" stop-color="{primary_color}"/>
-          </linearGradient>
-        </defs>
-        <path class="arc-bg" d="M {start_x} {start_y} A {r} {r} 0 0 1 {end_x} {end_y}"/>
-        {ticks_svg}
-        {labels_svg}
-        <path class="arc-fill" stroke="url(#{grad_id})" d="M {start_x} {start_y} A {r} {r} 0 0 1 {prog_x} {prog_y}"/>
-      </svg>
-      """
-
-  def generate_dashboard_html(power_val, rpm_val, speed_val, batt_percent, fuel_percent, pressure_value, temperature_value, airbag_state="None", ldw=False, collision_state="None", esp_state="None"):
-      power_norm = min(power_val / 200.0, 1.0)
-      batt_norm = min(batt_percent / 100.0, 1.0)
-      rpm_norm = min(rpm_val / 10.0, 1.0)
-      fuel_norm = min(fuel_percent / 10000.0, 1.0)
-      temperature_norm = min(temperature_value/100, 1.0)
-      pressure_norm =  min(pressure_value/100, 1.0)
-      if collision_state == "state_1m":
-        collision_html = "<div class='collisionmessages'>⚠️ Obstacle in 1 meter </div>"
-      elif collision_state == "state_20cm" :
-        collision_html = "<div class='collisionmessages'>⚠️ Obstacle in 20 cm : Car stopped </div>"
-      else:
-        collision_html = ""
-          
-      left_gauge = f"""
-      <div class="gauge-container" style="position:relative;">
-        <div class="gauge-label-top">Battery</div>
-        {svg_semi_gauge(percent=batt_norm, primary_color="#6EF2B0")}
-
-        <div class="gauge-label-bottom">{batt_percent:.0f}% battery</div>
-
-      </div>
-
-      
-      """
-
-      right_gauge = f"""
-      
-      <div class="gauge-container" style="position:relative;">
-      <div class="gauge-container right-gauge-container" style="position:relative;">
-        <div class="gauge-label-top"> RPM x100 </div>
-        {svg_semi_gauge(percent=rpm_norm, primary_color="#6EE6FF")}
-
-        <div class="">{rpm_val:.0f} RPM</div>
-      </div>
-      </div>
-      {collision_html}
-    
-      """
-      
-      # Centre et status inchangés
-      center_html = f"""
-      <div class="center-panel">
-        <div style="color:#4EE6FF; font-size:18px;">Hold My Wheel</div>
-        <div class="speed-value">{int(speed_val):02d}</div>
-        <div class="unit">km/h</div>    
-        <div class="generaltempandpressure">    
-          <div class="tempandpressure">🌡️ : {temperature_value :.0f} °C </div>
-        </div>
-      </div>
-      """
-      
-
-      airbag_overlay = '<div class="airbag-overlay">⚠ AIRBAG DEPLOYED ⚠</div>' if airbag_state == "shock" else ""
-      ldw_overlay = '<div class="ldw-overlay">⚠ Lane Departure Left</div>' if ldw else ""
-  
-
-      def indicator(label, active):
-          cls = "indicator active" if active else "indicator"
-          return f'<div class="{cls}">{label}</div>'
-      
-      status_html = f"""
-      <div class="status-row">
-        {indicator("ESP", adas_value["ESP"])}
-        {indicator("FCTA", adas_value["Collision"])}
-        {indicator("ABG", adas_value["Airbag"])}
-      </div>
-      """
-      return f"""
-      <div class="main-container">
-        <div class="dashboard">
-          {airbag_overlay}
-          {ldw_overlay}
-          {left_gauge}
-          {center_html}
-          {right_gauge}
-          {status_html}
-        </div>
-      </div>
-      """
+  adas = get_adas()
+  if adas:
+    st.session_state.adas_data.update(adas)
   
   st.markdown("""
     <style>
@@ -375,19 +385,11 @@ def generate_dashboard():
       """, unsafe_allow_html=True)
 
   html = generate_dashboard_html(
+      shared_data=st.session_state.shared_data,
+      adas_data=st.session_state.adas_data,
       power_val=120,
-      rpm_val=shared_data["RPM"],
-      speed_val=shared_data["speed"],
-      batt_percent=shared_data["battery"],
-      fuel_percent=56,
-      temperature_value= shared_data["temperature"],
-      pressure_value= shared_data["pressure"],
-      airbag_state=shared_data["airbag_state"],
-      ldw = False,
-      collision_state=shared_data["collision_state"],
-      esp_state =shared_data["esp_state"]
   )
 
   st.markdown(html, unsafe_allow_html=True)
-  st_autorefresh(interval=400)
+  st_autorefresh(interval=800)
     

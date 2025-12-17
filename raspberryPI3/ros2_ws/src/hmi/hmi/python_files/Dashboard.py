@@ -68,7 +68,7 @@ def svg_semi_gauge(width=450, height=350, percent=0.5, ticks=10, primary_color="
 def generate_dashboard_html(shared_data, adas_data, power_val=120):
     # power_norm = min(power_val / 200.0, 1.0)
     batt_norm = min(shared_data["battery"] / 100.0, 1.0)
-    rpm_norm = min(shared_data["RPM"] / 10.0, 1.0)
+    rpm_norm = min(shared_data["RPM"] / 100.0, 1.0)
     # fuel_norm = min(fuel_percent / 10000.0, 1.0)
     # temperature_norm = min(temperature_value/100, 1.0)
     # pressure_norm =  min(pressure_value/100, 1.0)

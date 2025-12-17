@@ -65,6 +65,12 @@ def generate_launch_description():
         emulate_tty=True
     )
 
+    hmi_node = Node(
+        package="hmi",
+        executable="hmi_node",
+        emulate_tty=True
+    )
+
 
     config_dir = os.path.join(get_package_share_directory('imu_filter_madgwick'), 'config')
 
@@ -95,5 +101,6 @@ def generate_launch_description():
     ld.add_action(system_check_node)
     ld.add_action(shock_detection_node)
     ld.add_action(adas_priority_node)
+    ld.add_action(hmi_node)
 
     return ld

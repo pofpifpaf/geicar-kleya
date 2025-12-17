@@ -1,16 +1,9 @@
 import math
 import rclpy
-import json
+import requests
 from rclpy.node import Node
 from interfaces.msg import MotorsFeedback, GeneralData, HmiFeatures, HmiStates
 from std_msgs.msg import Bool
-from pathlib import Path
-
-# Chemin vers le dossier où se trouve ce fichier Python
-current_dir = Path(__file__).parent
-
-# Chemin vers ton fichier JSON dans le même dossier
-data_json = current_dir / "../../../../share/hmidata/data.json"
 
 class hmi_node(Node):
 
@@ -60,7 +53,8 @@ class hmi_node(Node):
         self.right_speed = (self.right_rear_RPM * self.circonference(0.95) * 0.06)
         self.speed = (self.left_speed+self.right_speed)/2
 
-        self.save_datas()
+        self.send_to_api()
+
 
 
     def generaldata_callback(self, general_data : GeneralData):
@@ -69,7 +63,8 @@ class hmi_node(Node):
         self.temperature  = general_data.temperature
         self.pressure  = general_data.pressure
 
-        self.save_datas()
+        self.send_to_api()
+
 
     
     def hmistates_callback(self, hmi_states : HmiStates):
@@ -78,35 +73,29 @@ class hmi_node(Node):
         self.collision_state  = hmi_states.states[0] #index collsion
         self.esp_state  = hmi_states.states[2] #index esp
 
-        self.save_datas()
+        self.send_to_api()
 
-    def save_datas(self):
-        
-        #Open data file
-        with open(data_json, "r") as f:
-            data = json.load(f)
-        #Write data
-        data["battery"] = ((self.battery_level-8)/(14-8))*100
-        data["pressure"] = self.pressure
-        data["temperature"] = self.temperature
-        data["speed"] = self.speed
-        data["RPMright"] = self.right_rear_RPM
-        data["RPMleft"] = self.left_rear_RPM
-        data["RPM"] = self.RPM
-        data["airbag_state"] = self.airbag_state
-        data["collision_state"] = self.collision_state
-        data["esp_state"] = self.esp_state
-        #Save data
-        with open(data_json, "w") as f:
-            json.dump(data, f, indent=4)
 
-        msg = HmiFeatures()
-        # Ici changer les valeurs des différentes variables 
-        msg.collision_avoidance_active = data["Collision"]
-        msg.esp_active = data["ESP"]
-        msg.airbag_active = data["Airbag"]
-        # On a juste à publish (pour savoir qui est activé ou pas)
-        self.publisher_active_features_hmi.publish(msg)
+    def send_to_api(self):
+        payload = {
+            "speed": self.speed,
+            "RPM": self.RPM,
+            "battery": ((self.battery_level - 8) / (14 - 8)) * 100,
+            "pressure": self.pressure,
+            "temperature": self.temperature,
+            "airbag_state": self.airbag_state,
+            "collision_state": self.collision_state,
+            "esp_state": self.esp_state,
+        }
+
+        try:
+            requests.post(
+                "http://localhost:8000/telemetry",
+                json=payload,
+                timeout=0.2
+            )
+        except Exception as e:
+            self.get_logger().warn(f"API unreachable: {e}")
 
 
 

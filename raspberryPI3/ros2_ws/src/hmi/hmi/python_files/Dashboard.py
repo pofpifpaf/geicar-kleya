@@ -17,14 +17,14 @@ shared_data = {"speed": 0,
 
 def get_state():
     try:
-        r = requests.get("http://localhost:8000/state", timeout=0.2)
+        r = requests.get("http://localhost:8000/state", timeout=3)
         return r.json()
     except:
         return shared_data
     
 def get_adas():
     try:
-        r = requests.get("http://localhost:8000/adas", timeout=0.2)
+        r = requests.get("http://localhost:8000/adas", timeout=3)
         return r.json()
     except:
         return {

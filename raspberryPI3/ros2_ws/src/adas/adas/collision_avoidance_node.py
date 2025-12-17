@@ -137,8 +137,8 @@ class collision_avoidance(Node):
             if self.state != self.prev_state and self.active:
                 self.get_logger().info(f"Detecting obstacle <{self.threshold_slow}cm : Speed limit {self.slow_speed_percentage}%")
 
-        elif ((self.motor_right_rear_pwm > STOP 
-             or self.motor_left_rear_pwm > STOP) and 
+        elif ((self.motor_right_rear_pwm < STOP 
+             or self.motor_left_rear_pwm < STOP) and 
             (self.ultra_rear_left < self.threshold_rear or 
             self.ultra_rear_right < self.threshold_rear or 
             self.ultra_rear_center < self.threshold_rear)):

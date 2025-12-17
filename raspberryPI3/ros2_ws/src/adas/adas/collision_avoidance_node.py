@@ -110,43 +110,45 @@ class collision_avoidance(Node):
         self.emergency_stop = False
         max_pwm = 50
     
-        if (self.ultra_front_left < self.threshold_stop or 
+        if ((self.motor_right_rear_pwm > STOP 
+             or self.motor_left_rear_pwm > STOP) and 
+            (self.ultra_front_left < self.threshold_stop or 
             self.ultra_front_right < self.threshold_stop or 
-            self.ultra_front_center < self.threshold_stop):
+            self.ultra_front_center < self.threshold_stop)):
 
-            if self.motor_right_rear_pwm > STOP or self.motor_left_rear_pwm > STOP:
+            self.emergency_stop = True
+            self.active = True
 
-                self.emergency_stop = True
-                self.active = True
-                
             self.state = STATE_STOP
 
-            if self.state != self.prev_state:
+            if self.state != self.prev_state and self.active:
                 self.get_logger().info(f"Detecting obstacle <{self.threshold_stop}cm ahead of car : Stopping car")
 
 
-        elif (self.threshold_stop < self.ultra_front_center < self.threshold_slow):
+        elif ((self.motor_right_rear_pwm > STOP 
+             or self.motor_left_rear_pwm > STOP) and 
+             (self.threshold_stop < self.ultra_front_center < self.threshold_slow)):
         
             max_pwm = self.slow_speed_percentage/2
             self.active = True
             
             self.state = STATE_SLOW
 
-            if self.state != self.prev_state:
+            if self.state != self.prev_state and self.active:
                 self.get_logger().info(f"Detecting obstacle <{self.threshold_slow}cm : Speed limit {self.slow_speed_percentage}%")
 
-        elif (self.ultra_rear_left < self.threshold_rear or 
+        elif ((self.motor_right_rear_pwm > STOP 
+             or self.motor_left_rear_pwm > STOP) and 
+            (self.ultra_rear_left < self.threshold_rear or 
             self.ultra_rear_right < self.threshold_rear or 
-            self.ultra_rear_center < self.threshold_rear):
-
-            if self.motor_right_rear_pwm < STOP or self.motor_left_rear_pwm < STOP:
-
-                self.emergency_stop = True
-                self.active = True
+            self.ultra_rear_center < self.threshold_rear)):
+                
+            self.emergency_stop = True
+            self.active = True
             
             self.state = STATE_STOP_REAR
 
-            if self.state != self.prev_state:
+            if self.state != self.prev_state and self.active:
                 self.get_logger().info(f"Detecting obstacle <{self.threshold_rear}cm behind car : Stopping car")
 
         

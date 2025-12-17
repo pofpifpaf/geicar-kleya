@@ -1,10 +1,10 @@
 import streamlit as st
 from math import radians, cos, sin
 import time
-import json
+import requests
+
 from streamlit_autorefresh import st_autorefresh
-from pathlib import Path
-import threading
+
 shared_data = {"speed": 0,
                "RPM" : 0,
                "battery" : 0,
@@ -15,37 +15,31 @@ shared_data = {"speed": 0,
                "esp_state" : "None"}
 
 
-current_dir = Path(__file__).parent
-data_json = current_dir / "../../../../install/hmi/share/hmidata/data.json"
-#data_json = current_dir / "../data/data_test.json"
+def get_state():
+    try:
+        r = requests.get("http://localhost:8000/state", timeout=0.2)
+        return r.json()
+    except:
+        return shared_data
+    
+def get_adas():
+    try:
+        r = requests.get("http://localhost:8000/adas", timeout=0.2)
+        return r.json()
+    except:
+        return {
+            "Collision": False,
+            "ESP": False,
+            "Airbag": False,
+        }
+
 
 
 def generate_dashboard():
-  def load_config(path=data_json):
-      with open(path, "r") as f:
-          return json.load(f)
-  #shared_data = load_config(data_json)
-  def background_reader():
-    while True:
-        try:
-            with open(data_json, "r") as f:
-                j = json.load(f)
-                shared_data["speed"] = j["speed"]
-                #if j["airbag_state"] == True:
-                shared_data["airbag_state"] = j["airbag_state"]
-                shared_data["RPM"] = j["RPM"]
-                shared_data["battery"] = j["battery"]
-                shared_data["pressure"] = j["pressure"]
-                shared_data["temperature"] = j["temperature"]
-                shared_data["collision_state"] = j["collision_state"]
-                shared_data["esp_state"] = j["esp_state"]
-        except:
-            pass
-        time.sleep(0.2)
 
-  if "thread_started" not in st.session_state:
-    threading.Thread(target=background_reader, daemon=True).start()
-    st.session_state.thread_started = True
+  shared_data.update(get_state())
+  adas_value = get_adas()
+
 
   def svg_mini_gauge(width=120, height=100, percent=0.5, ticks=5, primary_color="#FFD36E"):
       # On peut juste réutiliser svg_semi_gauge avec des dimensions réduites
@@ -151,7 +145,7 @@ def generate_dashboard():
       def indicator(label, active):
           cls = "indicator active" if active else "indicator"
           return f'<div class="{cls}">{label}</div>'
-      adas_value = load_config()
+      
       status_html = f"""
       <div class="status-row">
         {indicator("ESP", adas_value["ESP"])}

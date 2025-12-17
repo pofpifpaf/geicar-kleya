@@ -1,18 +1,14 @@
 import streamlit as st
-import json
-from pathlib import Path
+import requests
 
-current_dir = Path(__file__).parent
-data_json = current_dir / "../../../../install/hmi/share/hmidata/data.json"
-#data_json = current_dir / "../data/data_test.json"
+def save_config(data):
+    requests.post("http://localhost:8000/adas", json=data)
 
-def save_config(data, path=data_json):
-    with open(path, "w") as f:
-        json.dump(data, f, indent=4)
 
-def load_config(path=data_json):
-    with open(path, "r") as f:
-        return json.load(f)
+def load_config():
+    r = requests.get("http://localhost:8000/adas")
+    return r.json()
+
 adas_value = load_config()
 
 def generate_options():

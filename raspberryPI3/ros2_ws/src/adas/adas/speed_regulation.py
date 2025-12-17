@@ -7,7 +7,7 @@ from std_srvs.srv import SetBool  #Service pour ON/OFF
 
 # Global Variable
 SPEED_TOLERANCE = 0.05  #Tolérance vitesse 5%
-SPEED_CORRECTION = 1  #Gain de correction (à ajuster si besoin)
+SPEED_CORRECTION = 10  #Gain de correction (à ajuster si besoin)
 
 STATE_NOTHING = "state_nothing"
 STATE_MODE_OFF = "state_mode_off"
@@ -82,11 +82,30 @@ class speed_regulation(Node):
             self.auto_speed = True
             self.target_speed = (self.left_rear_speed + self.right_rear_speed) / 2.0
             self.get_logger().info(f"ACC ON : target speed={self.target_speed:.2f})")
+
+            # reset offsets on engage
+            self.motor_right_rear_pwm_offset = 0
+            self.motor_left_rear_pwm_offset = 0
+            self.active = False
+
         else:
             self.auto_speed = False
             self.motor_right_rear_pwm_offset = 0
             self.motor_left_rear_pwm_offset = 0
+            self.active = False
             self.get_logger().info("ACC OFF")
+
+            # publish  once when turning OFF
+            msg = MotorsOrderAdas()
+            msg.offset_right_rear_pwm = self.motor_right_rear_pwm_offset
+            msg.offset_left_rear_pwm = self.motor_left_rear_pwm_offset
+            msg.offset_steering_angle = self.steering_angle_offset
+            msg.max_pwm = self.max_pwm
+            msg.emergency_stop = self.emergency_stop
+            msg.active = self.active
+            msg.state = self.state
+
+            self.publisher_motors_order.publish(msg)
 
         response.success = True
         response.message = "OK"
@@ -95,14 +114,7 @@ class speed_regulation(Node):
     ####################################
     ######## Speed Implementation ######
     ####################################
-
     def regulate_speed(self):
-        """
-        Régulation avec tolérance +-5 %
-        si vitesse trop basse/haute que tolerance corrige 
-        """
-
-        #pas en mode auto on fait rien
         if not self.auto_speed:
             self.state = STATE_MODE_OFF
             if self.state != self.prev_state:
@@ -110,46 +122,44 @@ class speed_regulation(Node):
             self.prev_state = self.state
             return
 
-        self.state = STATE_NOTHING
-        self.active = False
+            # ACC engagé tant que auto_speed = True
+        self.active = True
 
-        #Calcul de la vitesse actuelle
         actual_speed = (self.left_rear_speed + self.right_rear_speed) / 2.0
         delta = self.target_speed - actual_speed
         tolerance = SPEED_TOLERANCE * abs(self.target_speed)
 
-        #Vitesse ok, pas de correction
-        if abs(delta) < tolerance:
-            self.state = STATE_OK
-            if self.state != self.prev_state:
-                self.get_logger().info("Speed within tolerance")
+        user_accelerating = (self.motor_left_rear_pwm > 50) or (self.motor_right_rear_pwm > 50)
 
-        #Vitesse trop haute/basse, correction
+        if abs(delta) < tolerance:
+            self.motor_right_rear_pwm_offset = 0
+            self.motor_left_rear_pwm_offset = 0
         else:
             pwm = SPEED_CORRECTION * delta
 
-            self.motor_right_rear_pwm_offset = int(pwm)
-            self.motor_left_rear_pwm_offset = int(pwm)
-            self.active = True
+            # autoriser l’override conducteur : ne pas freiner pendant qu’il accélère
+            if user_accelerating and pwm < 0:
+                pwm = 0
 
-            self.state = STATE_NOT_OK
-            if self.state != self.prev_state:
-                self.get_logger().info("Correcting speed")
+            pwm = max(min(pwm, self.max_pwm), -self.max_pwm)
+            self.motor_right_rear_pwm_offset = int(round(pwm))
+            self.motor_left_rear_pwm_offset  = int(round(pwm))
 
-        #Publishing
-        if self.prev_state != self.state:
-            msg = MotorsOrderAdas()
-            msg.offset_right_rear_pwm = self.motor_right_rear_pwm_offset
-            msg.offset_left_rear_pwm = self.motor_left_rear_pwm_offset
-            msg.offset_steering_angle = self.steering_angle_offset
+        correcting = (self.motor_right_rear_pwm_offset != 0 or self.motor_left_rear_pwm_offset != 0)
+        self.state = STATE_NOT_OK if correcting else STATE_OK
 
-            msg.max_pwm = self.max_pwm
-            msg.emergency_stop = self.emergency_stop
-            msg.active = self.active
-
-            self.publisher_motors_order.publish(msg)
+        msg = MotorsOrderAdas()
+        msg.offset_right_rear_pwm = self.motor_right_rear_pwm_offset
+        msg.offset_left_rear_pwm = self.motor_left_rear_pwm_offset
+        msg.offset_steering_angle = self.steering_angle_offset
+        msg.max_pwm = self.max_pwm
+        msg.emergency_stop = self.emergency_stop
+        msg.active = self.active
+        msg.state = self.state
+        self.publisher_motors_order.publish(msg)
 
         self.prev_state = self.state
+
 
 
 def main(args=None):

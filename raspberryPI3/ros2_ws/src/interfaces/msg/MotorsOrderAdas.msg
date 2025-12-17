@@ -17,7 +17,7 @@ int8 command_steering_angle 0
 bool command_steering False
 
 
-int8 max_pwm 0 					#PWM relatif [0;50]
+int8 max_pwm 50 					#PWM relatif [0;50]
 
 bool emergency_stop False
 

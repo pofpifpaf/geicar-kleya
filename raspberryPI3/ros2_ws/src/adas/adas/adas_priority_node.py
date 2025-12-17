@@ -145,15 +145,15 @@ class adas_priority(Node):
 
                 if self.priorities[key] < min_prio_command_pwm and msg.command_pwm:
 
-                    min_prio_command_pwm = self.priorities[key]
+                    min_prio_command_pwm = min(self.priorities[key], min_prio_command_pwm)
                     selected_command_msg_pwm = msg
 
                 if self.priorities[key] < min_prio_command_steering and msg.command_steering:
 
-                    min_prio_command_steering = self.priorities[key]
+                    min_prio_command_steering = min(self.priorities[key], min_prio_command_steering)
                     selected_command_msg_steering = msg
 
-        # Checking for any offsets
+        # Checking for any offsets and emergency stops
         if selected_offset_msg is not None:   
 
             left_pwm = max(min(selected_offset_msg.offset_left_rear_pwm + left_pwm, 100), 0)
@@ -186,15 +186,22 @@ class adas_priority(Node):
 
             if msg.active and self.hmi_active[key]:
 
-                if msg.emergency_stop :
+                if msg.emergency_stop and key == "airbag":
 
                     left_pwm = STOP
                     right_pwm = STOP
 
-                if (not self.state_airbag_deployed) and (key == "airbag"):
-                    self.get_logger().info(f"Emergency stop detected from airbag node")
-                    self.time_airbag_deployed = time.time()
-                    self.state_airbag_deployed = True
+                    if not self.state_airbag_deployed:
+                        self.get_logger().info(f"Emergency stop detected from airbag node")
+                        self.time_airbag_deployed = time.time()
+                        self.state_airbag_deployed = True
+
+                elif msg.emergency_stop:
+
+                    if self.raw_motor_right_rear_pwm > STOP and self.raw_motor_left_rear_pwm > STOP:
+
+                        left_pwm = STOP
+                        right_pwm = STOP
 
         # Sending commands to motors
         self.motor_right_rear_pwm = right_pwm

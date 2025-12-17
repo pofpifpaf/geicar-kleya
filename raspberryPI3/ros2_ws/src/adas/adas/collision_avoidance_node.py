@@ -3,14 +3,12 @@ from rclpy.node import Node
 
 from interfaces.msg import Ultrasonic, MotorsOrder, MotorsOrderAdas
 
-from rcl_interfaces.msg import SetParametersResult
-
 STOP = 50
+FIRST_MAX = 65
 
-STATE_STOP = "state_stop"
-STATE_STOP_REAR = "state_stop_rear"
+STATE_20CM = "state_20cm"
 STATE_NOTHING = "state_nothing"
-STATE_SLOW = "state_slow"
+STATE_1M = "state_1m"
 
 REFRESH_PERIOD = 0.002
 
@@ -29,13 +27,15 @@ class collision_avoidance(Node):
         self.ultra_front_right = 300
         self.ultra_front_center = 300
 
-        self.ultra_rear_left = 300
-        self.ultra_rear_right = 300
-        self.ultra_rear_center = 300
+        self.motor_right_rear_pwm_offset = 0
+        self.motor_left_rear_pwm_offset = 0
+        self.steering_angle_offset = 0
 
         self.motor_right_rear_pwm = 0
         self.motor_left_rear_pwm = 0
+        self.steering_angle = 0
 
+        self.max_pwm = 100
         self.emergency_stop = False
 
         self.state = STATE_NOTHING
@@ -43,50 +43,10 @@ class collision_avoidance(Node):
 
         self.active = False
 
-        self.declare_parameter("threshold_stop", 20)
-        self.declare_parameter("threshold_slow", 40)
-        self.declare_parameter("threshold_rear", 30)
-
-        self.declare_parameter("slow_speed_percentage", 30)
-
-        self.threshold_stop = self.get_parameter("threshold_stop").value
-        self.threshold_slow = self.get_parameter("threshold_slow").value
-        self.threshold_rear = self.get_parameter("threshold_rear").value
-
-        self.slow_speed_percentage = self.get_parameter("slow_speed_percentage").value
-
-        self.add_on_set_parameters_callback(self.param_callback)
-
         self.timer = self.create_timer(REFRESH_PERIOD, self.detect_collision)
 
         self.get_logger().info("collision_avoidance_node READY")
 
-    # Parameters callback
-    def param_callback(self, params):
-
-        for p in params:
-
-            if (p.name == "threshold_slow"):
-
-                self.threshold_slow = p.value
-                self.get_logger().info(f"Parameter {p.name} changed to {self.threshold_slow}")
-
-            if (p.name == "threshold_stop"):
-
-                self.threshold_stop = p.value
-                self.get_logger().info(f"Parameter {p.name} changed to {self.threshold_stop}")
-
-            if (p.name == "slow_speed_percentage"):
-
-                self.slow_speed_percentage = p.value
-                self.get_logger().info(f"Parameter {p.name} changed to {self.slow_speed_percentage}")
-
-            if (p.name == "threshold_rear"):
-
-                self.threshold_rear = p.value
-                self.get_logger().info(f"Parameter {p.name} changed to {self.threshold_rear}")
-
-        return SetParametersResult(successful=True)
 
     def ultrasonic_callback(self, us_data : Ultrasonic):
 
@@ -94,75 +54,72 @@ class collision_avoidance(Node):
         self.ultra_front_right = us_data.front_right
         self.ultra_front_center = us_data.front_center
 
-        self.ultra_rear_left = us_data.rear_left
-        self.ultra_rear_right = us_data.rear_right
-        self.ultra_rear_center = us_data.rear_center
+        self.detect_collision()
 
     def motors_order_raw_callback(self, msg):
 
         self.motor_right_rear_pwm = msg.right_rear_pwm
         self.motor_left_rear_pwm = msg.left_rear_pwm
 
+        self.motor_steering_angle = msg.steering_angle
+
     def detect_collision(self):
 
         self.active = False
         self.state = STATE_NOTHING
         self.emergency_stop = False
-        max_pwm = 50
+        self.max_pwm = 50
+
     
-        if (self.ultra_front_left < self.threshold_stop or 
-            self.ultra_front_right < self.threshold_stop or 
-            self.ultra_front_center < self.threshold_stop):
+        if self.ultra_front_left < 20 or self.ultra_front_right < 20 or self.ultra_front_center < 20:
 
             if self.motor_right_rear_pwm > STOP or self.motor_left_rear_pwm > STOP:
 
                 self.emergency_stop = True
                 self.active = True
                 
-            self.state = STATE_STOP
+            self.state = STATE_20CM
 
             if self.state != self.prev_state:
-                self.get_logger().info(f"Detecting obstacle <{self.threshold_stop}cm ahead of car : Stopping car")
+                self.get_logger().info("Detecting obstacle <20 cm: Stopping car")
 
 
-        elif (self.threshold_stop < self.ultra_front_center < self.threshold_slow):
+        elif ((20 < self.ultra_front_left < 100) or
+              (20 < self.ultra_front_right < 100) or
+              (20 < self.ultra_front_center < 100)):
         
-            max_pwm = self.slow_speed_percentage/2
+            self.max_pwm = 15
             self.active = True
             
-            self.state = STATE_SLOW
+            self.state = STATE_1M
 
             if self.state != self.prev_state:
-                self.get_logger().info(f"Detecting obstacle <{self.threshold_slow}cm : Speed limit {self.slow_speed_percentage}%")
+                self.get_logger().info("Detecting obstacle: Speed limit 30%")
+                changes = True
 
-        elif (self.ultra_rear_left < self.threshold_rear or 
-            self.ultra_rear_right < self.threshold_rear or 
-            self.ultra_rear_center < self.threshold_rear):
 
-            if self.motor_right_rear_pwm < STOP or self.motor_left_rear_pwm < STOP:
-
-                self.emergency_stop = True
-                self.active = True
-            
-            self.state = STATE_STOP_REAR
-
-            if self.state != self.prev_state:
-                self.get_logger().info(f"Detecting obstacle <{self.threshold_rear}cm behind car : Stopping car")
-
-        
         # Publishing
-        if self.active or (self.state != self.prev_state):
-
+        if self.state != self.prev_state:
             msg = MotorsOrderAdas()
 
-            msg.max_pwm = int(max_pwm)
+            msg.offset_right_rear_pwm = self.motor_right_rear_pwm_offset
+            msg.offset_left_rear_pwm = self.motor_left_rear_pwm_offset
+
+            msg.offset_steering_angle = self.steering_angle_offset
+
+            msg.max_pwm = self.max_pwm
+
             msg.emergency_stop = self.emergency_stop
+
             msg.state = self.state
+
             msg.active = self.active
 
             self.publisher_motors_order.publish(msg)
 
         self.prev_state = self.state
+
+
 
 
 def main(args=None):

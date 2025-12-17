@@ -47,6 +47,13 @@ def generate_launch_description():
         executable="airbag_shock_detection",
         emulate_tty=True
     )
+
+    speed_regulation = Node(
+        package="adas",
+        executable="speed_regulation",
+        emulate_tty=True
+    )
+    
     adas_priority_node = Node(
         package="adas",
         executable="adas_priority_node",

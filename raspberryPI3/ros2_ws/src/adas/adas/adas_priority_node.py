@@ -12,6 +12,7 @@ REFRESH_PERIOD = 0.002
 INDEX_COLLISION = 0
 INDEX_AIRBAG = 1
 INDEX_ESP = 2
+INDEX_ACC = 3
 
 class adas_priority(Node):
 
@@ -24,6 +25,7 @@ class adas_priority(Node):
         self.sub_collision = self.create_subscription(MotorsOrderAdas, 'motors_order_collision', self.collision_callback, 10)
         self.sub_airbag = self.create_subscription(MotorsOrderAdas, 'motors_order_airbag', self.airbag_callback, 10)
         self.sub_esp = self.create_subscription(MotorsOrderAdas,'motors_order_esp', self.esp_callback, 10)
+        self.sub_acc = self.create_subscription(MotorsOrderAdas, 'motors_order_ACC', self.acc_callback, 10)
 
         self.sub_active_features_hmi = self.create_subscription(HmiFeatures, 'active_features_hmi', self.active_features_HMI_callback, 10)
 
@@ -35,23 +37,27 @@ class adas_priority(Node):
         self.declare_parameter("airbag_priority", 0)
         self.declare_parameter("collision_priority", 1)
         self.declare_parameter("esp_priority", 2)
+        self.declare_parameter("acc_priority", 3)
 
         self.declare_parameter("airbag_block_duration", 10)
 
         self.priorities = {"collision": self.get_parameter("collision_priority").value,
                          "airbag": self.get_parameter("airbag_priority").value,
-                         "esp": self.get_parameter("esp_priority").value}
+                         "esp": self.get_parameter("esp_priority").value,
+                         "acc" : self.get_parameter("acc_priority").value}
 
         self.airbag_block_duration = self.get_parameter("airbag_block_duration").value
 
         self.last_offsets = {}
         self.hmi_active = {"collision":True,
                              "airbag":True,
-                             "esp":True}
+                             "esp":True,
+                             "acc": True}
 
         self.states = {"collision": "state_nothing",
                          "airbag": "state_nothing",
-                         "esp": "state_nothing"}
+                         "esp": "state_nothing",
+                         "acc": "state_nothing"}
 
         # Active features on HMI
         self.collision_avoidance_active_HMI = 0
@@ -95,6 +101,10 @@ class adas_priority(Node):
     def airbag_callback(self, msg):
         self.last_offsets["airbag"] = msg
         self.states["airbag"] = msg.state
+
+    def acc_callback(self, msg):
+        self.last_offsets["acc"] = msg
+        self.states["acc"] = msg.state
         
     # Active features HMI callback
     def active_features_HMI_callback(self, msg):

@@ -122,7 +122,7 @@ class collision_avoidance(Node):
             self.state = STATE_STOP
 
             if self.state != self.prev_state:
-                self.get_logger().info(f"Detecting obstacle <{self.threshold_stop} cm ahead of car: Stopping car")
+                self.get_logger().info(f"Detecting obstacle <{self.threshold_stop}cm ahead of car : Stopping car")
 
 
         elif (self.threshold_stop < self.ultra_front_center < self.threshold_slow):
@@ -147,14 +147,15 @@ class collision_avoidance(Node):
             self.state = STATE_STOP_REAR
 
             if self.state != self.prev_state:
-                self.get_logger().info(f"Detecting obstacle <{self.threshold_slow}cm : Speed limit {self.slow_speed_percentage}%")
+                self.get_logger().info(f"Detecting obstacle <{self.threshold_rear}cm behind car : Stopping car")
 
+        
         # Publishing
         if self.active or (self.state != self.prev_state):
 
             msg = MotorsOrderAdas()
 
-            msg.max_pwm = max_pwm
+            msg.max_pwm = int(max_pwm)
             msg.emergency_stop = self.emergency_stop
             msg.state = self.state
             msg.active = self.active

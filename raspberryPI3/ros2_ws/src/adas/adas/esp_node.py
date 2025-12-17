@@ -64,15 +64,17 @@ class Esp(Node):
         # ESP state variables
         self.state = ESP_STATE_IDLE
         self.intermediate_start_time = None
+        
+        self.direction = None
 
 
         # Add environnement variables
-        self.declare_parameter("heading_tolerance", 3.0)
+        self.declare_parameter("heading_tolerance", 2.0)
         self.declare_parameter("ref_heading_rate", 9.0)
         self.declare_parameter("size_buffer_heading", 20)
         self.declare_parameter("stabilization_index", 4)
         self.declare_parameter("intermediate_timout", 2)
-        self.declare_parameter("min_deviation_z_ang_vel", 0.75)
+        self.declare_parameter("min_deviation_z_ang_vel", 0.6) # Value to confirm to deviation
         self.declare_parameter("active_timeout", 20)
         self.add_on_set_parameters_callback(self.param_callback)
 
@@ -227,6 +229,7 @@ class Esp(Node):
         rotation_rate = msg.angular_velocity.z
         if abs(rotation_rate) > self.min_deviation_z_ang_vel and self.state == ESP_STATE_INTERMEDIATE :
                 self.state = ESP_STATE_ACTIVE
+                self.direction = self.sign(rotation_rate)
                 self.active_start_time = self.get_clock().now()  # start active timer
                 self.get_logger().info(
                     f"ESP ACTIVATED | ref_heading = {self.reference_heading:.2f}° | angular_velocity_z = {rotation_rate:.2f} rad/s"
@@ -237,14 +240,13 @@ class Esp(Node):
         
         # 1) Heading error
         error = self.reference_heading - self.last_heading   # degrees
-        direction = self.sign(self.reference_heading - self.last_heading)
         # 2) Steering correction (proportional)
         if abs(error) > 30:
-            steer_correction = int(direction * MAX_STEER)
+            steer_correction = int(self.direction * MAX_STEER)
         elif abs(error) > 15:
-            steer_correction = int(direction * MAX_STEER / 1.5)
+            steer_correction = int(self.direction * MAX_STEER / 1.5)
         else:
-            steer_correction = int(direction * MAX_STEER / 2)
+            steer_correction = int(self.direction * MAX_STEER / 2)
         # log for the trajectory command
         self.get_logger().info(
             f"ESP CTRL | error={error:.2f}° | steer={steer_correction}"

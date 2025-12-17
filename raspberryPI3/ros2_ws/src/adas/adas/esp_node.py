@@ -229,7 +229,7 @@ class Esp(Node):
         rotation_rate = msg.angular_velocity.z
         if abs(rotation_rate) > self.min_deviation_z_ang_vel and self.state == ESP_STATE_INTERMEDIATE :
                 self.state = ESP_STATE_ACTIVE
-                self.direction = - self.sign(rotation_rate)
+                self.direction = self.sign(rotation_rate)
                 self.active_start_time = self.get_clock().now()  # start active timer
                 self.get_logger().info(
                     f"ESP ACTIVATED | ref_heading = {self.reference_heading:.2f}° | angular_velocity_z = {rotation_rate:.2f} rad/s"
@@ -251,15 +251,16 @@ class Esp(Node):
         self.get_logger().info(
             f"ESP CTRL | error={error:.2f}° | steer={steer_correction}"
         )
-        self.send_msg(steer = steer_correction,state=self.state, active=True)
+        self.send_msg(steer = steer_correction,command_pwm= True, state=self.state, active=True)
     
-    def send_msg (self, pwm=50, steer=0, state=ESP_STATE_IDLE, active=False) :
+    def send_msg (self, pwm=50,command_pwm = False, steer=0, state=ESP_STATE_IDLE, active=False) :
         # # Update motors order
         # # Value for Motors Control
         msg = MotorsOrderAdas()
         msg.offset_left_rear_pwm = self.motor_left_rear_pwm
         msg.offset_right_rear_pwm = self.motor_right_rear_pwm
         msg.command_steering_angle = steer
+        msg.command_pwm = command_pwm
         msg.state = state
         msg.max_pwm = pwm
         msg.emergency_stop = False

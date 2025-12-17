@@ -72,10 +72,12 @@ def generate_dashboard_html(shared_data, adas_data, power_val=120):
     # fuel_norm = min(fuel_percent / 10000.0, 1.0)
     # temperature_norm = min(temperature_value/100, 1.0)
     # pressure_norm =  min(pressure_value/100, 1.0)
-    if shared_data["collision_state"] == "state_1m":
-      collision_html = "<div class='collisionmessages'>⚠️ Obstacle in 1 meter </div>"
-    elif shared_data["collision_state"] == "state_20cm" :
-      collision_html = "<div class='collisionmessages'>⚠️ Obstacle in 20 cm : Car stopped </div>"
+    if shared_data["collision_state"] == "state_slow":
+      collision_html = "<div class='collisionmessages'>⚠️ Obstacle near in front </div>"
+    elif shared_data["collision_state"] == "state_stop" :
+      collision_html = "<div class='collisionmessages'>⚠️ Obstacle close : Stopping </div>"
+    elif shared_data["collision_state"] == "state_rear" :
+       collision_html = "<div class='collisionmessages'>⚠️ Obstacle behind : Stopping </div>"
     else:
       collision_html = ""
         

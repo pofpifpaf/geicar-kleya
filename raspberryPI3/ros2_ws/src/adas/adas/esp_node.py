@@ -69,12 +69,12 @@ class Esp(Node):
 
 
         # Add environnement variables
-        self.declare_parameter("heading_tolerance", 3.0)
+        self.declare_parameter("heading_tolerance", 2.0)
         self.declare_parameter("ref_heading_rate", 9.0)
         self.declare_parameter("size_buffer_heading", 20)
         self.declare_parameter("stabilization_index", 4)
         self.declare_parameter("intermediate_timout", 2)
-        self.declare_parameter("min_deviation_z_ang_vel", 0.75)
+        self.declare_parameter("min_deviation_z_ang_vel", 0.6) # Value to confirm to deviation
         self.declare_parameter("active_timeout", 20)
         self.add_on_set_parameters_callback(self.param_callback)
 

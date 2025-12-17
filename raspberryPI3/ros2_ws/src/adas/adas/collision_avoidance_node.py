@@ -127,7 +127,7 @@ class collision_avoidance(Node):
 
         elif (self.threshold_stop < self.ultra_front_center < self.threshold_slow):
         
-            max_pwm = self.slow_speed_percentage/2
+            max_pwm = int(self.slow_speed_percentage/2)
             self.active = True
             
             self.state = STATE_SLOW

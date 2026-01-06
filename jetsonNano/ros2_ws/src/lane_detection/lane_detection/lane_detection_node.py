@@ -20,13 +20,22 @@ class  lane_detection(Node):
         self.image_pub = self.create_publisher(Image,'image_lane_detection',10)
         self.subscription = self.create_subscription(Image,'image_raw', self.image_raw_callback, 10)
         self.subscription  # prevent unused variable warning
-
+        #Init variable
+        self.lanes_coordinates = None
+        self.center_camera_px = 640.0 # Value found based on camera photo (cf: notebook)
+        
     def image_raw_callback(self, image : Image):
         inputimage = self.bridge.imgmsg_to_cv2(image,desired_encoding='bgr8')
-        output, _, _, _ = self.detect_lanes_dark_tape(inputimage,draw_fn=self.draw_lines,thickness=25)
+        output, self.lanes_coordinates, _, _ = self.detect_lanes_dark_tape(inputimage,draw_fn=self.draw_lines,thickness=25)
+        self.image_with_lanes(output, image) # uncomment to debug
+
+    def image_with_lanes(self, output, image: Image):
         output_image = self.bridge.cv2_to_imgmsg(output,encoding='bgr8')
         output_image.header = image.header
         self.image_pub.publish(output_image)
+        
+    def error_center_lane(self):
+        pass
     
     # Utility functions OpenCV
     

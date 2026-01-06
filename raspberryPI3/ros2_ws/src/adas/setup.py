@@ -28,6 +28,7 @@ setup(
             'airbag_shock_detection = adas.airbag_shock_detect:main',
             'adas_priority_node = adas.adas_priority_node:main',
             'esp_node = adas.esp_node:main',
+            'lane_centering_assist_node = adas.lane_centering_assist:main',
         ],
     },
 )

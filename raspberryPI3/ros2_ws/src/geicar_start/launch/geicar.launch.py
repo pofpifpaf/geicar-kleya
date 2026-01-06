@@ -59,6 +59,12 @@ def generate_launch_description():
         executable="esp_node",
         emulate_tty=True
     )
+    
+    lane_centering_assist_node = Node(
+        package="adas",
+        executable="lane_centering_assist_node",
+        emulate_tty=True
+    )
     adas_priority_node = Node(
         package="adas",
         executable="adas_priority_node",
@@ -100,6 +106,7 @@ def generate_launch_description():
     ld.add_action(imu_filter_madgwick_node)
     ld.add_action(system_check_node)
     ld.add_action(shock_detection_node)
+    ld.add_action(lane_centering_assist_node)
     ld.add_action(adas_priority_node)
     ld.add_action(hmi_node)
 

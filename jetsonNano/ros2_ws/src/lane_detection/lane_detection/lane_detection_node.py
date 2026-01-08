@@ -7,7 +7,7 @@ import rclpy
 from rclpy.node import Node
 from rcl_interfaces.msg import SetParametersResult
 # Lane Detection Specific Import
-from sensor_msgs.msg import Image
+from sensor_msgs.msg import CompressedImage
 import cv2
 from cv_bridge import CvBridge
 import numpy as np
@@ -17,21 +17,28 @@ class  lane_detection(Node):
         #Initialization of the node
         super().__init__('lane_detection_node')
         self.bridge = CvBridge()
-        self.image_pub = self.create_publisher(Image,'image_lane_detection',10)
-        self.subscription = self.create_subscription(Image,'image_raw', self.image_raw_callback, 10)
+        self.image_pub = self.create_publisher(CompressedImage,'image_lane_detection',10)
+        self.subscription = self.create_subscription(CompressedImage,'image_raw/compressed', self.image_raw_callback, 10)
         self.subscription  # prevent unused variable warning
         #Init variable
         self.lanes_coordinates = None
         self.center_camera_px = 640.0 # Value found based on camera photo (cf: notebook)
         
-    def image_raw_callback(self, image : Image):
-        inputimage = self.bridge.imgmsg_to_cv2(image,desired_encoding='bgr8')
+    def image_raw_callback(self, image : CompressedImage):
+        # Convertir le CompressedImage en array numpy
+        np_arr = np.frombuffer(image.data, np.uint8)
+        inputimage = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)  # OpenCV BGR
+
         output, self.lanes_coordinates, _, _ = self.detect_lanes_dark_tape(inputimage,draw_fn=self.draw_lines,thickness=25)
         self.image_with_lanes(output, image) # uncomment to debug
 
-    def image_with_lanes(self, output, image: Image):
-        output_image = self.bridge.cv2_to_imgmsg(output,encoding='bgr8')
+    def image_with_lanes(self, output, image: CompressedImage):
+    # Encode OpenCV BGR image en JPEG
+        _, buffer = cv2.imencode('.jpg', output)
+        output_image = CompressedImage()
         output_image.header = image.header
+        output_image.format = 'jpeg'
+        output_image.data = np.array(buffer).tobytes()
         self.image_pub.publish(output_image)
         
     def error_center_lane(self):

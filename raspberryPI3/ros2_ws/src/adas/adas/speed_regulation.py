@@ -118,10 +118,24 @@ class speed_regulation(Node):
     def regulate_speed(self):
         if not self.auto_speed:
             self.state = STATE_MODE_OFF
-            if self.state != self.prev_state:
-                self.get_logger().info("Speed regulation OFF")
-            self.prev_state = self.state
-            return
+             # force offsets to zero
+            self.motor_right_rear_pwm_offset = 0
+            self.motor_left_rear_pwm_offset = 0
+
+        # publish every cycle while OFF (important!)
+            msg = MotorsOrderAdas()
+            msg.offset_right_rear_pwm = 0
+            msg.offset_left_rear_pwm = 0
+            msg.offset_steering_angle = self.steering_angle_offset
+            msg.max_pwm = self.max_pwm
+            msg.emergency_stop = self.emergency_stop
+            msg.active = False
+            msg.state = self.state
+            self.publisher_motors_order.publish(msg)
+                if self.state != self.prev_state:
+                    self.get_logger().info("Speed regulation OFF")
+                self.prev_state = self.state
+                return
 
             # ACC engagé tant que auto_speed = True
         self.active = True

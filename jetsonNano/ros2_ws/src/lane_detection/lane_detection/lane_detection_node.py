@@ -51,11 +51,13 @@ class  lane_detection(Node):
     def hough_lines(self,edges,rho=1,theta=np.pi / 180, threshold=25, min_line_length=120,max_line_gap=30):
         return cv2.HoughLinesP(edges, rho=rho,theta=theta, threshold=threshold,minLineLength=min_line_length,maxLineGap=max_line_gap)
 
-    # dark‑tape color mask
-    def dark_tape_mask(self,bgr_image,lower_dark=np.array([0, 0, 0]), upper_dark=np.array([180, 80, 120]),kernel_size=5):
-        hsv = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2HSV)
-        mask = cv2.inRange(hsv, lower_dark, upper_dark)
-
+    # Dark Mask Function using YUCrCb
+    def dark_tape_mask(self, bgr_image,lower_ycrcb=np.array([0, 120, 120]),upper_ycrcb=np.array([90, 140, 140]),kernel_size=5):
+        # Conversion to YCrCb
+        ycrcb = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2YCrCb)
+        # Mask threshold
+        mask = cv2.inRange(ycrcb, lower_ycrcb, upper_ycrcb)
+        # Morphological filtering
         kernel = np.ones((kernel_size, kernel_size), np.uint8)
         mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=2)
         mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=1)

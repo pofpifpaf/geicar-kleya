@@ -47,19 +47,16 @@ class  lane_detection(Node):
     # Utility functions OpenCV
     
     # Canny edge detection + Remove irrelevant segments of the image and retain only the lane portion
-    def canny_edges_with_roi(self, binary_mask, canny_low=50, canny_high=150, roi_vertical_ratio=0.5):
+    def canny_edges(self, binary_mask, canny_low=50, canny_high=150):
         edges = cv2.Canny(binary_mask, canny_low, canny_high)
-        h, w = edges.shape[:2]
-        roi_mask = np.zeros_like(edges)
-        cv2.rectangle(roi_mask,(0, int(h * roi_vertical_ratio)),(w, h),255,-1)
-        return cv2.bitwise_and(edges, roi_mask)
+        return edges
 
     # Averages Hough segments into left/right lane(s)
-    def hough_lines(self,edges,rho=1,theta=np.pi / 180, threshold=25, min_line_length=120,max_line_gap=30):
+    def hough_lines(self,edges,rho=1,theta=np.pi / 180, threshold=15, min_line_length=120,max_line_gap=30):
         return cv2.HoughLinesP(edges, rho=rho,theta=theta, threshold=threshold,minLineLength=min_line_length,maxLineGap=max_line_gap)
 
     # Dark Mask Function using YUCrCb
-    def dark_tape_mask(self, bgr_image,lower_ycrcb=np.array([0, 120, 120]),upper_ycrcb=np.array([90, 140, 140]),kernel_size=5):
+    def dark_tape_mask(self, bgr_image,lower_ycrcb=np.array([0, 90, 90]),upper_ycrcb=np.array([120, 140, 140]),kernel_size=5):
         # Conversion to YCrCb
         ycrcb = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2YCrCb)
         # Mask threshold
@@ -71,41 +68,118 @@ class  lane_detection(Node):
 
         return mask
 
-    def pick_lane_lines(self,image_shape, lines, min_slope=0.2):
+    def pick_lane_lines(self,image_shape, lines,min_angle_deg=15, max_angle_deg=80,k_longest=4,min_length=50):   #Value to modify  
         if lines is None:
             return None
 
-        _, w = image_shape[:2]
-        left, right = [], []
+        h, w = image_shape[:2]
+        x_center = w / 2.0
+        min_angle = np.deg2rad(min_angle_deg)
+        max_angle = np.deg2rad(max_angle_deg)
 
+        segs = []
         for l in lines:
             x1, y1, x2, y2 = l.reshape(4)
-            if x2 == x1:
+            dx, dy = x2 - x1, y2 - y1
+            length = np.hypot(dx, dy)
+            if length < min_length:
                 continue
-            m = (y2 - y1) / (x2 - x1)
-            if abs(m) < min_slope:
+            angle = np.arctan2(dy, dx)
+            aabs = abs(angle)
+            if aabs < min_angle or aabs > max_angle:
                 continue
             xm = 0.5 * (x1 + x2)
-            if xm < w / 2:
-                left.append((x1, y1, x2, y2))
-            else:
-                right.append((x1, y1, x2, y2))
+            side = 'L' if xm < x_center else 'R'
+            segs.append(dict(x1=x1, y1=y1, x2=x2, y2=y2,
+                            length=length, angle=angle,
+                            xm=xm, side=side))
+
+        if len(segs) == 0:
+            return None
+
+        left  = sorted([s for s in segs if s['side']=='L'],
+                    key=lambda s: -s['length'])[:k_longest]
+        right = sorted([s for s in segs if s['side']=='R'],
+                    key=lambda s: -s['length'])[:k_longest]
+
+        def avg_side(group):
+            arr = np.array([[g['x1'], g['y1'], g['x2'], g['y2']] for g in group],
+                        dtype=float)
+            return arr.mean(axis=0).astype(int)
 
         lanes = []
-        if left:
-            lanes.append(np.mean(left, axis=0).astype(int))
-        if right:
-            lanes.append(np.mean(right, axis=0).astype(int))
+
+        if left and right:
+            # Geometry scoring to pick one best (L,R) pair
+            y_ref = 0.75 * h
+            best_pair, best_score = None, -1e9
+
+            def x_at_y(seg, y):
+                x1, y1, x2, y2 = seg['x1'], seg['y1'], seg['x2'], seg['y2']
+                if y2 == y1:
+                    return (x1 + x2) / 2.0
+                return x1 + (y - y1) * (x2 - x1) / (y2 - y1)
+
+            for L in left:
+                for R in right:
+                    # Parallelism
+                    dang = abs(L['angle'] - R['angle'])
+                    dang = min(dang, np.pi - dang)
+                    score_parallel = -dang
+
+                    # Width near bottom
+                    xL = x_at_y(L, y_ref)
+                    xR = x_at_y(R, y_ref)
+                    width = xR - xL
+                    if width <= 80 or width >= 0.8 * w:
+                        continue
+
+                    # Centering
+                    lane_center = (xL + xR) / 2.0
+                    off_center = abs(lane_center - x_center)
+                    score_center = -off_center / w
+
+                    # Length
+                    score_len = (L['length'] + R['length']) / (h + w)
+
+                    score = 3.0*score_parallel + 2.0*score_len + 1.0*score_center
+                    if score > best_score:
+                        best_score = score
+                        best_pair = (L, R)
+
+            if best_pair is not None:
+                L, R = best_pair
+                lanes.append(avg_side([L]))
+                lanes.append(avg_side([R]))
+
+            else:
+                # best single segment overall
+                best_single = max(segs, key=lambda s: s['length'])
+                lanes.append(avg_side([best_single]))
+
+        elif left and not right:
+            lanes.append(avg_side(left))   # only left lane
+
+        elif right and not left:
+            lanes.append(avg_side(right))  # only right lane
+
         return np.array(lanes) if lanes else None
 
+    def detect_lanes_dark_tape(self,input_image, draw_fn, thickness=8, debug=False):
+        # 1) Color segmentation of black thick tape
+        mask = self.dark_tape_mask(input_image)
 
-    def detect_lanes_dark_tape(self, inputimage, draw_fn, thickness=8):
-        mask = self.dark_tape_mask(inputimage)
-        edges = self.canny_edges_with_roi(mask)
+        # 2) Canny only on tape (via ROI function so you can tune later)
+        edges = self.canny_edges(mask)
+
+        edges = cv2.dilate(edges, np.ones((3,3), np.uint8), iterations=1)
+
+        # 3) Hough + lane selection
         lines = self.hough_lines(edges)
-        lane_lines = self.pick_lane_lines(inputimage.shape, lines)
+        lane_lines = self.pick_lane_lines(input_image.shape, lines)
 
-        output = draw_fn(inputimage, lane_lines, thickness=thickness)
+        output = draw_fn(input_image, lane_lines, thickness=thickness)
+
         return output, lane_lines, edges, mask
 
     # Draws lines of given thickness over an image

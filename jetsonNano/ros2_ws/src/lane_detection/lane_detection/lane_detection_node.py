@@ -7,7 +7,7 @@ import rclpy
 from rclpy.node import Node
 from rcl_interfaces.msg import SetParametersResult
 # Lane Detection Specific Import
-from sensor_msgs.msg import CompressedImage
+from sensor_msgs.msg import CompressedImage, Image
 import cv2
 from cv_bridge import CvBridge
 import numpy as np
@@ -17,7 +17,7 @@ class  lane_detection(Node):
         #Initialization of the node
         super().__init__('lane_detection_node')
         self.bridge = CvBridge()
-        self.image_pub = self.create_publisher(CompressedImage,'image_lane_detection',10)
+        self.image_pub = self.create_publisher(Image,'image_lane_detection',10)
         self.subscription = self.create_subscription(CompressedImage,'image_raw/compressed', self.image_raw_callback, 10)
         self.subscription  # prevent unused variable warning
         #Init variable
@@ -33,13 +33,10 @@ class  lane_detection(Node):
         self.image_with_lanes(output, image) # uncomment to debug
 
     def image_with_lanes(self, output, image: CompressedImage):
-    # Encode OpenCV BGR image en JPEG
-        _, buffer = cv2.imencode('.jpg', output)
-        output_image = CompressedImage()
-        output_image.header = image.header
-        output_image.format = 'jpeg'
-        output_image.data = np.array(buffer).tobytes()
-        self.image_pub.publish(output_image)
+        msg = self.bridge.cv2_to_imgmsg(output, encoding='bgr8')
+        msg.header = image.header
+        self.image_pub.publish(msg)
+
         
     def error_center_lane(self):
         pass

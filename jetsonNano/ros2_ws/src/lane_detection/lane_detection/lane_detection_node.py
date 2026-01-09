@@ -5,7 +5,6 @@ Based on https://github.com/d-misra/Lane-detection-opencv-python for Kleya's gei
 # General ROS2 import
 import rclpy
 from rclpy.node import Node
-from rcl_interfaces.msg import SetParametersResult
 # Lane Detection Specific Import
 from sensor_msgs.msg import CompressedImage, Image
 import cv2
@@ -87,9 +86,9 @@ class  lane_detection(Node):
                 continue
             xm = 0.5 * (x1 + x2)
             side = 'L' if xm < x_center else 'R'
-            segs.append(dict(x1=x1, y1=y1, x2=x2, y2=y2,
-                            length=length, angle=angle,
-                            xm=xm, side=side))
+            segs.append({'x1': x1, 'y1': y1, 'x2': x2, 'y2': y2,
+                         'length': length, 'angle': angle,
+                         'xm': xm, 'side': side})
 
         if len(segs) == 0:
             return None
@@ -125,14 +124,14 @@ class  lane_detection(Node):
                     score_parallel = -dang
 
                     # Width near bottom
-                    xL = x_at_y(L, y_ref)
-                    xR = x_at_y(R, y_ref)
-                    width = xR - xL
+                    x_left = x_at_y(L, y_ref)
+                    x_right = x_at_y(R, y_ref)
+                    width = x_right - x_left
                     if width <= 80 or width >= 0.8 * w:
                         continue
 
                     # Centering
-                    lane_center = (xL + xR) / 2.0
+                    lane_center = (x_left + x_right) / 2.0
                     off_center = abs(lane_center - x_center)
                     score_center = -off_center / w
 
@@ -163,15 +162,10 @@ class  lane_detection(Node):
         return np.array(lanes) if lanes else None
 
     def detect_lanes_dark_tape(self,input_image, draw_fn, thickness=8, debug=False):
-        # 1) Color segmentation of black thick tape
         mask = self.dark_tape_mask(input_image)
-
-        # 2) Canny only on tape (via ROI function so you can tune later)
         edges = self.canny_edges(mask)
 
         edges = cv2.dilate(edges, np.ones((3,3), np.uint8), iterations=1)
-
-        # 3) Hough + lane selection
         lines = self.hough_lines(edges)
         lane_lines = self.pick_lane_lines(input_image.shape, lines)
 

@@ -43,16 +43,19 @@ class  lane_detection(Node):
     # Utility functions OpenCV
     
     # Canny edge detection + Remove irrelevant segments of the image and retain only the lane portion
-    def canny_edges(self, binary_mask, canny_low=50, canny_high=150):
+    def canny_edges_with_roi(self, binary_mask, canny_low=50, canny_high=150, roi_vertical_ratio=0.5):
         edges = cv2.Canny(binary_mask, canny_low, canny_high)
-        return edges
+        h, w = edges.shape[:2]
+        roi_mask = np.zeros_like(edges)
+        cv2.rectangle(roi_mask,(0, int(h * roi_vertical_ratio)),(w, h),255,-1)
+        return cv2.bitwise_and(edges, roi_mask)
 
     # Averages Hough segments into left/right lane(s)
     def hough_lines(self,edges,rho=1,theta=np.pi / 180, threshold=15, min_line_length=120,max_line_gap=30):
         return cv2.HoughLinesP(edges, rho=rho,theta=theta, threshold=threshold,minLineLength=min_line_length,maxLineGap=max_line_gap)
 
     # Dark Mask Function using YUCrCb
-    def dark_tape_mask(self, bgr_image,lower_ycrcb=np.array([0, 90, 90]),upper_ycrcb=np.array([120, 140, 140]),kernel_size=5):
+    def dark_tape_mask(self, bgr_image,lower_ycrcb=np.array([0, 90, 90]),upper_ycrcb=np.array([120, 140, 140]),kernel_size=5): # TO DO: Modify the thereshold based on rosbag in the corridor
         # Conversion to YCrCb
         ycrcb = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2YCrCb)
         # Mask threshold
@@ -163,7 +166,7 @@ class  lane_detection(Node):
 
     def detect_lanes_dark_tape(self,input_image, draw_fn, thickness=8, debug=False):
         mask = self.dark_tape_mask(input_image)
-        edges = self.canny_edges(mask)
+        edges = self.canny_edges_with_roi(mask)
 
         edges = cv2.dilate(edges, np.ones((3,3), np.uint8), iterations=1)
         lines = self.hough_lines(edges)

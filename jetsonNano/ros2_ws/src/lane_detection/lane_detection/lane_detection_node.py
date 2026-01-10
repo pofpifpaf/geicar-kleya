@@ -53,9 +53,10 @@ class  lane_detection(Node):
     # Averages Hough segments into left/right lane(s)
     def hough_lines(self,edges,rho=1,theta=np.pi / 180, threshold=15, min_line_length=120,max_line_gap=30):
         return cv2.HoughLinesP(edges, rho=rho,theta=theta, threshold=threshold,minLineLength=min_line_length,maxLineGap=max_line_gap)
-
+    
     # Dark Mask Function using YUCrCb
-    def dark_tape_mask(self, bgr_image,lower_ycrcb=np.array([0, 90, 90]),upper_ycrcb=np.array([120, 140, 140]),kernel_size=5): # TO DO: Modify the thereshold based on rosbag in the corridor
+    def dark_tape_mask(self, bgr_image,lower_ycrcb=np.array([10, 100, 100]),upper_ycrcb=np.array([100, 140, 140]),kernel_size=5): # TO DO: Modify the thereshold based on rosbag in the corridor
+        # Code Hexa couleur via le couloir: #656450 pour le low et #1d1e10 pour le high
         # Conversion to YCrCb
         ycrcb = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2YCrCb)
         # Mask threshold

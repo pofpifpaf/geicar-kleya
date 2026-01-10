@@ -7,7 +7,8 @@ from std_srvs.srv import SetBool  #Service pour ON/OFF
 
 # Global Variable
 SPEED_TOLERANCE = 0.05  #Tolérance vitesse 5%
-SPEED_CORRECTION = 3  #Gain de correction (à ajuster si besoin)
+SPEED_CORRECTION = 5  #Gain de correction (à ajuster si besoin)
+NEUTRAL = 50.0
 
 STATE_NOTHING = "state_nothing"
 STATE_MODE_OFF = "state_mode_off"
@@ -91,6 +92,7 @@ class speed_regulation(Node):
 
         else:
             self.auto_speed = False
+            self.state = STATE_MODE_OFF
             self.motor_right_rear_pwm_offset = 0
             self.motor_left_rear_pwm_offset = 0
             self.active = False
@@ -116,13 +118,13 @@ class speed_regulation(Node):
     ######## Speed Implementation ######
     ####################################
     def regulate_speed(self):
+        # ---------- OFF : publier des zéros en continu ----------
         if not self.auto_speed:
             self.state = STATE_MODE_OFF
-             # force offsets to zero
+            self.active = False
             self.motor_right_rear_pwm_offset = 0
             self.motor_left_rear_pwm_offset = 0
 
-        # publish every cycle while OFF 
             msg = MotorsOrderAdas()
             msg.offset_right_rear_pwm = 0
             msg.offset_left_rear_pwm = 0
@@ -132,43 +134,41 @@ class speed_regulation(Node):
             msg.active = False
             msg.state = self.state
             self.publisher_motors_order.publish(msg)
+
             if self.state != self.prev_state:
                 self.get_logger().info("Speed regulation OFF")
             self.prev_state = self.state
             return
 
-            # ACC engagé tant que auto_speed = True
+        # ---------- ON ----------
         self.active = True
 
         actual_speed = (self.left_rear_speed + self.right_rear_speed) / 2.0
         delta = self.target_speed - actual_speed
-        tolerance = SPEED_TOLERANCE * abs(self.target_speed)
 
-        user_accelerating = (self.motor_left_rear_pwm > 50) or (self.motor_right_rear_pwm > 50)
+        # tolérance 
+        tolerance = max(1.0, SPEED_TOLERANCE * abs(self.target_speed))  # 1 RPM mini (ajuste si besoin)
+        raw = (self.motor_left_rear_pwm + self.motor_right_rear_pwm) / 2.0
+
+        # détecter reprise conducteur (marge > 50)
+        user_accelerating = (self.motor_left_rear_pwm > 55) or (self.motor_right_rear_pwm > 55)
 
         if abs(delta) < tolerance:
-            self.motor_right_rear_pwm_offset = 0
-            self.motor_left_rear_pwm_offset = 0
+            pwm = 0.0
         else:
             pwm = SPEED_CORRECTION * delta
-
-            # autoriser l’override conducteur : ne pas freiner pendant qu’il accélère
-            if user_accelerating and pwm < 0:
-                pwm = 0
-
             pwm = max(min(pwm, self.max_pwm), -self.max_pwm)
-            self.motor_right_rear_pwm_offset = int(round(pwm))
-            self.motor_left_rear_pwm_offset  = int(round(pwm))
 
-        correcting_log = (abs(delta) >= tolerance)
+            # si raw est en avant, on interdit raw+pwm < 50
+            if raw >= NEUTRAL:
+                pwm = max(pwm, NEUTRAL - raw)
 
-        if correcting_log != self.prev_correcting:
-            if correcting_log:
-                self.get_logger().info("Correcting speed")
-            else:
-                self.get_logger().info("Speed within tolerance")
+            # si conducteur ré-accélère, on ne “freine” pas
+            if user_accelerating and pwm < 0:
+                pwm = 0.0
 
-        self.prev_correcting = correcting_log
+        self.motor_right_rear_pwm_offset = int(round(pwm))
+        self.motor_left_rear_pwm_offset  = int(round(pwm))
 
         correcting = (self.motor_right_rear_pwm_offset != 0 or self.motor_left_rear_pwm_offset != 0)
         self.state = STATE_NOT_OK if correcting else STATE_OK
@@ -179,11 +179,12 @@ class speed_regulation(Node):
         msg.offset_steering_angle = self.steering_angle_offset
         msg.max_pwm = self.max_pwm
         msg.emergency_stop = self.emergency_stop
-        msg.active = self.active
+        msg.active = True
         msg.state = self.state
         self.publisher_motors_order.publish(msg)
 
         self.prev_state = self.state
+
 
 
 

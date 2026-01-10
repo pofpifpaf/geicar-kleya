@@ -186,6 +186,12 @@ private:
             reverse = false;
             requestedThrottle = axisRT;
         }
+        // ----- Driver override : si ACC actif et le conducteur ré-accélère -> ACC OFF -----
+        if (auto_speed_mode && !reverse && requestedThrottle > 0.15) { // 0.15 ~ deadzone
+            auto_speed_mode = false;
+            RCLCPP_WARN(this->get_logger(), "Driver override -> ACC OFF");
+            callSpeedRegulationService(false);
+        }
 
 
         // ------ Steering ------

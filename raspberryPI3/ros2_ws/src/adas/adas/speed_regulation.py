@@ -14,7 +14,7 @@ STATE_MODE_OFF = "state_mode_off"
 STATE_NOT_OK = "state_not_ok"
 STATE_OK = "state_ok"
 
-REFRESH_PERIOD = 0.002  #2 ms
+REFRESH_PERIOD = 0.01  #10ms
 
 
 class speed_regulation(Node):

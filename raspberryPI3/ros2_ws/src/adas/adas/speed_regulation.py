@@ -7,8 +7,8 @@ from std_srvs.srv import SetBool  #Service pour ON/OFF
 
 # Global Variable
 SPEED_TOLERANCE = 0.05  #Tolérance vitesse 5%
-SPEED_CORRECTION = 5  #Gain de correction (à ajuster si besoin)
-NEUTRAL = 50.0
+SPEED_CORRECTION = 4  #Gain de correction (à ajuster si besoin)
+
 
 STATE_NOTHING = "state_nothing"
 STATE_MODE_OFF = "state_mode_off"
@@ -148,22 +148,29 @@ class speed_regulation(Node):
 
         # tolérance 
         tolerance = max(1.0, SPEED_TOLERANCE * abs(self.target_speed))  # 1 RPM mini (ajuste si besoin)
-        raw = (self.motor_left_rear_pwm + self.motor_right_rear_pwm) / 2.0
-
+       
 
         if abs(delta) < tolerance:
-            pwm = 0.0
+            self.motor_right_rear_pwm_offset = 0
+            self.motor_left_rear_pwm_offset = 0
         else:
             pwm = SPEED_CORRECTION * delta
-            pwm = max(min(pwm, self.max_pwm), -self.max_pwm)
-
-            # si raw est en avant, on interdit raw+pwm < 50
-            if raw >= NEUTRAL:
-                pwm = max(pwm, NEUTRAL - raw)
+            
+        pwm = max(min(pwm, self.max_pwm), -self.max_pwm)
 
         self.motor_right_rear_pwm_offset = int(round(pwm))
         self.motor_left_rear_pwm_offset  = int(round(pwm))
 
+        correcting_log = (abs(delta) >= tolerance)
+
+        if correcting_log != self.prev_correcting:
+            if correcting_log:
+                self.get_logger().info("Correcting speed")
+            else:
+                self.get_logger().info("Speed within tolerance")
+
+        self.prev_correcting = correcting_log
+        
         correcting = (self.motor_right_rear_pwm_offset != 0 or self.motor_left_rear_pwm_offset != 0)
         self.state = STATE_NOT_OK if correcting else STATE_OK
 

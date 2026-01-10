@@ -81,7 +81,7 @@ private:
 
     void callSpeedRegulationService(bool enable)
     {
-        if (!publisher_ACC_->wait_for_service(std::chrono::milliseconds(300))) {
+        if (!publisher_ACC_->wait_for_service(std::chrono::milliseconds(200))) {
             RCLCPP_ERROR(this->get_logger(), "ACC not available");
             return;
         }

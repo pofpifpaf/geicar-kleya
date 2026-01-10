@@ -7,7 +7,7 @@ from std_srvs.srv import SetBool  #Service pour ON/OFF
 
 # Global Variable
 SPEED_TOLERANCE = 0.05  #Tolérance vitesse 5%
-SPEED_CORRECTION = 10  #Gain de correction (à ajuster si besoin)
+SPEED_CORRECTION = 3  #Gain de correction (à ajuster si besoin)
 
 STATE_NOTHING = "state_nothing"
 STATE_MODE_OFF = "state_mode_off"
@@ -122,7 +122,7 @@ class speed_regulation(Node):
             self.motor_right_rear_pwm_offset = 0
             self.motor_left_rear_pwm_offset = 0
 
-        # publish every cycle while OFF (important!)
+        # publish every cycle while OFF 
             msg = MotorsOrderAdas()
             msg.offset_right_rear_pwm = 0
             msg.offset_left_rear_pwm = 0
@@ -132,10 +132,10 @@ class speed_regulation(Node):
             msg.active = False
             msg.state = self.state
             self.publisher_motors_order.publish(msg)
-                if self.state != self.prev_state:
-                    self.get_logger().info("Speed regulation OFF")
-                self.prev_state = self.state
-                return
+            if self.state != self.prev_state:
+                self.get_logger().info("Speed regulation OFF")
+            self.prev_state = self.state
+            return
 
             # ACC engagé tant que auto_speed = True
         self.active = True

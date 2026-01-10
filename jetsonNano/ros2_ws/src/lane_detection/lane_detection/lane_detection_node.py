@@ -28,7 +28,7 @@ class  lane_detection(Node):
         np_arr = np.frombuffer(image.data, np.uint8)
         inputimage = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)  # OpenCV BGR
 
-        output, self.lanes_coordinates, _, _ = self.detect_lanes_dark_tape(inputimage,draw_fn=self.draw_lines,thickness=25)
+        output, self.lanes_coordinates, _, _ = self.detect_lanes_dark_tape(inputimage,draw_fn=self.draw_lines,thickness=5)
         self.image_with_lanes(output, image) # uncomment to debug
 
     def image_with_lanes(self, output, image: CompressedImage):
@@ -43,7 +43,7 @@ class  lane_detection(Node):
     # Utility functions OpenCV
     
     # Canny edge detection + Remove irrelevant segments of the image and retain only the lane portion
-    def canny_edges_with_roi(self, binary_mask, canny_low=50, canny_high=150, roi_vertical_ratio=0.5):
+    def canny_edges_with_roi(self, binary_mask, canny_low=50, canny_high=150, roi_vertical_ratio=0.55):
         edges = cv2.Canny(binary_mask, canny_low, canny_high)
         h, w = edges.shape[:2]
         roi_mask = np.zeros_like(edges)
@@ -51,11 +51,11 @@ class  lane_detection(Node):
         return cv2.bitwise_and(edges, roi_mask)
 
     # Averages Hough segments into left/right lane(s)
-    def hough_lines(self,edges,rho=1,theta=np.pi / 180, threshold=15, min_line_length=120,max_line_gap=30):
+    def hough_lines(self,edges,rho=1,theta=np.pi / 180, threshold=15, min_line_length=80,max_line_gap=30):
         return cv2.HoughLinesP(edges, rho=rho,theta=theta, threshold=threshold,minLineLength=min_line_length,maxLineGap=max_line_gap)
     
     # Dark Mask Function using YUCrCb
-    def dark_tape_mask(self, bgr_image,lower_ycrcb=np.array([10, 100, 100]),upper_ycrcb=np.array([100, 140, 140]),kernel_size=5): # TO DO: Modify the thereshold based on rosbag in the corridor
+    def dark_tape_mask(self, bgr_image,lower_ycrcb=np.array([0, 100, 100]),upper_ycrcb=np.array([110, 140, 140]),kernel_size=5): # TO DO: Modify the thereshold based on rosbag in the corridor
         # Code Hexa couleur via le couloir: #656450 pour le low et #1d1e10 pour le high
         # Conversion to YCrCb
         ycrcb = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2YCrCb)
@@ -68,7 +68,7 @@ class  lane_detection(Node):
 
         return mask
 
-    def pick_lane_lines(self,image_shape, lines,min_angle_deg=15, max_angle_deg=80,k_longest=4,min_length=50):   #Value to modify  
+    def pick_lane_lines(self,image_shape, lines,min_angle_deg=3, max_angle_deg=85,k_longest=8,min_length=20):   #Value to modify  
         if lines is None:
             return None
 
@@ -131,7 +131,8 @@ class  lane_detection(Node):
                     x_left = x_at_y(L, y_ref)
                     x_right = x_at_y(R, y_ref)
                     width = x_right - x_left
-                    if width <= 80 or width >= 0.8 * w:
+                    #if width <= 80 or width >= 0.8 * w:
+                    if width <= 40 or width >= 0.9 * w:
                         continue
 
                     # Centering

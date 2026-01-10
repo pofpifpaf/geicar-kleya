@@ -149,17 +149,17 @@ class speed_regulation(Node):
         # tolérance 
         tolerance = max(1.0, SPEED_TOLERANCE * abs(self.target_speed))  # 1 RPM mini (ajuste si besoin)
        
-
         if abs(delta) < tolerance:
             self.motor_right_rear_pwm_offset = 0
             self.motor_left_rear_pwm_offset = 0
         else:
             pwm = SPEED_CORRECTION * delta
+        
             
-        pwm = max(min(pwm, self.max_pwm), -self.max_pwm)
+            pwm = max(min(pwm, self.max_pwm), -self.max_pwm)
 
-        self.motor_right_rear_pwm_offset = int(round(pwm))
-        self.motor_left_rear_pwm_offset  = int(round(pwm))
+            self.motor_right_rear_pwm_offset = int(round(pwm))
+            self.motor_left_rear_pwm_offset  = int(round(pwm))
 
         correcting_log = (abs(delta) >= tolerance)
 

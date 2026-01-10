@@ -78,7 +78,7 @@ public:
     }
 
 private:
-/*
+
     void callSpeedRegulationService(bool enable)
     {
         if (!publisher_ACC_->wait_for_service(std::chrono::milliseconds(200))) {
@@ -94,36 +94,7 @@ private:
             RCLCPP_INFO(this->get_logger(), "ACC ON");
         else
             RCLCPP_INFO(this->get_logger(), "ACC OFF");
-    }*/
-
-    void callSpeedRegulationService(bool enable)
-    {
-        using ServiceT = std_srvs::srv::SetBool;
-
-        if (!publisher_ACC_->wait_for_service(std::chrono::milliseconds(200))) {
-            RCLCPP_ERROR(this->get_logger(), "ACC not available");
-            return;
-        }
-
-        auto request = std::make_shared<ServiceT::Request>();
-        request->data = enable;
-
-        publisher_ACC_->async_send_request(
-            request,
-            [this, enable](rclcpp::Client<ServiceT>::SharedFuture future) {
-                auto resp = future.get();
-                if (!resp->success) {
-                    RCLCPP_WARN(this->get_logger(), "ACC refused: %s", resp->message.c_str());
-                    return;
-                }
-
-                // état mis à jour uniquement si succès
-                auto_speed_mode = enable;
-             RCLCPP_INFO(this->get_logger(), "ACC %s (confirmed)", enable ? "ON" : "OFF");
-            }
-        );
-}
-
+    }
 
 
     // Update requestedThrottle, requestedAngle and reverse from the joystick
@@ -172,19 +143,13 @@ private:
             }
         }
         // --- Toggle ACC on rising edge of X ---
-      /* if (buttonX && !prevButtonX) {
+        if (buttonX && !prevButtonX) {
             auto_speed_mode = !auto_speed_mode;
             RCLCPP_WARN(this->get_logger(), "X pressed -> ACC toggle: %s", auto_speed_mode ? "ON" : "OFF");
             callSpeedRegulationService(auto_speed_mode);
         }
-        prevButtonX = buttonX;*/
-        if (buttonX && !prevButtonX) {
-            bool requested = !auto_speed_mode;
-            RCLCPP_WARN(this->get_logger(), "X pressed -> request ACC %s", requested ? "ON" : "OFF");
-
-            callSpeedRegulationService(requested);
-        }
         prevButtonX = buttonX;
+
 
         if (buttonDpadLeft && !systemCheckPrintRequest) { // Request to print the last system check report
             systemCheckPrintRequest = true;

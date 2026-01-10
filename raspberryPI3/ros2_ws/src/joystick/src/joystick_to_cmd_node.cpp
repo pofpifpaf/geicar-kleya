@@ -96,39 +96,33 @@ private:
             RCLCPP_INFO(this->get_logger(), "ACC OFF");
     }*/
 
-   bool callSpeedRegulationService(bool enable)
+    void callSpeedRegulationService(bool enable)
     {
         using ServiceT = std_srvs::srv::SetBool;
 
         if (!publisher_ACC_->wait_for_service(std::chrono::milliseconds(200))) {
-            RCLCPP_ERROR(this->get_logger(), "ACC service not available");
-            return false;
+            RCLCPP_ERROR(this->get_logger(), "ACC not available");
+            return;
         }
 
         auto request = std::make_shared<ServiceT::Request>();
         request->data = enable;
 
-        auto future = publisher_ACC_->async_send_request(request);
+        publisher_ACC_->async_send_request(
+            request,
+            [this, enable](rclcpp::Client<ServiceT>::SharedFuture future) {
+                auto resp = future.get();
+                if (!resp->success) {
+                    RCLCPP_WARN(this->get_logger(), "ACC refused: %s", resp->message.c_str());
+                    return;
+                }
 
-        auto ret = rclcpp::spin_until_future_complete(
-            this->get_node_base_interface(),
-            future,
-            std::chrono::milliseconds(300)
+                // état mis à jour uniquement si succès
+                auto_speed_mode = enable;
+             RCLCPP_INFO(this->get_logger(), "ACC %s (confirmed)", enable ? "ON" : "OFF");
+            }
         );
-
-        if (ret != rclcpp::FutureReturnCode::SUCCESS) {
-            RCLCPP_ERROR(this->get_logger(), "ACC service call failed");
-            return false;
-        }
-
-        if (!future.get()->success) {
-            RCLCPP_WARN(this->get_logger(), "ACC refused");
-            return false;
-        }
-
-        RCLCPP_INFO(this->get_logger(), "ACC %s", enable ? "ON" : "OFF");
-        return true;
-    }
+}
 
 
 
@@ -188,13 +182,9 @@ private:
             bool requested = !auto_speed_mode;
             RCLCPP_WARN(this->get_logger(), "X pressed -> request ACC %s", requested ? "ON" : "OFF");
 
-            if (callSpeedRegulationService(requested)) {
-                auto_speed_mode = requested;   // MAJ seulement si succès
-            }
+            callSpeedRegulationService(requested);
         }
         prevButtonX = buttonX;
-
-
 
         if (buttonDpadLeft && !systemCheckPrintRequest) { // Request to print the last system check report
             systemCheckPrintRequest = true;
@@ -232,11 +222,9 @@ private:
             requestedThrottle = axisRT;
         }
         // ----- Driver override : si ACC actif et le conducteur ré-accélère -> ACC OFF -----
-        if (auto_speed_mode && !reverse && requestedThrottle > 0.15 && !buttonX) { 
+        if (auto_speed_mode && !reverse && requestedThrottle > 0.15) { 
             RCLCPP_WARN(this->get_logger(), "Driver override -> ACC OFF");
-            if (callSpeedRegulationService(false)) {
-                auto_speed_mode = false;
-            }
+            callSpeedRegulationService(false);
         }
 
 

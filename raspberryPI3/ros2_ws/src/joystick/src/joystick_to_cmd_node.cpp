@@ -78,7 +78,7 @@ public:
     }
 
 private:
-
+/*
     void callSpeedRegulationService(bool enable)
     {
         if (!publisher_ACC_->wait_for_service(std::chrono::milliseconds(200))) {
@@ -94,7 +94,42 @@ private:
             RCLCPP_INFO(this->get_logger(), "ACC ON");
         else
             RCLCPP_INFO(this->get_logger(), "ACC OFF");
+    }*/
+
+   bool callSpeedRegulationService(bool enable)
+    {
+        using ServiceT = std_srvs::srv::SetBool;
+
+        if (!publisher_ACC_->wait_for_service(std::chrono::milliseconds(200))) {
+            RCLCPP_ERROR(this->get_logger(), "ACC service not available");
+            return false;
+        }
+
+        auto request = std::make_shared<ServiceT::Request>();
+        request->data = enable;
+
+        auto future = publisher_ACC_->async_send_request(request);
+
+        auto ret = rclcpp::spin_until_future_complete(
+            this->get_node_base_interface(),
+            future,
+            std::chrono::milliseconds(300)
+        );
+
+        if (ret != rclcpp::FutureReturnCode::SUCCESS) {
+            RCLCPP_ERROR(this->get_logger(), "ACC service call failed");
+            return false;
+        }
+
+        if (!future.get()->success) {
+            RCLCPP_WARN(this->get_logger(), "ACC refused");
+            return false;
+        }
+
+        RCLCPP_INFO(this->get_logger(), "ACC %s", enable ? "ON" : "OFF");
+        return true;
     }
+
 
 
     // Update requestedThrottle, requestedAngle and reverse from the joystick
@@ -143,12 +178,22 @@ private:
             }
         }
         // --- Toggle ACC on rising edge of X ---
-        if (buttonX && !prevButtonX) {
+      /* if (buttonX && !prevButtonX) {
             auto_speed_mode = !auto_speed_mode;
             RCLCPP_WARN(this->get_logger(), "X pressed -> ACC toggle: %s", auto_speed_mode ? "ON" : "OFF");
             callSpeedRegulationService(auto_speed_mode);
         }
+        prevButtonX = buttonX;*/
+        if (buttonX && !prevButtonX) {
+            bool requested = !auto_speed_mode;
+            RCLCPP_WARN(this->get_logger(), "X pressed -> request ACC %s", requested ? "ON" : "OFF");
+
+            if (callSpeedRegulationService(requested)) {
+                auto_speed_mode = requested;   // MAJ seulement si succès
+            }
+        }
         prevButtonX = buttonX;
+
 
 
         if (buttonDpadLeft && !systemCheckPrintRequest) { // Request to print the last system check report
@@ -187,10 +232,11 @@ private:
             requestedThrottle = axisRT;
         }
         // ----- Driver override : si ACC actif et le conducteur ré-accélère -> ACC OFF -----
-        if (auto_speed_mode && !reverse && requestedThrottle > 0.15) { // 0.15 ~ deadzone
-            auto_speed_mode = false;
+        if (auto_speed_mode && !reverse && requestedThrottle > 0.15 && !buttonX) { 
             RCLCPP_WARN(this->get_logger(), "Driver override -> ACC OFF");
-            callSpeedRegulationService(false);
+            if (callSpeedRegulationService(false)) {
+                auto_speed_mode = false;
+            }
         }
 
 

@@ -152,6 +152,30 @@ class speed_regulation(Node):
 
         # détecter reprise conducteur (marge > 50)
         user_accelerating = (self.motor_left_rear_pwm > 55) or (self.motor_right_rear_pwm > 55)
+        # ----- Driver override : si le conducteur ré-accélère -> ACC OFF -----
+        # ----- Driver override (failsafe) -----
+        if user_accelerating:
+            self.auto_speed = False
+            self.active = False
+            self.state = "driver_override"
+
+            self.motor_right_rear_pwm_offset = 0
+            self.motor_left_rear_pwm_offset = 0
+
+            msg = MotorsOrderAdas()
+            msg.offset_right_rear_pwm = 0
+            msg.offset_left_rear_pwm = 0
+            msg.offset_steering_angle = self.steering_angle_offset
+            msg.max_pwm = self.max_pwm
+            msg.emergency_stop = self.emergency_stop
+            msg.active = False
+            msg.state = self.state
+
+            self.publisher_motors_order.publish(msg)
+            self.get_logger().warn("Driver override -> ACC OFF")
+            return
+
+
 
         if abs(delta) < tolerance:
             pwm = 0.0

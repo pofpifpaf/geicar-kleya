@@ -170,7 +170,7 @@ class speed_regulation(Node):
                     self.get_logger().info("Correcting speed")
 
         #Publishing
-        if (self.prev_state != self.state) or last_pwm_offset != (self.motor_left_rear_pwm_offset + self.motor_right_rear_pwm_offset) /2.0:
+        if (self.prev_state != self.state) or self.last_pwm_offset != (self.motor_left_rear_pwm_offset + self.motor_right_rear_pwm_offset) /2.0:
             msg = MotorsOrderAdas()
             msg.offset_right_rear_pwm = self.motor_right_rear_pwm_offset
             msg.offset_left_rear_pwm = self.motor_left_rear_pwm_offset

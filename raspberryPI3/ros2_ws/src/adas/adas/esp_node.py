@@ -19,6 +19,7 @@ from rclpy.node import Node
 from interfaces.msg import MotorsOrder, ECompass , MotorsOrderAdas
 from sensor_msgs.msg import Imu
 from rcl_interfaces.msg import SetParametersResult
+import math
 
 #Global Variable from the car characteristics
 T_SAMPLE = 0.1 #s ou 100ms
@@ -69,8 +70,8 @@ class Esp(Node):
 
 
         # Add environnement variables
-        self.declare_parameter("heading_tolerance", 2.0)
-        self.declare_parameter("ref_heading_rate", 9.0)
+        self.declare_parameter("heading_tolerance", 5.0) # Value to modify with the new IMU
+        self.declare_parameter("ref_heading_rate", 90.0) # Value to modify with the new IMU
         self.declare_parameter("size_buffer_heading", 20)
         self.declare_parameter("stabilization_index", 4)
         self.declare_parameter("intermediate_timout", 2)
@@ -143,6 +144,27 @@ class Esp(Node):
             self.trajectory_control()
             self.check_active_timeout()
 
+    # ------- Math Function -------
+
+    def sign(self, num):
+        return -1 if num < 0 else 1
+    def angle_diff(self, a, b):
+        diff = a - b
+        # Taking into account limit case near 0 and 360
+        if diff > 180:
+            diff -= 360
+        elif diff < -180:
+            diff += 360
+        return diff
+
+    def normalize_angle(self, a):
+        return a % 360
+    
+    def circular_mean(self, angles_deg):
+        sin_sum = sum(math.sin(math.radians(a)) for a in angles_deg)
+        cos_sum = sum(math.cos(math.radians(a)) for a in angles_deg)
+        mean = math.degrees(math.atan2(sin_sum, cos_sum))
+        return mean % 360
 
     # ------- HEADING BUFFER FOR DEACTIVATION CONDITION -------
 
@@ -154,24 +176,23 @@ class Esp(Node):
     def is_heading_stable(self):
         if len(self.heading_buffer) < self.size_buffer_heading:
             return False
-        
-        avg = sum(self.heading_buffer) / len(self.heading_buffer)
-        return abs(avg - self.reference_heading) <self.heading_tolerance
-    
+
+        avg = self.circular_mean(self.heading_buffer)
+        return abs(self.angle_diff(avg, self.reference_heading)) < self.heading_tolerance
 
     # ------------------ ESP Implementation ------------------ 
 
-    def sign(self, num):
-        return -1 if num < 0 else 1
-
     def detect_heading_jump(self, prev, current):
-        heading_rate = (current - prev) / T_SAMPLE  # deg/s
+        delta = self.angle_diff(current, prev)
+        heading_rate = delta / T_SAMPLE  # deg/s
         # Check for sudden heading change
         if abs(heading_rate) > self.ref_heading_rate and self.state == ESP_STATE_IDLE :
-            self.reference_heading = prev # set reference to previous stable heading 
+            self.reference_heading = self.normalize_angle(prev) # set reference to previous stable heading 
             self.state = ESP_STATE_INTERMEDIATE
             self.intermediate_start_time = self.get_clock().now()   # START TIMER
-            self.get_logger().info("ESP IN INTERMEDIATE STATE — heading drift detected")
+            self.get_logger().info(
+                f"ESP IN INTERMEDIATE STATE — heading drift detected | prev = {prev:.2f}° | current = {current:.2f}° | heading_rate = {heading_rate:.2f}"
+            )
 
     def intermediate_timout_ok(self):
         if self.state != ESP_STATE_INTERMEDIATE:
@@ -208,11 +229,11 @@ class Esp(Node):
             return
         
         # Check heading stability using buffer average
-        if abs(self.reference_heading - self.last_heading ) < self.heading_tolerance :
+        if self.is_heading_stable():
             self.stable_count += 1
         else:
             self.stable_count = 0  # reset if unstable
-        
+ 
         if self.stable_count >= self.stabilization_index:  # stable for required samples
             self.state = ESP_STATE_IDLE
             
@@ -238,9 +259,9 @@ class Esp(Node):
     def trajectory_control(self):
         # #Complete change in the command with pallier
         
-        # 1) Heading error
-        error = self.reference_heading - self.last_heading   # degrees
-        # 2) Steering correction (proportional)
+        # Heading error
+        error = self.angle_diff(self.reference_heading, self.last_heading)  # degrees
+        # Steering correction (proportional)
         if abs(error) > 30:
             steer_correction = int(self.direction * MAX_STEER)
         elif abs(error) > 15:
@@ -263,10 +284,6 @@ class Esp(Node):
         msg.active = active
         # # Publish output
         self.publisher_motors_order.publish(msg)
-        
-        # Message in the logger only if deviation
-        #self.get_logger().info(f"New Motors Order sent: {msg}")
-
 
 def main(args=None):
     rclpy.init(args=args)

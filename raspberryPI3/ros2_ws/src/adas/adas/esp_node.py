@@ -71,7 +71,7 @@ class Esp(Node):
 
         # Add environnement variables
         self.declare_parameter("heading_tolerance", 5.0) # Value to modify with the new IMU
-        self.declare_parameter("ref_heading_rate", 90.0) # Value to modify with the new IMU
+        self.declare_parameter("ref_heading_rate", 40.0) # Value to modify with the new IMU
         self.declare_parameter("size_buffer_heading", 20)
         self.declare_parameter("stabilization_index", 4)
         self.declare_parameter("intermediate_timout", 2)
@@ -228,8 +228,9 @@ class Esp(Node):
         if self.state != ESP_STATE_ACTIVE:
             return
         
+        error = abs(self.angle_diff(self.reference_heading, self.last_heading))
         # Check heading stability using buffer average
-        if self.is_heading_stable():
+        if error < self.heading_tolerance:
             self.stable_count += 1
         else:
             self.stable_count = 0  # reset if unstable

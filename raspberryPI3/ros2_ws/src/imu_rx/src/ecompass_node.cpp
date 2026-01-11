@@ -29,7 +29,7 @@ public:
         publisher_ = this->create_publisher<interfaces::msg::ECompass>("ecompass", 10);
 
         // Subscriptions
-        imu_sub_.subscribe(this, "/imu/data");
+        imu_sub_.subscribe(this, "/imu/data_raw");
         mag_sub_.subscribe(this, "/imu/mag");
 
         // ApproximateTime Synchronizer

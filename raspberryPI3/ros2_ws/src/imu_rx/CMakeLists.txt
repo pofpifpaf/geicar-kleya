@@ -16,6 +16,7 @@ find_package(std_srvs REQUIRED)
 
 add_executable(imu_rx_node src/imu_rx_node.cpp)
 add_executable(ecompass_node src/ecompass_node.cpp)
+add_executable(mag_calibrator_node src/mag_calibrator_node.cpp)
 
 ament_target_dependencies(imu_rx_node
   rclcpp
@@ -31,6 +32,13 @@ ament_target_dependencies(ecompass_node
   message_filters
 )
 
+ament_target_dependencies(mag_calibrator_node
+  rclcpp
+  sensor_msgs
+  interfaces
+  message_filters
+)
+
 include_directories(
   include
 ) 
@@ -38,6 +46,7 @@ include_directories(
 install(TARGETS
   imu_rx_node
   ecompass_node
+  mag_calibrator_node
   DESTINATION lib/${PROJECT_NAME}
 )
 

@@ -9,10 +9,13 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(message_filters REQUIRED)
+find_package(Eigen3 REQUIRED)
 find_package(interfaces REQUIRED)
 find_package(std_srvs REQUIRED)
 
 add_executable(imu_rx_node src/imu_rx_node.cpp)
+add_executable(ecompass_node src/ecompass_node.cpp)
 
 ament_target_dependencies(imu_rx_node
   rclcpp
@@ -21,12 +24,20 @@ ament_target_dependencies(imu_rx_node
   interfaces
 )
 
+ament_target_dependencies(ecompass_node
+  rclcpp
+  sensor_msgs
+  interfaces
+  message_filters
+)
+
 include_directories(
   include
 ) 
 
 install(TARGETS
   imu_rx_node
+  ecompass_node
   DESTINATION lib/${PROJECT_NAME}
 )
 

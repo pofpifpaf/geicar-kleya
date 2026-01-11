@@ -39,7 +39,7 @@ class Esp(Node):
         #Subscription to the node ESP need
         self.subscription = self.create_subscription(MotorsOrder,'motors_order_raw', self.motors_order_callback, 10)
         self.subscription = self.create_subscription(Imu,'/imu/data', self.imu_callback,10)
-        self.subscription = self.create_subscription(ECompass,'imu/ecompass', self.ecompass_callback,10)
+        self.subscription = self.create_subscription(ECompass,'/ecompass', self.ecompass_callback,10)
         self.subscription  # prevent unused variable warning
 
         # Callback for the trajectory command

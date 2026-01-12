@@ -12,6 +12,7 @@ REFRESH_PERIOD = 0.002
 INDEX_COLLISION = 0
 INDEX_AIRBAG = 1
 INDEX_ESP = 2
+INDEX_ACC = 3
 
 class adas_priority(Node):
 
@@ -24,6 +25,7 @@ class adas_priority(Node):
         self.sub_collision = self.create_subscription(MotorsOrderAdas, 'motors_order_collision', self.collision_callback, 10)
         self.sub_airbag = self.create_subscription(MotorsOrderAdas, 'motors_order_airbag', self.airbag_callback, 10)
         self.sub_esp = self.create_subscription(MotorsOrderAdas,'motors_order_esp', self.esp_callback, 10)
+        self.sub_acc = self.create_subscription(MotorsOrderAdas, 'motors_order_acc', self.acc_callback, 10)
 
         self.sub_active_features_hmi = self.create_subscription(HmiFeatures, 'active_features_hmi', self.active_features_HMI_callback, 10)
 
@@ -35,28 +37,33 @@ class adas_priority(Node):
         self.declare_parameter("airbag_priority", 0)
         self.declare_parameter("collision_priority", 1)
         self.declare_parameter("esp_priority", 2)
+        self.declare_parameter("acc_priority", 3)
 
         self.declare_parameter("airbag_block_duration", 10)
 
         self.priorities = {"collision": self.get_parameter("collision_priority").value,
                          "airbag": self.get_parameter("airbag_priority").value,
-                         "esp": self.get_parameter("esp_priority").value}
+                         "esp": self.get_parameter("esp_priority").value,
+                         "acc" : self.get_parameter("acc_priority").value}
 
         self.airbag_block_duration = self.get_parameter("airbag_block_duration").value
 
         self.last_offsets = {}
         self.hmi_active = {"collision":True,
                              "airbag":True,
-                             "esp":True}
+                             "esp":True,
+                             "acc": True}
 
         self.states = {"collision": "state_nothing",
                          "airbag": "state_nothing",
-                         "esp": "state_nothing"}
+                         "esp": "state_nothing",
+                         "acc": "state_nothing"}
 
         # Active features on HMI
         self.collision_avoidance_active_HMI = 0
         self.esp_active_HMI = 0
         self.airbag_active_HMI = 0
+        self.acc_active_HMI = 0
 
         # Raw motor order
         self.raw_motor_left_rear_pwm = 50
@@ -79,18 +86,12 @@ class adas_priority(Node):
 
     # Parameters callback
     def param_callback(self, params):
-
         for p in params:
-
             key = p.name.replace("_priority", "")
-
             if p.name == "airbag_block_duration":
-
                 self.airbag_block_duration = p.value
                 self.get_logger().info(f"Parameter airbag_block_duration changed to {self.airbag_block_duration}")
-
             if key in self.priorities:   
-
                 self.priorities[key] = p.value
                 self.get_logger().info(f"Parameter {p.name} changed to {self.priorities[key]}")
 
@@ -110,11 +111,16 @@ class adas_priority(Node):
     def airbag_callback(self, msg):
         self.last_offsets["airbag"] = msg
         self.states["airbag"] = msg.state
+
+    def acc_callback(self, msg):
+        self.last_offsets["acc"] = msg
+        self.states["acc"] = msg.state
         
     # Active features HMI callback
     def active_features_HMI_callback(self, msg):
+        #self.hmi_active = {"collision":msg.collision_avoidance_active, "airbag":msg.airbag_active, "esp":msg.esp_active, "acc": msg.acc_active}
         self.hmi_active = {"collision":msg.collision_avoidance_active, "airbag":msg.airbag_active, "esp":msg.esp_active}
-
+        
     def motors_order_raw_callback(self, msg):
         self.raw_motor_left_rear_pwm = msg.left_rear_pwm
         self.raw_motor_right_rear_pwm = msg.right_rear_pwm
@@ -224,6 +230,7 @@ class adas_priority(Node):
 
         states_msg.states[INDEX_COLLISION] = self.states["collision"]
         states_msg.states[INDEX_ESP] = self.states["esp"]
+        states_msg.states[INDEX_ACC] = self.states["acc"]
 
         if (self.state_airbag_deployed):
             states_msg.states[INDEX_AIRBAG] = "state_deployed"

@@ -41,6 +41,7 @@ public:
         //rajout
         auto_speed_mode = false;
         prevButtonX = false;
+        prevLTPressed = false;
 
 
 
@@ -126,7 +127,8 @@ private:
         axisRT   = (1.0 - axisRT) / 2.0;  // axisRT : 1 .. -1  ;  throttle : 0 .. 1
         axisLT   = (1.0 - axisLT) / 2.0;  // axisLT : 1 .. -1  ;  throttle : 0 .. 1
 
-
+        bool LTPressed = (axisLT > DEADZONE_LT_RT);
+        
         // Select mode (0 : manual ; 1 : autonomous ; 2 : steering calibration)
         if (mode == 2) // Exit steering calibration mode after request has been sent
             mode = -1;
@@ -150,6 +152,13 @@ private:
         }
         prevButtonX = buttonX;
 
+        // --- Disable ACC when LT presesed ---
+        if (auto_speed_mode && LTPressed && !prevLTPressed) {
+            RCLCPP_WARN(this->get_logger(), "LT pressed -> ACC OFF (driver override)");
+            auto_speed_mode = false;
+            callSpeedRegulationService(false);
+        }
+        prevLTPressed = LTPressed;
 
         if (buttonDpadLeft && !systemCheckPrintRequest) { // Request to print the last system check report
             systemCheckPrintRequest = true;

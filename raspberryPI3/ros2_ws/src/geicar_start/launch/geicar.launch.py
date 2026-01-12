@@ -109,5 +109,6 @@ def generate_launch_description():
     ld.add_action(shock_detection_node)
     ld.add_action(adas_priority_node)
     # ld.add_action(hmi_node)
+    ld.add_action(speed_regulation)
 
     return ld

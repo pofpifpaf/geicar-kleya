@@ -19,7 +19,7 @@ REFRESH_PERIOD = 0.01  #10 ms
 MIN_TOLERANCE = 1.0  #Minimum tolerance in RPM
 
 
-class speed_regulation(Node):
+class SpeedRegulation(Node):
     def __init__(self):
         # Initialization of the node
         super().__init__('ACC_node')
@@ -190,7 +190,7 @@ class speed_regulation(Node):
 def main(args=None):
     rclpy.init(args=args)
 
-    speed_regulation = speed_regulation()
+    speed_regulation = SpeedRegulation()
 
     rclpy.spin(speed_regulation)
 

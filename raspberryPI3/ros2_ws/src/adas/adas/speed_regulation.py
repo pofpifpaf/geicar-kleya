@@ -92,7 +92,7 @@ class speed_regulation(Node):
             self.auto_mode_on = False
             self.motor_right_rear_pwm_offset = 0
             self.motor_left_rear_pwm_offset = 0
-            self.get_logger().info("ACC OFF")
+            #self.get_logger().info("ACC OFF")
 
         response.success = True
         response.message = "OK"
@@ -118,7 +118,7 @@ class speed_regulation(Node):
         if not self.auto_mode_on:
             self.state = STATE_MANUAL_MODE
             if self.state != self.prev_state:
-                self.get_logger().info("Speed regulation OFF")
+                self.get_logger().info("ACC OFF")
                 msg = MotorsOrderAdas()
                 msg.offset_right_rear_pwm = self.motor_right_rear_pwm_offset
                 msg.offset_left_rear_pwm = self.motor_left_rear_pwm_offset
@@ -156,7 +156,7 @@ class speed_regulation(Node):
             if pwm_offset < 0 or user_PWM < STOP:
                 self.state = STATE_AUTOMATIC_MODE_NO_CORRECTING
                 if self.state != self.prev_state:
-                    self.get_logger().info("Manual commands on automatic node")
+                    self.get_logger().info("ACC ON: user controlling beyond desired speed")
             
             ## Sinon on corrige la vitesse
             else:
@@ -190,11 +190,11 @@ class speed_regulation(Node):
 def main(args=None):
     rclpy.init(args=args)
 
-    speed_regulation_node = speed_regulation()
+    ACC_node = speed_regulation()
 
-    rclpy.spin(speed_regulation_node)
+    rclpy.spin(ACC_node)
 
-    speed_regulation_node.destroy_node()
+    ACC_node.destroy_node()
     rclpy.shutdown()
 
 

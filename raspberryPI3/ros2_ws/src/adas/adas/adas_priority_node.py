@@ -25,13 +25,13 @@ class adas_priority(Node):
         self.sub_collision = self.create_subscription(MotorsOrderAdas, 'motors_order_collision', self.collision_callback, 10)
         self.sub_airbag = self.create_subscription(MotorsOrderAdas, 'motors_order_airbag', self.airbag_callback, 10)
         self.sub_esp = self.create_subscription(MotorsOrderAdas,'motors_order_esp', self.esp_callback, 10)
-        self.sub_acc = self.create_subscription(MotorsOrderAdas, 'motors_order_ACC', self.acc_callback, 10)
+        self.sub_acc = self.create_subscription(MotorsOrderAdas, 'motors_order_acc', self.acc_callback, 10)
 
-        # self.sub_active_features_hmi = self.create_subscription(HmiFeatures, 'active_features_hmi', self.active_features_HMI_callback, 10)
+        self.sub_active_features_hmi = self.create_subscription(HmiFeatures, 'active_features_hmi', self.active_features_HMI_callback, 10)
 
         # Publishers
         self.pub_final = self.create_publisher(MotorsOrder, 'motors_order', 10)
-        # self.pub_states = self.create_publisher(HmiStates, 'hmi_states', 10)
+        self.pub_states = self.create_publisher(HmiStates, 'hmi_states', 10)
 
         # Parameters
         self.declare_parameter("airbag_priority", 0)
@@ -117,9 +117,9 @@ class adas_priority(Node):
         self.states["acc"] = msg.state
         
     # Active features HMI callback
-    # def active_features_HMI_callback(self, msg):
-    #     #self.hmi_active = {"collision":msg.collision_avoidance_active, "airbag":msg.airbag_active, "esp":msg.esp_active, "acc": msg.acc_active}
-    #     self.hmi_active = {"collision":msg.collision_avoidance_active, "airbag":msg.airbag_active, "esp":msg.esp_active}
+    def active_features_HMI_callback(self, msg):
+        #self.hmi_active = {"collision":msg.collision_avoidance_active, "airbag":msg.airbag_active, "esp":msg.esp_active, "acc": msg.acc_active}
+        self.hmi_active = {"collision":msg.collision_avoidance_active, "airbag":msg.airbag_active, "esp":msg.esp_active}
         
     def motors_order_raw_callback(self, msg):
         self.raw_motor_left_rear_pwm = msg.left_rear_pwm
@@ -226,18 +226,18 @@ class adas_priority(Node):
         self.pub_final.publish(motors_msg)
 
         # State definition for HMI
-        # states_msg = HmiStates()
+        states_msg = HmiStates()
 
-        # states_msg.states[INDEX_COLLISION] = self.states["collision"]
-        # states_msg.states[INDEX_ESP] = self.states["esp"]
-        # states_msg.states[INDEX_ACC] = self.states["acc"]
+        states_msg.states[INDEX_COLLISION] = self.states["collision"]
+        states_msg.states[INDEX_ESP] = self.states["esp"]
+        states_msg.states[INDEX_ACC] = self.states["acc"]
 
-        # if (self.state_airbag_deployed):
-        #     states_msg.states[INDEX_AIRBAG] = "state_deployed"
-        # else:
-        #     states_msg.states[INDEX_AIRBAG] = "state_nothing" 
+        if (self.state_airbag_deployed):
+            states_msg.states[INDEX_AIRBAG] = "state_deployed"
+        else:
+            states_msg.states[INDEX_AIRBAG] = "state_nothing" 
               
-        # self.pub_states.publish(states_msg)
+        self.pub_states.publish(states_msg)
 
 def main(args=None):
 

@@ -190,11 +190,11 @@ class speed_regulation(Node):
 def main(args=None):
     rclpy.init(args=args)
 
-    ACC_node = speed_regulation()
+    speed_regulation = speed_regulation()
 
-    rclpy.spin(ACC_node)
+    rclpy.spin(speed_regulation)
 
-    ACC_node.destroy_node()
+    speed_regulation.destroy_node()
     rclpy.shutdown()
 
 

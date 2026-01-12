@@ -2,7 +2,7 @@ import math
 import rclpy
 import requests
 from rclpy.node import Node
-from interfaces.msg import MotorsFeedback, GeneralData, HmiFeatures, HmiStates
+from interfaces.msg import MotorsFeedback, GeneralData, HmiFeatures, HmiStates, MotorsOrder
 from std_msgs.msg import Bool
 
 class HmiNode(Node):
@@ -18,7 +18,8 @@ class HmiNode(Node):
         self.subscription_motors_feedback = self.create_subscription(MotorsFeedback,'motors_feedback', self.motorsfeedback_callback, 10)
         self.subscription_general_data = self.create_subscription(GeneralData,'general_data', self.generaldata_callback, 10)
         self.subscription_hmi_states = self.create_subscription(HmiStates,'hmi_states', self.hmistates_callback, 10)
-
+        self.subscription_motors_order = self.create_subscription(MotorsOrder,'motors_order', self.motorsorder_callback, 10)
+       
         # Variables initialisation
         self.left_rear_RPM  = 0  
         self.right_rear_RPM   = 0
@@ -81,6 +82,12 @@ class HmiNode(Node):
         self.speed = (self.left_speed+self.right_speed)/2
 
 
+    def motorsorder_callback(self, motors_order : MotorsOrder):
+
+        # RPM variables
+        self.right_rear_pwm  = motors_order.right_rear_pwm  
+        self.left_rear_pwm   = motors_order.left_rear_pwm  
+
 
     def generaldata_callback(self, general_data : GeneralData):
         # battery, temperature, pressure
@@ -98,6 +105,10 @@ class HmiNode(Node):
 
 
     def send_to_api(self):
+
+        if (self.left_rear_pwm == 0 and self.right_rear_pwm == 0 and self.speed != 0):
+            self.speed = 0
+            
         payload = {
             "speed": self.speed,
             "RPM": self.RPM,

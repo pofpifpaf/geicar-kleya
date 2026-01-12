@@ -17,9 +17,9 @@ telemetry_state: Dict = {
 }
 
 adas_state: Dict = {
-    "Collision": False,
-    "ESP": False,
-    "Airbag": False,
+    "Collision": True,
+    "ESP": True,
+    "Airbag": True,
 }
 
 # ====== MODELS ======

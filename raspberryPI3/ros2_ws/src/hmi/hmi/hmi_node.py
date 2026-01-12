@@ -21,8 +21,10 @@ class HmiNode(Node):
         self.subscription_motors_order = self.create_subscription(MotorsOrder,'motors_order', self.motorsorder_callback, 10)
        
         # Variables initialisation
-        self.left_rear_RPM  = 0  
-        self.right_rear_RPM   = 0
+        self.left_rear_RPM = 0  
+        self.right_rear_RPM = 0
+        self.right_rear_pwm = 0
+        self.left_rear_pwm = 0
         self.left_speed = 5
         self.right_speed = 5
         self.speed = 5

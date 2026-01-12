@@ -234,6 +234,7 @@ private:
     // rajout
     bool auto_speed_mode;
     bool prevButtonX;
+    bool prevLTPressed;
 
 
     //service que je rajoute

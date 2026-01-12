@@ -22,9 +22,9 @@ MIN_TOLERANCE = 1.0  #Minimum tolerance in RPM
 class SpeedRegulation(Node):
     def __init__(self):
         # Initialization of the node
-        super().__init__('ACC_node')
+        super().__init__('acc_node')
 
-        self.publisher_motors_order = self.create_publisher(MotorsOrderAdas, 'motors_order_ACC', 10)
+        self.publisher_motors_order = self.create_publisher(MotorsOrderAdas, 'motors_order_acc', 10)
 
         # Subscriptions
         self.subscription = self.create_subscription(MotorsOrder, 'motors_order_raw', self.motors_order_callback, 10)
@@ -170,7 +170,7 @@ class SpeedRegulation(Node):
                     self.get_logger().info("Correcting speed")
 
         #Publishing
-        if (self.prev_state != self.state) or self.last_pwm_offset != (self.motor_left_rear_pwm_offset + self.motor_right_rear_pwm_offset) /2.0:
+        if (self.prev_state != self.state) or self.last_pwm_offset != int((self.motor_left_rear_pwm_offset + self.motor_right_rear_pwm_offset) /2.0):
             msg = MotorsOrderAdas()
             msg.offset_right_rear_pwm = self.motor_right_rear_pwm_offset
             msg.offset_left_rear_pwm = self.motor_left_rear_pwm_offset

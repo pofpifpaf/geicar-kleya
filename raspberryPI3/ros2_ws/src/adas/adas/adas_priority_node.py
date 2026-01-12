@@ -63,6 +63,7 @@ class adas_priority(Node):
         self.collision_avoidance_active_HMI = 0
         self.esp_active_HMI = 0
         self.airbag_active_HMI = 0
+        self.acc_active_HMI = 0
 
         # Raw motor order
         self.raw_motor_left_rear_pwm = 50
@@ -85,18 +86,12 @@ class adas_priority(Node):
 
     # Parameters callback
     def param_callback(self, params):
-
         for p in params:
-
             key = p.name.replace("_priority", "")
-
             if p.name == "airbag_block_duration":
-
                 self.airbag_block_duration = p.value
                 self.get_logger().info(f"Parameter airbag_block_duration changed to {self.airbag_block_duration}")
-
             if key in self.priorities:   
-
                 self.priorities[key] = p.value
                 self.get_logger().info(f"Parameter {p.name} changed to {self.priorities[key]}")
 
@@ -123,8 +118,9 @@ class adas_priority(Node):
         
     # Active features HMI callback
     def active_features_HMI_callback(self, msg):
+        #self.hmi_active = {"collision":msg.collision_avoidance_active, "airbag":msg.airbag_active, "esp":msg.esp_active, "acc": msg.acc_active}
         self.hmi_active = {"collision":msg.collision_avoidance_active, "airbag":msg.airbag_active, "esp":msg.esp_active}
-
+        
     def motors_order_raw_callback(self, msg):
         self.raw_motor_left_rear_pwm = msg.left_rear_pwm
         self.raw_motor_right_rear_pwm = msg.right_rear_pwm
@@ -234,6 +230,7 @@ class adas_priority(Node):
 
         states_msg.states[INDEX_COLLISION] = self.states["collision"]
         states_msg.states[INDEX_ESP] = self.states["esp"]
+        states_msg.states[INDEX_ACC] = self.states["acc"]
 
         if (self.state_airbag_deployed):
             states_msg.states[INDEX_AIRBAG] = "state_deployed"

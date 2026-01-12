@@ -1,6 +1,7 @@
 import rclpy
 from rclpy.node import Node
 
+
 from sensor_msgs.msg import Imu
 
 from interfaces.msg import MotorsOrderAdas
@@ -34,7 +35,7 @@ class airbag_shock_detection(Node):
         self.prev_state = STATE_NOTHING
 
         # Parameters
-        self.declare_parameter("airbag_threshold", 2.5)
+        self.declare_parameter("airbag_threshold", 10)
         self.min_linear_acceleration = self.get_parameter("airbag_threshold").value
 
         self.add_on_set_parameters_callback(self.param_callback)

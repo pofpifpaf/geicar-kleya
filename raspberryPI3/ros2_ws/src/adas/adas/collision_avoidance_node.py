@@ -110,8 +110,8 @@ class collision_avoidance(Node):
         self.emergency_stop = False
         max_pwm = 50
     
-        if ((self.motor_right_rear_pwm > STOP 
-             or self.motor_left_rear_pwm > STOP) and 
+        if ((self.motor_right_rear_pwm >= STOP 
+             or self.motor_left_rear_pwm >= STOP) and 
             (self.ultra_front_left < self.threshold_stop or 
             self.ultra_front_right < self.threshold_stop or 
             self.ultra_front_center < self.threshold_stop)):
@@ -125,8 +125,8 @@ class collision_avoidance(Node):
                 self.get_logger().info(f"Detecting obstacle <{self.threshold_stop}cm ahead of car : Stopping car")
 
 
-        elif ((self.motor_right_rear_pwm > STOP 
-             or self.motor_left_rear_pwm > STOP) and 
+        elif ((self.motor_right_rear_pwm >= STOP 
+             or self.motor_left_rear_pwm >= STOP) and 
              (self.threshold_stop < self.ultra_front_center < self.threshold_slow)):
         
             max_pwm = self.slow_speed_percentage/2

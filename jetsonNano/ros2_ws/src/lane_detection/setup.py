@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-package_name = 'adas'
+package_name = 'lane_detection'
 
 setup(
     name=package_name,
@@ -13,8 +13,8 @@ setup(
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='madatime',
-    maintainer_email='adam.gironcel@gmail.com',
+    maintainer='cnguyen',
+    maintainer_email='c_nguyen@insa-toulouse.fr',
     description='TODO: Package description',
     license='TODO: License declaration',
     extras_require={
@@ -24,12 +24,8 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'collision_avoidance_node = adas.collision_avoidance_node:main',
-            'airbag_shock_detection = adas.airbag_shock_detect:main',
-            'adas_priority_node = adas.adas_priority_node:main',
-            'speed_regulation = adas.speed_regulation:main',
-            'esp_node = adas.esp_node:main',
-            'lane_centering_assist_node = adas.lane_centering_assist:main',
+            'lane_detection_node = lane_detection.lane_detection_node:main',
+
         ],
     },
 )

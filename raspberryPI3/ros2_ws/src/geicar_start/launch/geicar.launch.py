@@ -47,6 +47,13 @@ def generate_launch_description():
         executable="airbag_shock_detection",
         emulate_tty=True
     )
+
+    speed_regulation = Node(
+        package="adas",
+        executable="speed_regulation",
+        emulate_tty=True
+    )
+    
     
     imu_rx_node = Node(
         package = 'imu_rx',
@@ -57,6 +64,12 @@ def generate_launch_description():
     esp_node = Node(
         package="adas",
         executable="esp_node",
+        emulate_tty=True
+    )
+    
+    lane_centering_assist_node = Node(
+        package="adas",
+        executable="lane_centering_assist_node",
         emulate_tty=True
     )
     adas_priority_node = Node(
@@ -100,7 +113,9 @@ def generate_launch_description():
     ld.add_action(imu_filter_madgwick_node)
     ld.add_action(system_check_node)
     ld.add_action(shock_detection_node)
+    ld.add_action(lane_centering_assist_node)
     ld.add_action(adas_priority_node)
-    ld.add_action(hmi_node)
+    # ld.add_action(hmi_node)
+    ld.add_action(speed_regulation)
 
     return ld

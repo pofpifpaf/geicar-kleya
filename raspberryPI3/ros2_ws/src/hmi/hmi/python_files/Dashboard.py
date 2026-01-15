@@ -5,7 +5,7 @@ import requests
 
 from streamlit_autorefresh import st_autorefresh
    
-@st.cache_data(ttl=0.5)
+@st.cache_data(ttl=1.0) #0.5
 def get_state():
     try:
         r = requests.get("http://localhost:8000/state", timeout=0.3)
@@ -13,7 +13,7 @@ def get_state():
     except:
         return None
 
-@st.cache_data(ttl=0.5)
+@st.cache_data(ttl=1.0)
 def get_adas():
     try:
         r = requests.get("http://localhost:8000/adas", timeout=0.3)
@@ -164,9 +164,9 @@ def generate_dashboard():
 
   if "adas_data" not in st.session_state:
       st.session_state.adas_data = {
-          "Collision": False,
-          "ESP": False,
-          "Airbag": False,
+          "Collision": True,
+          "ESP": True,
+          "Airbag": True,
       }
 
   state = get_state()

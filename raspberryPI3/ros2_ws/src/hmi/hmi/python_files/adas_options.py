@@ -8,7 +8,7 @@ def load_config():
     try:
         return requests.get(BACKEND_ADAS_URL, timeout=0.2).json()
     except requests.exceptions.RequestException:
-        return {"Collision": True, "Airbag": True, "ESP": True}
+        return {"Collision": False, "Airbag": False, "ESP": False}
 
 def save_config(data):
     try:

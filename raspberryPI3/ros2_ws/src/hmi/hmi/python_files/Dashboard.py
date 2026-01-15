@@ -164,9 +164,9 @@ def generate_dashboard():
 
   if "adas_data" not in st.session_state:
       st.session_state.adas_data = {
-          "Collision": True,
-          "ESP": True,
-          "Airbag": True,
+          "Collision": False,
+          "ESP": False,
+          "Airbag": False,
       }
 
   state = get_state()

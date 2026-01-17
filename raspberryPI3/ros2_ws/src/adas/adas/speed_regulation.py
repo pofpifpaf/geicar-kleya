@@ -179,7 +179,7 @@ class SpeedRegulation(Node):
                 if self.state != self.prev_state:
                     self.get_logger().info(f"ACC: Too close ({distance}cm) -> slow down)")
             
-            else if distance > SAFE_MAX_CM:
+            elif distance > SAFE_MAX_CM:
 
                 self.state = STATE_KEEP_DISTANCE
 

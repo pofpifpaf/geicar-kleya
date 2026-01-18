@@ -26,6 +26,7 @@ set(msg_files
   "msg/HmiFeatures.msg"
   "msg/MotorsOrderAdas.msg"
   "msg/HmiStates.msg"
+  "msg/DetectedLane.msg"
 )
 
 rosidl_generate_interfaces(${PROJECT_NAME}

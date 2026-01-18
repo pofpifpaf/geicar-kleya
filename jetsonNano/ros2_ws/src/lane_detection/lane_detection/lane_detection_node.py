@@ -133,7 +133,7 @@ class  lane_detection(Node):
         #Adaptive dark-tape mask using CLAHE on the Y channel.
         # Convert to YCrCb and extract Y channel
         ycrcb = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2YCrCb)
-        Y, Cr, Cb = cv2.split(ycrcb)
+        Y, _, _ = cv2.split(ycrcb)
         # Apply CLAHE (adaptive histogram equalization) to enhance dark tape
         clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=tile_grid_size)
         chan_y = clahe.apply(Y)

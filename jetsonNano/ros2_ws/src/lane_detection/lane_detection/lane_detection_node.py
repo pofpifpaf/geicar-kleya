@@ -86,13 +86,19 @@ class  lane_detection(Node):
 
     # Utility functions OpenCV
     # Cut the irrelevant part of the picture 
-    def roi_on_mask(self, mask, roi_top_ratio=0.55, roi_bottom_ratio=0.05):
+    def roi_on_mask(self, mask,roi_top_ratio=0.55, roi_bottom_ratio=0.2,roi_left_ratio=0.25,roi_right_ratio=0.25):
+
         h, w = mask.shape[:2]
         roi_mask = np.zeros_like(mask)
-        roi_top = int(h * roi_top_ratio)
-        roi_bottom = int(h * (1 - roi_bottom_ratio))
-        cv2.rectangle(roi_mask, (0, roi_top), (w, roi_bottom), 255, -1)
+
+        top = int(h * roi_top_ratio)
+        bottom = int(h * (1 - roi_bottom_ratio))
+        left = int(w * roi_left_ratio)
+        right = int(w * (1 - roi_right_ratio))
+
+        cv2.rectangle(roi_mask, (left, top), (right, bottom), 255, -1)
         return cv2.bitwise_and(mask, roi_mask)
+
 
     def split_left_right_edges(self, edges, min_branch_length=MIN_BRANCH_LENGTH):
         ys, xs = np.nonzero(edges > 0)
@@ -133,7 +139,7 @@ class  lane_detection(Node):
         chan_y = clahe.apply(Y)
         # Simple adaptive threshold: mean - some factor
         mean_y = np.mean(chan_y)
-        thresh = max(0, int(mean_y * 0.7))  # dark tape is darker than mean
+        thresh = max(0, int(mean_y * 0.4))  # dark tape is darker than mean
         # Mask: pixels darker than threshold
         mask = cv2.inRange(chan_y, 0, thresh)
         # Morphology to clean noise
@@ -173,7 +179,7 @@ class  lane_detection(Node):
                 pruned[labels == i] = 255
         return pruned
 
-    def polynomial_fit_from_points(self, ys, xs, min_points=MIN_POLY_POINTS, min_span=40):
+    def polynomial_fit_from_points(self, ys, xs, min_points=MIN_POLY_POINTS, min_span=80):
         if xs is None or len(xs) < min_points or (len(ys) > 0 and ys.max() - ys.min() < min_span):
             return None
         sort_idx = np.argsort(ys)

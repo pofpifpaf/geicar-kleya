@@ -10,6 +10,13 @@ from cv_bridge import CvBridge
 import numpy as np
 
 class  lane_detection(Node):
+    # Constant to tune for lane detection
+    MIN_BRANCH_LENGTH = 320      # min area for connected components
+    MIN_POLY_POINTS = 180       # min points for polynomial fit
+    PRUNE_MIN_LENGTH = 120       # min skeleton length
+    MIN_LANE_STRENGTH = 300     # min number of points in branch to be valid
+    GAUSSIAN_BLUR_CONST = 5
+    KERNEL_MASK_VALUE = 3
     def __init__(self):
         #Initialization of the node
         super().__init__('lane_detection_node')
@@ -27,8 +34,8 @@ class  lane_detection(Node):
         np_arr = np.frombuffer(image.data, np.uint8)
         inputimage = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)  # OpenCV BGR
 
-        _ , self.lanes_coordinates, _, _ = self.detect_lanes_dark_tape(inputimage)
-        #self.image_with_lanes(output, image) # uncomment to debug
+        output , self.lanes_coordinates, _, _ = self.detect_lanes_dark_tape(inputimage)
+        self.image_with_lanes(output, image) # uncomment to debug
         
         left_coeffs, right_coeffs = self.lanes_coordinates
         h = inputimage.shape[0]
@@ -87,7 +94,7 @@ class  lane_detection(Node):
         cv2.rectangle(roi_mask, (0, roi_top), (w, roi_bottom), 255, -1)
         return cv2.bitwise_and(mask, roi_mask)
 
-    def split_left_right_edges(self, edges, min_branch_length=40):
+    def split_left_right_edges(self, edges, min_branch_length=MIN_BRANCH_LENGTH):
         ys, xs = np.nonzero(edges > 0)
         if len(xs) == 0:
             return (None, None), (None, None)
@@ -116,31 +123,32 @@ class  lane_detection(Node):
         return None, None
 
     # Dark Mask Function using YUCrCb
-    def dark_tape_mask(self, bgr_image, kernel_size=5):
+    def dark_tape_mask(self,bgr_image, kernel_size=KERNEL_MASK_VALUE, clip_limit=2.0, tile_grid_size=(8,8)):
+        #Adaptive dark-tape mask using CLAHE on the Y channel.
+        # Convert to YCrCb and extract Y channel
         ycrcb = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2YCrCb)
-        # Range 1: Optimal corridor
-        # Code Hexa couleur via le couloir: #656450 pour le low et #1d1e10 pour le high
-        range1_low  = np.array([0,   100,  100])
-        range1_high = np.array([110, 140, 140])
-        mask1 = cv2.inRange(ycrcb, range1_low, range1_high)
-        
-        # Range 2: Lighter environment  
-        range2_low  = np.array([0,   110,  110])  
-        range2_high = np.array([125, 155, 155])
-        mask2 = cv2.inRange(ycrcb, range2_low, range2_high)
-        
-        # Combine: OR masks
-        mask = cv2.bitwise_or(mask1, mask2)
-        
+        Y, Cr, Cb = cv2.split(ycrcb)
+        # Apply CLAHE (adaptive histogram equalization) to enhance dark tape
+        clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=tile_grid_size)
+        chan_y = clahe.apply(Y)
+        # Simple adaptive threshold: mean - some factor
+        mean_y = np.mean(chan_y)
+        thresh = max(0, int(mean_y * 0.7))  # dark tape is darker than mean
+        # Mask: pixels darker than threshold
+        mask = cv2.inRange(chan_y, 0, thresh)
+        # Morphology to clean noise
         kernel = np.ones((kernel_size, kernel_size), np.uint8)
         mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=2)
         mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=1)
+
         return mask
+
 
     def centerline_from_mask(self, mask, kernel_size=3):
         kernel = np.ones((kernel_size, kernel_size), np.uint8)
         eroded = cv2.erode(mask, kernel, iterations=1)
-        
+        # Test putting blur to reduce noise
+        eroded = cv2.GaussianBlur(eroded, (self.GAUSSIAN_BLUR_CONST, self.GAUSSIAN_BLUR_CONST), 0)  # soft blur
         skel = np.zeros(mask.shape, np.uint8)
         element = cv2.getStructuringElement(cv2.MORPH_CROSS, (3,3))
         done = False
@@ -154,7 +162,7 @@ class  lane_detection(Node):
                 done = True
         return skel
 
-    def prune_by_length(self, skel, min_length=60):
+    def prune_by_length(self, skel, min_length=PRUNE_MIN_LENGTH):
         num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(skel, connectivity=8)
         pruned = np.zeros_like(skel)
         for i in range(1, num_labels):
@@ -165,7 +173,7 @@ class  lane_detection(Node):
                 pruned[labels == i] = 255
         return pruned
 
-    def polynomial_fit_from_points(self, ys, xs, min_points=50, min_span=40):
+    def polynomial_fit_from_points(self, ys, xs, min_points=MIN_POLY_POINTS, min_span=40):
         if xs is None or len(xs) < min_points or (len(ys) > 0 and ys.max() - ys.min() < min_span):
             return None
         sort_idx = np.argsort(ys)
@@ -175,7 +183,7 @@ class  lane_detection(Node):
         coeffs = np.polyfit(clean_ys, clean_xs, 1) # Affine function
         return coeffs
 
-    def detect_lanes_dark_tape(self, input_image, draw_fn=None, thickness=8, debug=False):
+    def detect_lanes_dark_tape(self, input_image, draw_fn=None, thickness=8, min_lane_strength=MIN_LANE_STRENGTH):
         mask = self.dark_tape_mask(input_image)
         mask_skel = self.centerline_from_mask(mask)
         mask_skel = self.prune_by_length(mask_skel)
@@ -185,8 +193,8 @@ class  lane_detection(Node):
         left_strength = len(left_x) if left_x is not None else 0
         right_strength = len(right_x) if right_x is not None else 0
         
-        left_coeffs = self.polynomial_fit_from_points(left_y, left_x) if left_strength >= 50 else None
-        right_coeffs = self.polynomial_fit_from_points(right_y, right_x) if right_strength >= 50 else None
+        left_coeffs = self.polynomial_fit_from_points(left_y, left_x) if left_strength >= min_lane_strength else None
+        right_coeffs = self.polynomial_fit_from_points(right_y, right_x) if right_strength >= min_lane_strength else None
         
         self.lanes_coordinates = (left_coeffs, right_coeffs)  # For steering
         

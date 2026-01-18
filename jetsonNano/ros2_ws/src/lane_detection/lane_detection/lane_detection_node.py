@@ -4,6 +4,7 @@ import rclpy
 from rclpy.node import Node
 # Lane Detection Specific Import
 from sensor_msgs.msg import CompressedImage, Image
+from interfaces.msg import DetectedLane
 import cv2
 from cv_bridge import CvBridge
 import numpy as np
@@ -14,6 +15,7 @@ class  lane_detection(Node):
         super().__init__('lane_detection_node')
         self.bridge = CvBridge()
         self.image_pub = self.create_publisher(Image,'image_lane_detection',10)
+        self.lane_pub = self.create_publisher(DetectedLane, 'detected_lanes_position', 10)
         self.subscription = self.create_subscription(CompressedImage,'image_raw/compressed', self.image_raw_callback, 10)
         self.subscription  # prevent unused variable warning
         #Init variable
@@ -25,14 +27,55 @@ class  lane_detection(Node):
         np_arr = np.frombuffer(image.data, np.uint8)
         inputimage = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)  # OpenCV BGR
 
-        output, self.lanes_coordinates, _, _ = self.detect_lanes_dark_tape(inputimage)
-        self.image_with_lanes(output, image) # uncomment to debug
+        _ , self.lanes_coordinates, _, _ = self.detect_lanes_dark_tape(inputimage)
+        #self.image_with_lanes(output, image) # uncomment to debug
+        
+        left_coeffs, right_coeffs = self.lanes_coordinates
+        h = inputimage.shape[0]
+        
+        # Create the message to send over ros2 topic
+        lane_msg = DetectedLane()
+        left_msg = self.lane_msg_from_coeffs(left_coeffs, h)
+        right_msg = self.lane_msg_from_coeffs(right_coeffs, h)
+
+        lane_msg.lane1_bottom_x = left_msg['bottom_x']
+        lane_msg.lane1_bottom_y = left_msg['bottom_y']
+        lane_msg.lane1_top_x = left_msg['top_x']
+        lane_msg.lane1_top_y = left_msg['top_y']
+        lane_msg.lane1_valid = left_msg['valid']
+
+        lane_msg.lane2_bottom_x = right_msg['bottom_x']
+        lane_msg.lane2_bottom_y = right_msg['bottom_y']
+        lane_msg.lane2_top_x = right_msg['top_x']
+        lane_msg.lane2_top_y = right_msg['top_y']
+        lane_msg.lane2_valid = right_msg['valid']
+
+        self.lane_pub.publish(lane_msg)
 
     def image_with_lanes(self, output, image: CompressedImage):
         msg = self.bridge.cv2_to_imgmsg(output, encoding='bgr8')
         msg.header = image.header
         self.image_pub.publish(msg)
 
+    # Function to create the LaneDetection Msg
+    def lane_msg_from_coeffs(self, coeffs, h, y_min_ratio=0.55):
+        msg = {}
+        if coeffs is not None:
+            b, c = coeffs
+            y_min = int(h * y_min_ratio)
+            y_max = h
+            x_min = int(b * y_min + c)
+            x_max = int(b * y_max + c)
+            msg['bottom_x'] = x_max
+            msg['bottom_y'] = y_max
+            msg['top_x'] = x_min
+            msg['top_y'] = y_min
+            msg['valid'] = True
+        else:
+            msg['bottom_x'] = msg['bottom_y'] = 0
+            msg['top_x'] = msg['top_y'] = 0
+            msg['valid'] = False
+        return msg
 
     # Utility functions OpenCV
     # Cut the irrelevant part of the picture 

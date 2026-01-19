@@ -22,7 +22,7 @@ class  lane_detection(Node):
         super().__init__('lane_detection_node')
         self.bridge = CvBridge()
         self.image_pub = self.create_publisher(Image,'image_lane_detection',10)
-        self.lane_pub = self.create_publisher(DetectedLane, 'detected_lanes_position', 10)
+        self.lane_pub = self.create_publisher(DetectedLane, 'detected_lanes_position_raw', 10)
         self.subscription = self.create_subscription(CompressedImage,'image_raw/compressed', self.image_raw_callback, 10)
         self.subscription  # prevent unused variable warning
         #Init variable

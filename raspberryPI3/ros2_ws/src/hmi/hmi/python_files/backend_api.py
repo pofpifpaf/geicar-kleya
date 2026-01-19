@@ -59,3 +59,21 @@ def get_adas():
 def update_adas(cfg: AdasConfig):
     adas_state.update(cfg.dict())
     return {"status": "ok"}
+
+from fastapi import WebSocket
+from fastapi.middleware.cors import CORSMiddleware
+import asyncio
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.websocket("/ws/state")
+async def websocket_state(ws: WebSocket):
+    await ws.accept()
+    while True:
+        await ws.send_json(telemetry_state)
+        await asyncio.sleep(0.2)

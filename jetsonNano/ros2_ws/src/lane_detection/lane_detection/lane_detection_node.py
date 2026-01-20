@@ -26,8 +26,8 @@ class  lane_detection(Node):
         np_arr = np.frombuffer(image.data, np.uint8)
         inputimage = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)  # OpenCV BGR
 
-        _ , lanes_coordinates, _, _ = self.detect_lanes_dark_tape(inputimage)
-        #self.image_with_lanes(output, image) # uncomment to debug
+        output , lanes_coordinates, _, _ = self.detect_lanes_dark_tape(inputimage)
+        self.image_with_lanes(output, image) # uncomment to debug
         
         left_coeffs, right_coeffs = lanes_coordinates
         h = inputimage.shape[0]
@@ -81,29 +81,25 @@ class  lane_detection(Node):
     # --------------------------------------------------
     
     # Cut the irrelevant part of the picture 
-    def roi_on_mask(self, mask,roi_top_ratio=0.55, roi_bottom_ratio=0.2,roi_left_ratio=0.25,roi_right_ratio=0.25):
-
-        h, w = mask.shape[:2]
-        roi_mask = np.zeros_like(mask)
-
-        top = int(h * roi_top_ratio)
-        bottom = int(h * (1 - roi_bottom_ratio))
-        left = int(w * roi_left_ratio)
-        right = int(w * (1 - roi_right_ratio))
-
-        cv2.rectangle(roi_mask, (left, top), (right, bottom), 255, -1)
+    def roi_on_mask(self, mask, roi_top_ratio=0.55, roi_bottom_ratio=0.05):
+            h, w = mask.shape[:2]
+            roi_mask = np.zeros_like(mask)
+            roi_top = int(h * roi_top_ratio)
+            roi_bottom = int(h * (1 - roi_bottom_ratio))
+            cv2.rectangle(roi_mask, (0, roi_top), (w, roi_bottom), 255, -1)
+            return cv2.bitwise_and(mask, roi_mask)
 
     def split_left_right_edges(self, edges, min_branch_length=40):
-        ys, xs = np.nonzero(edges > 0)
-        if len(xs) == 0:
-            return (None, None), (None, None)
-        h, w = edges.shape[:2]
-        x_mid = w / 2.0
-        left_mask = xs < x_mid
-        right_mask = xs >= x_mid
-        left_y, left_x = self.longest_branch(ys[left_mask], xs[left_mask], min_branch_length, h, w)
-        right_y, right_x = self.longest_branch(ys[right_mask], xs[right_mask], min_branch_length, h, w)
-        return (left_y, left_x), (right_y, right_x)
+            ys, xs = np.nonzero(edges > 0)
+            if len(xs) == 0:
+                return (None, None), (None, None)
+            h, w = edges.shape[:2]
+            x_mid = w / 2.0
+            left_mask = xs < x_mid
+            right_mask = xs >= x_mid
+            left_y, left_x = self.longest_branch(ys[left_mask], xs[left_mask], min_branch_length, h, w)
+            right_y, right_x = self.longest_branch(ys[right_mask], xs[right_mask], min_branch_length, h, w)
+            return (left_y, left_x), (right_y, right_x)
 
     # Function to filter when severals branches are detected
     def longest_branch(self, ys, xs, min_length, h, w):
@@ -122,7 +118,7 @@ class  lane_detection(Node):
         return None, None
 
     # Dark Mask Function using YUCrCb
-    def dark_tape_mask(self,bgr_image, kernel_size=3, clip_limit=2.0, tile_grid_size=(8,8)):
+    def dark_tape_mask(self,bgr_image, kernel_size=5, clip_limit=2.0, tile_grid_size=(8,8)):
         #Adaptive dark-tape mask using CLAHE on the Y channel.
         # Convert to YCrCb and extract Y channel
         ycrcb = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2YCrCb)
@@ -132,7 +128,7 @@ class  lane_detection(Node):
         chan_y = clahe.apply(Y)
         # Simple adaptive threshold: mean - some factor
         mean_y = np.mean(chan_y)
-        thresh = max(0, int(mean_y * 0.4))  # dark tape is darker than mean
+        thresh = max(0, int(mean_y * 0.5))  # dark tape is darker than mean
         # Mask: pixels darker than threshold
         mask = cv2.inRange(chan_y, 0, thresh)
         # Morphology to clean noise
@@ -144,7 +140,7 @@ class  lane_detection(Node):
     def centerline_from_mask(self, mask, kernel_size=3):
         kernel = np.ones((kernel_size, kernel_size), np.uint8)
         eroded = cv2.erode(mask, kernel, iterations=1)
-        
+        eroded = cv2.GaussianBlur(eroded, (3, 3), 0)
         skel = np.zeros(mask.shape, np.uint8)
         element = cv2.getStructuringElement(cv2.MORPH_CROSS, (3,3))
         done = False

@@ -8,14 +8,6 @@ from interfaces.msg import DetectedLane
 import cv2
 from cv_bridge import CvBridge
 import numpy as np
-
-# Constant to tune for lane detection
-MIN_BRANCH_LENGTH = 50      # min area for connected components
-MIN_POLY_POINTS = 50       # min points for polynomial fit
-PRUNE_MIN_LENGTH = 40       # min skeleton length
-MIN_LANE_STRENGTH = 100 # min number of points in branch to be valid
-GAUSSIAN_BLUR_CONST = 5
-KERNEL_MASK_VALUE = 3
     
 class  lane_detection(Node):
     def __init__(self):

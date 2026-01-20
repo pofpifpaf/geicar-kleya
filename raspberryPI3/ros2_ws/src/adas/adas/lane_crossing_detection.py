@@ -17,8 +17,8 @@ class  lane_crossing_detection(Node):
 
         
         # Add environnement variables
-        self.declare_parameter("left_lane_crossing_threshold", False)
-        self.declare_parameter("right_lane_crossing_threshold", True)
+        self.declare_parameter("left_lane_crossing_threshold", 384)
+        self.declare_parameter("right_lane_crossing_threshold", 896)
         self.add_on_set_parameters_callback(self.param_callback)
 
         self.left_lane_crossing = self.get_parameter("left_lane_crossing_threshold").value

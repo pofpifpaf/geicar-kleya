@@ -38,17 +38,19 @@ class  lane_crossing_detection(Node):
 
     def lane_position_callback(self,lanes : DetectedLane):
         # Get left lane coordinate
-        self.left_lane_bottom_x = DetectedLane.lane1_bottom_x
-        self.left_lane_bottom_y = DetectedLane.lane1_bottom_y
-        self.left_lane_top_x = DetectedLane.lane1_top_x
-        self.left_lane_top_y = DetectedLane.lane1_top_y
-        self.left_lane_valid = DetectedLane.lane1_valid
+        self.left_lane_bottom_x = lanes.lane1_bottom_x
+        self.left_lane_top_x = lanes.lane1_top_x
+        self.left_lane_valid = lanes.lane1_valid
+        
         # Get right lane coordinate
-        self.right_lane_bottom_x = DetectedLane.lane2_bottom_x
-        self.right_lane_bottom_y = DetectedLane.lane2_bottom_y
-        self.right_lane_top_x = DetectedLane.lane2_top_x
-        self.right_lane_top_y = DetectedLane.lane2_top_y
-        self.right_lane_valid = DetectedLane.lane2_valid
+        self.right_lane_bottom_x = lanes.lane2_bottom_x
+        self.right_lane_top_x = lanes.lane2_top_x
+        self.right_lane_valid = lanes.lane2_valid
+        
+    def lane_crossing_test(left_crossing, right_crossing : bool):
+        #if self.left_lane_bottom_x < self.left_lane_crossing_threshold:
+            
+            
 
 def main(args=None):
     rclpy.init(args=args)

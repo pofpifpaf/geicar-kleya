@@ -9,14 +9,16 @@ import cv2
 from cv_bridge import CvBridge
 import numpy as np
 
+# Constant to tune for lane detection
+MIN_BRANCH_LENGTH = 50      # min area for connected components
+MIN_POLY_POINTS = 50       # min points for polynomial fit
+PRUNE_MIN_LENGTH = 40       # min skeleton length
+MIN_LANE_STRENGTH = 100 # min number of points in branch to be valid
+GAUSSIAN_BLUR_CONST = 5
+KERNEL_MASK_VALUE = 3
+    
 class  lane_detection(Node):
-    # Constant to tune for lane detection
-    MIN_BRANCH_LENGTH = 320      # min area for connected components
-    MIN_POLY_POINTS = 180       # min points for polynomial fit
-    PRUNE_MIN_LENGTH = 120       # min skeleton length
-    MIN_LANE_STRENGTH = 300     # min number of points in branch to be valid
-    GAUSSIAN_BLUR_CONST = 5
-    KERNEL_MASK_VALUE = 3
+
     def __init__(self):
         #Initialization of the node
         super().__init__('lane_detection_node')
@@ -154,7 +156,7 @@ class  lane_detection(Node):
         kernel = np.ones((kernel_size, kernel_size), np.uint8)
         eroded = cv2.erode(mask, kernel, iterations=1)
         # Test putting blur to reduce noise
-        eroded = cv2.GaussianBlur(eroded, (self.GAUSSIAN_BLUR_CONST, self.GAUSSIAN_BLUR_CONST), 0)  # soft blur
+        eroded = cv2.GaussianBlur(eroded, (GAUSSIAN_BLUR_CONST, GAUSSIAN_BLUR_CONST), 0)  # soft blur
         skel = np.zeros(mask.shape, np.uint8)
         element = cv2.getStructuringElement(cv2.MORPH_CROSS, (3,3))
         done = False

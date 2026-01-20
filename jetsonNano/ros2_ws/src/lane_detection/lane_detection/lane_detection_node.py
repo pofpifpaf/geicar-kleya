@@ -18,7 +18,6 @@ GAUSSIAN_BLUR_CONST = 5
 KERNEL_MASK_VALUE = 3
     
 class  lane_detection(Node):
-
     def __init__(self):
         #Initialization of the node
         super().__init__('lane_detection_node')
@@ -28,7 +27,6 @@ class  lane_detection(Node):
         self.subscription = self.create_subscription(CompressedImage,'image_raw/compressed', self.image_raw_callback, 10)
         self.subscription  # prevent unused variable warning
         #Init variable
-        self.lanes_coordinates = None
         self.center_camera_px = 640.0 # Value found based on camera photo (cf: notebook)
         
     def image_raw_callback(self, image : CompressedImage):
@@ -36,10 +34,10 @@ class  lane_detection(Node):
         np_arr = np.frombuffer(image.data, np.uint8)
         inputimage = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)  # OpenCV BGR
 
-        output , self.lanes_coordinates, _, _ = self.detect_lanes_dark_tape(inputimage)
+        output , lanes_coordinates, _, _ = self.detect_lanes_dark_tape(inputimage)
         self.image_with_lanes(output, image) # uncomment to debug
         
-        left_coeffs, right_coeffs = self.lanes_coordinates
+        left_coeffs, right_coeffs = lanes_coordinates
         h = inputimage.shape[0]
         
         # Create the message to send over ros2 topic
@@ -86,33 +84,30 @@ class  lane_detection(Node):
             msg['valid'] = False
         return msg
 
-    # Utility functions OpenCV
+    # --------------------------------------------------
+    # ------------ Utility functions OpenCV ------------
+    # --------------------------------------------------
+    
     # Cut the irrelevant part of the picture 
-    def roi_on_mask(self, mask,roi_top_ratio=0.55, roi_bottom_ratio=0.2,roi_left_ratio=0.25,roi_right_ratio=0.25):
+    def roi_on_mask(self, mask, roi_top_ratio=0.55, roi_bottom_ratio=0.05):
+            h, w = mask.shape[:2]
+            roi_mask = np.zeros_like(mask)
+            roi_top = int(h * roi_top_ratio)
+            roi_bottom = int(h * (1 - roi_bottom_ratio))
+            cv2.rectangle(roi_mask, (0, roi_top), (w, roi_bottom), 255, -1)
+            return cv2.bitwise_and(mask, roi_mask)
 
-        h, w = mask.shape[:2]
-        roi_mask = np.zeros_like(mask)
-
-        top = int(h * roi_top_ratio)
-        bottom = int(h * (1 - roi_bottom_ratio))
-        left = int(w * roi_left_ratio)
-        right = int(w * (1 - roi_right_ratio))
-
-        cv2.rectangle(roi_mask, (left, top), (right, bottom), 255, -1)
-        return cv2.bitwise_and(mask, roi_mask)
-
-
-    def split_left_right_edges(self, edges, min_branch_length=MIN_BRANCH_LENGTH):
-        ys, xs = np.nonzero(edges > 0)
-        if len(xs) == 0:
-            return (None, None), (None, None)
-        h, w = edges.shape[:2]
-        x_mid = w / 2.0
-        left_mask = xs < x_mid
-        right_mask = xs >= x_mid
-        left_y, left_x = self.longest_branch(ys[left_mask], xs[left_mask], min_branch_length, h, w)
-        right_y, right_x = self.longest_branch(ys[right_mask], xs[right_mask], min_branch_length, h, w)
-        return (left_y, left_x), (right_y, right_x)
+    def split_left_right_edges(self, edges, min_branch_length=40):
+            ys, xs = np.nonzero(edges > 0)
+            if len(xs) == 0:
+                return (None, None), (None, None)
+            h, w = edges.shape[:2]
+            x_mid = w / 2.0
+            left_mask = xs < x_mid
+            right_mask = xs >= x_mid
+            left_y, left_x = self.longest_branch(ys[left_mask], xs[left_mask], min_branch_length, h, w)
+            right_y, right_x = self.longest_branch(ys[right_mask], xs[right_mask], min_branch_length, h, w)
+            return (left_y, left_x), (right_y, right_x)
 
     # Function to filter when severals branches are detected
     def longest_branch(self, ys, xs, min_length, h, w):
@@ -131,7 +126,7 @@ class  lane_detection(Node):
         return None, None
 
     # Dark Mask Function using YUCrCb
-    def dark_tape_mask(self,bgr_image, kernel_size=KERNEL_MASK_VALUE, clip_limit=2.0, tile_grid_size=(8,8)):
+    def dark_tape_mask(self,bgr_image, kernel_size=5, clip_limit=2.0, tile_grid_size=(8,8)):
         #Adaptive dark-tape mask using CLAHE on the Y channel.
         # Convert to YCrCb and extract Y channel
         ycrcb = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2YCrCb)
@@ -141,22 +136,19 @@ class  lane_detection(Node):
         chan_y = clahe.apply(Y)
         # Simple adaptive threshold: mean - some factor
         mean_y = np.mean(chan_y)
-        thresh = max(0, int(mean_y * 0.4))  # dark tape is darker than mean
+        thresh = max(0, int(mean_y * 0.5))  # dark tape is darker than mean
         # Mask: pixels darker than threshold
         mask = cv2.inRange(chan_y, 0, thresh)
         # Morphology to clean noise
         kernel = np.ones((kernel_size, kernel_size), np.uint8)
         mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=2)
         mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=1)
-
         return mask
-
 
     def centerline_from_mask(self, mask, kernel_size=3):
         kernel = np.ones((kernel_size, kernel_size), np.uint8)
         eroded = cv2.erode(mask, kernel, iterations=1)
-        # Test putting blur to reduce noise
-        eroded = cv2.GaussianBlur(eroded, (GAUSSIAN_BLUR_CONST, GAUSSIAN_BLUR_CONST), 0)  # soft blur
+        eroded = cv2.GaussianBlur(eroded, (3, 3), 0)
         skel = np.zeros(mask.shape, np.uint8)
         element = cv2.getStructuringElement(cv2.MORPH_CROSS, (3,3))
         done = False
@@ -170,7 +162,7 @@ class  lane_detection(Node):
                 done = True
         return skel
 
-    def prune_by_length(self, skel, min_length=PRUNE_MIN_LENGTH):
+    def prune_by_length(self, skel, min_length=60):
         num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(skel, connectivity=8)
         pruned = np.zeros_like(skel)
         for i in range(1, num_labels):
@@ -181,7 +173,7 @@ class  lane_detection(Node):
                 pruned[labels == i] = 255
         return pruned
 
-    def polynomial_fit_from_points(self, ys, xs, min_points=MIN_POLY_POINTS, min_span=80):
+    def polynomial_fit_from_points(self, ys, xs, min_points=50, min_span=40):
         if xs is None or len(xs) < min_points or (len(ys) > 0 and ys.max() - ys.min() < min_span):
             return None
         sort_idx = np.argsort(ys)
@@ -191,7 +183,7 @@ class  lane_detection(Node):
         coeffs = np.polyfit(clean_ys, clean_xs, 1) # Affine function
         return coeffs
 
-    def detect_lanes_dark_tape(self, input_image, draw_fn=None, thickness=8, min_lane_strength=MIN_LANE_STRENGTH):
+    def detect_lanes_dark_tape(self, input_image,thickness=8):
         mask = self.dark_tape_mask(input_image)
         mask_skel = self.centerline_from_mask(mask)
         mask_skel = self.prune_by_length(mask_skel)
@@ -201,13 +193,13 @@ class  lane_detection(Node):
         left_strength = len(left_x) if left_x is not None else 0
         right_strength = len(right_x) if right_x is not None else 0
         
-        left_coeffs = self.polynomial_fit_from_points(left_y, left_x) if left_strength >= min_lane_strength else None
-        right_coeffs = self.polynomial_fit_from_points(right_y, right_x) if right_strength >= min_lane_strength else None
+        left_coeffs = self.polynomial_fit_from_points(left_y, left_x) if left_strength >= 50 else None
+        right_coeffs = self.polynomial_fit_from_points(right_y, right_x) if right_strength >= 50 else None
         
-        self.lanes_coordinates = (left_coeffs, right_coeffs)  # For steering
+        lanes_coordinates = (left_coeffs, right_coeffs)  # For steering
         
         output = self.draw_lines(input_image, left_coeffs, right_coeffs, thickness)
-        return output, self.lanes_coordinates, roi_skel, mask
+        return output, lanes_coordinates, roi_skel, mask
 
     # Draws lines of given thickness over an image
     def draw_lines(self,image, left_coeffs=None, right_coeffs=None, thickness=8, color=(0, 0, 255), y_min_ratio=0.55):

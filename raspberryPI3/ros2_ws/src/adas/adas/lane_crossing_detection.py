@@ -16,7 +16,18 @@ class  lane_crossing_detection(Node):
         self.sub_raw = self.create_subscription(MotorsOrder, 'motors_order_raw', self.motors_order_raw_callback, 10)
         # Subscription to image for debug 
         self.image_pub = self.create_publisher(Image,'image_lane_detection',10)
+        # Callback for the trajectory command
+        self.control_timer = self.create_timer(0.1, self.crossing_test_callback)
+        # Init variable state
+        self.active_start_time = None
 
+        self.left_lane_bottom_x = 0.0
+        self.left_lane_top_x = 0.0
+        self.left_lane_valid = False
+        self.right_lane_bottom_x = 0.0
+        self.right_lane_top_x = 0.0
+        self.right_lane_valid = False
+        self.raw_steering_angle = 0.0
         # Class Variable
         self.height = 480
         self.width = 640
@@ -24,16 +35,23 @@ class  lane_crossing_detection(Node):
         self.lane_crossed_right = False
         self.security_counter = 0
         # Add environnement variables
-        self.declare_parameter("left_lane_crossing_threshold", 384)
-        self.declare_parameter("right_lane_crossing_threshold", 896)
+        self.declare_parameter("left_lane_crossing_threshold", self.width*0.1)
+        self.declare_parameter("right_lane_crossing_threshold", self.width*0.9)
         self.add_on_set_parameters_callback(self.param_callback)
 
-        self.left_lane_crossing = self.get_parameter("left_lane_crossing_threshold").value
-        self.right_lane_crossing = self.get_parameter("right_lane_crossing_threshold").value
+        self.left_lane_crossing_threshold = self.get_parameter("left_lane_crossing_threshold").value
+        self.right_lane_crossing_threshold = self.get_parameter("right_lane_crossing_threshold").value
         
         self.get_logger().info("lane_crossing_detection_node READY")
 
     # ------------------Environment Variable -----------
+    def crossing_test_callback(self):
+        self.lane_crossing_test()
+        self.check_active_timeout()
+
+    def check_active_timeout(self):
+        if self.active_start_time is None:
+            return
     def param_callback(self, params):
         for p in params:
             if p.name == "left_lane_crossing_threshold":
@@ -64,6 +82,8 @@ class  lane_crossing_detection(Node):
             self.lane_crossed_right = True
         # Condition where no line is detected and the joystick go right
         # Malfunction ??
+        # TO DO: ADD message
+        # self.get_logger().info("Test")
             
             
 

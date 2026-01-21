@@ -1,6 +1,6 @@
 import rclpy
 from rclpy.node import Node
-from interfaces.msg import DetectedLane
+from interfaces.msg import DetectedLane, MotorsOrder
 from rcl_interfaces.msg import SetParametersResult
 # Image to debug
 from sensor_msgs.msg import Image
@@ -12,10 +12,17 @@ class  lane_crossing_detection(Node):
         super().__init__('lane_crossing_detection_node')
         #self.subscription  # prevent unused variable warning
         self.subscription = self.create_subscription(DetectedLane,'detected_lanes_position', self.lane_position_callback, 10)
+        # Subscribe Joystick command for extra security
+        self.sub_raw = self.create_subscription(MotorsOrder, 'motors_order_raw', self.motors_order_raw_callback, 10)
         # Subscription to image for debug 
         self.image_pub = self.create_publisher(Image,'image_lane_detection',10)
 
-        
+        # Class Variable
+        self.height = 480
+        self.width = 640
+        self.lane_crossed_left = False
+        self.lane_crossed_right = False
+        self.security_counter = 0
         # Add environnement variables
         self.declare_parameter("left_lane_crossing_threshold", 384)
         self.declare_parameter("right_lane_crossing_threshold", 896)
@@ -46,9 +53,17 @@ class  lane_crossing_detection(Node):
         self.right_lane_bottom_x = lanes.lane2_bottom_x
         self.right_lane_top_x = lanes.lane2_top_x
         self.right_lane_valid = lanes.lane2_valid
-        
-    def lane_crossing_test(left_crossing, right_crossing : bool):
-        #if self.left_lane_bottom_x < self.left_lane_crossing_threshold:
+    
+    def motors_order_raw_callback(self, msg):
+        self.raw_steering_angle = msg.steering_angle
+           
+    def lane_crossing_test(self):
+        if self.left_lane_bottom_x > self.left_lane_crossing_threshold:
+             self.lane_crossed_left = True
+        if self.right_lane_bottom_x < self.right_lane_crossing_threshold:
+            self.lane_crossed_right = True
+        # Condition where no line is detected and the joystick go right
+        # Malfunction ??
             
             
 

@@ -9,7 +9,6 @@ from std_srvs.srv import SetBool  #Service pour ON/OFF
 SPEED_TOLERANCE = 0.05  #Tolérance vitesse 5%
 STOP = 50
 DETECT_DISTANCE_CM = 100   # < 1 m
-STOP_DETECTING_DISTANCE_CM = 200  # > 1.5 m
 SAFE_MIN_CM = 80           # 80 cm
 SAFE_MAX_CM = 100          # 100 cm
 
@@ -43,7 +42,7 @@ class SpeedRegulation(Node):
         # Subscriptions
         self.subscription = self.create_subscription(MotorsOrder, 'motors_order_raw', self.motors_order_callback, 10)
         self.subscription = self.create_subscription(MotorsFeedback, 'motors_feedback', self.motors_feedback_callback, 10)
-        self.subscription = self.create_subscription(Ultrasonic, 'us_data', self.ultrasonic_callback, 10)
+        self.create_subscription(Ultrasonic, 'us_data', self.ultrasonic_callback, 10)
         self.subscription  # prevent unused variable warning
 
         #Speed regulation variables
@@ -54,10 +53,10 @@ class SpeedRegulation(Node):
         # Motors order
         self.motor_right_rear_pwm = 0
         self.motor_left_rear_pwm = 0
+        self.motor_steering_angle = 0
 
         # Ultrasonic
         self.ultra_front_center = 300
-        self.vehicle_detected = False
 
         # Motors feedback
         self.left_rear_speed = 0.0
@@ -65,9 +64,13 @@ class SpeedRegulation(Node):
 
         self.motor_right_rear_pwm_offset = 0
         self.motor_left_rear_pwm_offset = 0
+        self.steering_angle_offset = 0
 
         self.last_pwm_offset = (self.motor_left_rear_pwm_offset + self.motor_right_rear_pwm_offset) /2.0
 
+        self.max_pwm = 50  # max_pwm relatif
+
+        self.emergency_stop = False
         self.active = False
         self.state = STATE_NOTHING
         self.prev_state = STATE_NOTHING
@@ -86,6 +89,7 @@ class SpeedRegulation(Node):
     def motors_order_callback(self, motors_order: MotorsOrder):
         self.motor_right_rear_pwm = motors_order.right_rear_pwm
         self.motor_left_rear_pwm = motors_order.left_rear_pwm
+        self.motor_steering_angle = motors_order.steering_angle
 
     def motors_feedback_callback(self, msg: MotorsFeedback):
         self.left_rear_speed = msg.left_rear_speed
@@ -93,10 +97,6 @@ class SpeedRegulation(Node):
 
     def ultrasonic_callback(self, us_data : Ultrasonic):
         self.ultra_front_center = us_data.front_center
-        if self.ultra_front_center < DETECT_DISTANCE_CM:
-            self.vehicle_detected = True
-        elif self.ultra_front_center > STOP_DETECTING_DISTANCE_CM:
-            self.vehicle_detected = False
 
 
     ###########################################
@@ -131,6 +131,7 @@ class SpeedRegulation(Node):
 
         self.state = STATE_NOTHING
         self.active = False
+        self.emergency_stop = False
         self.motor_left_rear_pwm_offset = 0
         self.motor_right_rear_pwm_offset = 0
 
@@ -143,6 +144,9 @@ class SpeedRegulation(Node):
                 msg = MotorsOrderAdas()
                 msg.offset_right_rear_pwm = self.motor_right_rear_pwm_offset
                 msg.offset_left_rear_pwm = self.motor_left_rear_pwm_offset
+                msg.offset_steering_angle = self.steering_angle_offset
+                msg.max_pwm = self.max_pwm
+                msg.emergency_stop = self.emergency_stop
                 msg.active = self.active
                 msg.state = self.state
                 self.publisher_motors_order.publish(msg)
@@ -152,11 +156,10 @@ class SpeedRegulation(Node):
         #MODE ON (AUTO)
 
         # DETECTION VEHICULE < 1m
-        distance = self.ultra_front_center
-        user_PWM = (self.motor_left_rear_pwm + self.motor_right_rear_pwm) / 2.0
-          
+        distance = self.ultra_front_center  
 
-        if self.vehicle_detected:
+        if distance < DETECT_DISTANCE_CM:
+
             self.state = STATE_VEHICLE_DETECTED
             self.active = True
 
@@ -180,24 +183,6 @@ class SpeedRegulation(Node):
 
                 if self.state != self.prev_state:
                     self.get_logger().info(f"ACC: Too close ({distance}cm) -> slow down)")
-            
-            elif distance > SAFE_MAX_CM:
-
-                self.state = STATE_KEEP_DISTANCE
-
-                error_cm = float(distance - SAFE_MAX_CM)      # 120-100=20
-                acceleration = int(round(BRAKE_GAIN_SOFT * error_cm))
-
-                if user_PWM + acceleration >= 100:
-                    acceleration = 100 - user_PWM
-                else:
-                    acceleration = acceleration
-                
-                self.motor_left_rear_pwm_offset = acceleration
-                self.motor_right_rear_pwm_offset = acceleration
-
-                if self.state != self.prev_state:
-                    self.get_logger().info(f"ACC: Vehicle far away ({distance}cm) -> speed up)")
 
             # Entre 80 et 100 (juste pour éviter de descendre sous 80)
             else:
@@ -263,8 +248,10 @@ class SpeedRegulation(Node):
             msg = MotorsOrderAdas()
             msg.offset_right_rear_pwm = self.motor_right_rear_pwm_offset
             msg.offset_left_rear_pwm = self.motor_left_rear_pwm_offset
+            msg.offset_steering_angle = self.steering_angle_offset
 
-            msg.state = self.state
+            msg.max_pwm = self.max_pwm
+            msg.emergency_stop = self.emergency_stop
             msg.active = self.active
 
             self.publisher_motors_order.publish(msg)

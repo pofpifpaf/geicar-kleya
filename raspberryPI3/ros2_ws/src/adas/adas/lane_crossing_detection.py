@@ -3,6 +3,8 @@ from rclpy.node import Node
 from interfaces.msg import DetectedLane, MotorsOrder
 from rcl_interfaces.msg import SetParametersResult
 # Image to debug
+HEIGHT = 480
+WIDTH = 640
 from sensor_msgs.msg import Image
 
 
@@ -12,31 +14,17 @@ class  lane_crossing_detection(Node):
         super().__init__('lane_crossing_detection_node')
         #self.subscription  # prevent unused variable warning
         self.subscription = self.create_subscription(DetectedLane,'detected_lanes_position', self.lane_position_callback, 10)
-        # Subscribe Joystick command for extra security
-        self.sub_raw = self.create_subscription(MotorsOrder, 'motors_order_raw', self.motors_order_raw_callback, 10)
         # Subscription to image for debug 
         self.image_pub = self.create_publisher(Image,'image_lane_detection',10)
-        # Callback for the trajectory command
-        self.control_timer = self.create_timer(0.1, self.crossing_test_callback)
-        # Init variable state
-        self.active_start_time = None
-
-        self.left_lane_bottom_x = 0.0
-        self.left_lane_top_x = 0.0
+        # Init variable for DetectedLane messages
         self.left_lane_valid = False
-        self.right_lane_bottom_x = 0.0
-        self.right_lane_top_x = 0.0
         self.right_lane_valid = False
-        self.raw_steering_angle = 0.0
-        # Class Variable
-        self.height = 480
-        self.width = 640
+        # Class Variable 
         self.lane_crossed_left = False
         self.lane_crossed_right = False
-        self.security_counter = 0
         # Add environnement variables
-        self.declare_parameter("left_lane_crossing_threshold", self.width*0.1)
-        self.declare_parameter("right_lane_crossing_threshold", self.width*0.9)
+        self.declare_parameter("left_lane_crossing_threshold", WIDTH*0.4)
+        self.declare_parameter("right_lane_crossing_threshold", WIDTH*0.6)
         self.add_on_set_parameters_callback(self.param_callback)
 
         self.left_lane_crossing_threshold = self.get_parameter("left_lane_crossing_threshold").value
@@ -45,13 +33,6 @@ class  lane_crossing_detection(Node):
         self.get_logger().info("lane_crossing_detection_node READY")
 
     # ------------------Environment Variable -----------
-    def crossing_test_callback(self):
-        self.lane_crossing_test()
-        self.check_active_timeout()
-
-    def check_active_timeout(self):
-        if self.active_start_time is None:
-            return
     def param_callback(self, params):
         for p in params:
             if p.name == "left_lane_crossing_threshold":
@@ -62,28 +43,46 @@ class  lane_crossing_detection(Node):
         return SetParametersResult(successful=True)
 
     def lane_position_callback(self,lanes : DetectedLane):
-        # Get left lane coordinate
-        self.left_lane_bottom_x = lanes.lane1_bottom_x
-        self.left_lane_top_x = lanes.lane1_top_x
+        # Get lane validity
         self.left_lane_valid = lanes.lane1_valid
-        
-        # Get right lane coordinate
-        self.right_lane_bottom_x = lanes.lane2_bottom_x
-        self.right_lane_top_x = lanes.lane2_top_x
         self.right_lane_valid = lanes.lane2_valid
+        # Get the projection or x coordinate at the bottom of the frame for lane crossing
+        if self.left_lane_valid or self.right_lane_valid:
+            self.calculation_ref_points(lanes)
+            self.lane_crossing_test()
+
+    def calculation_ref_points(self,lanes):
+        # Convert to coefficient
+        left_a, left_b = self.compute_lane_coefficients(lanes.lane1_bottom_x,lanes.lane1_bottom_y,lanes.lane1_top_x,lanes.lane1_top_y,lanes.lane1_valid)
+        right_a, right_b = self.compute_lane_coefficients(lanes.lane2_bottom_x,lanes.lane2_bottom_y,lanes.lane2_top_x,lanes.lane2_top_y,lanes.lane2_valid)
+        if (left_a is not None and left_b is not None) :
+            self.left_point_ref = (HEIGHT + left_b) / left_a
+        if (right_b is not None and right_b != None):
+            self.right_point_ref = (HEIGHT + right_b) / right_a
+
+    # Problème ici parce que le collège c'était y'a longtemps
+    def compute_lane_coefficients(self, x1, y1, x2, y2, valid):
+        if not valid :
+            return None, None
+        a = (y2 - y1) / (x2 - x1) 
+        b = x1 - a * y1
+        return a, b
     
-    def motors_order_raw_callback(self, msg):
-        self.raw_steering_angle = msg.steering_angle
-           
     def lane_crossing_test(self):
-        if self.left_lane_bottom_x > self.left_lane_crossing_threshold:
-             self.lane_crossed_left = True
-        if self.right_lane_bottom_x < self.right_lane_crossing_threshold:
+        if (self.left_lane_valid and self.left_point_ref > self.left_lane_crossing_threshold):
+            self.get_logger().info(
+                f"Left lane crossing detected | left_point_ref = {self.left_point_ref:.2f} px"
+            )
+        else:
+            self.lane_crossed_left = False
+        if (self.right_lane_valid and self.right_point_ref < self.right_lane_crossing_threshold):
+            self.get_logger().info(
+                f"Right lane crossing detected | right_point_ref = {self.right_point_ref:.2f} px"
+            )
             self.lane_crossed_right = True
-        # Condition where no line is detected and the joystick go right
-        # Malfunction ??
-        # TO DO: ADD message
-        # self.get_logger().info("Test")
+        else:
+            self.lane_crossed_right = False
+
             
             
 

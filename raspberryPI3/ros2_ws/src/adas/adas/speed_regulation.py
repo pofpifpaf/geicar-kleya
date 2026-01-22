@@ -17,7 +17,7 @@ BRAKE_GAIN_SOFT = 0.8     # quand 80-100
 BRAKE_GAIN_STRONG = 2.0   # quand <80
 
 # limitation de variation de freinage (évite STOP instant)
-MAX_BRAKE_STEP = 2        
+MAX_BRAKE_STEP = 1        
 
 # States
 STATE_NOTHING = "state_nothing"

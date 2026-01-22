@@ -163,7 +163,7 @@ class SpeedRegulation(Node):
             self.state = STATE_VEHICLE_DETECTED
             self.active = True
 
-            # Si <80cm (pour revenir au-dessus de 80)
+            # Si <80cm 
             if distance < SAFE_MIN_CM:
 
                 self.state = STATE_KEEP_DISTANCE
@@ -171,8 +171,15 @@ class SpeedRegulation(Node):
                 error_cm = float(SAFE_MIN_CM - distance)      # 80-60 = 20
                 brake = int(round(BRAKE_GAIN_STRONG * error_cm))
 
-                self.motor_left_rear_pwm_offset = -brake
-                self.motor_right_rear_pwm_offset = -brake
+                user_PWM = (self.motor_left_rear_pwm + self.motor_right_rear_pwm) / 2.0
+
+                offset = -brake
+                min_offset = int(round(STOP - user_PWM))  # empêche de passer sous STOP donc pas de marche arrière
+                if offset < min_offset:
+                    offset = min_offset
+
+                self.motor_left_rear_pwm_offset = int(round(offset))
+                self.motor_right_rear_pwm_offset = int(round(offset))
 
                 if self.state != self.prev_state:
                     self.get_logger().info(f"ACC: Too close ({distance}cm) -> slow down)")
@@ -185,8 +192,15 @@ class SpeedRegulation(Node):
                 error_cm = float(SAFE_MAX_CM - distance)      # 100-80=20
                 brake = int(round(BRAKE_GAIN_SOFT * error_cm))
 
-                self.motor_left_rear_pwm_offset = -brake
-                self.motor_right_rear_pwm_offset = -brake
+                user_PWM = (self.motor_left_rear_pwm + self.motor_right_rear_pwm) / 2.0
+
+                offset = -brake
+                min_offset = int(round(STOP - user_PWM))  # empêche de passer sous STOP donc pas de marche arrière
+                if offset < min_offset:
+                    offset = min_offset
+
+                self.motor_left_rear_pwm_offset = int(round(offset))
+                self.motor_right_rear_pwm_offset = int(round(offset))
 
                 if self.state != self.prev_state:
                     self.get_logger().info(f"ACC: Vehicle at {distance}cm -> keeping distance)")
@@ -209,6 +223,7 @@ class SpeedRegulation(Node):
             # Vitesse hors tolérance
             else:
                 user_PWM = (self.motor_left_rear_pwm + self.motor_right_rear_pwm) / 2.0
+
                 pwm_offset = self.target_PWM - user_PWM
 
                 # Si l'utilisateur dépasse la vitesse cible ou marche arrière => Pas de correction

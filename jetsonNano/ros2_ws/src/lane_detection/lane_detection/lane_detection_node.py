@@ -128,7 +128,7 @@ class  lane_detection(Node):
         chan_y = clahe.apply(Y)
         # Simple adaptive threshold: mean - some factor
         mean_y = np.mean(chan_y)
-        thresh = max(0, int(mean_y * 0.5))  # dark tape is darker than mean
+        thresh = max(0, int(mean_y * 0.7))  # dark tape is darker than mean
         # Mask: pixels darker than threshold
         mask = cv2.inRange(chan_y, 0, thresh)
         # Morphology to clean noise
@@ -165,7 +165,7 @@ class  lane_detection(Node):
                 pruned[labels == i] = 255
         return pruned
 
-    def polynomial_fit_from_points(self, ys, xs, min_points=50, min_span=40):
+    def polynomial_fit_from_points(self, ys, xs, min_points=30, min_span=20):
         if xs is None or len(xs) < min_points or (len(ys) > 0 and ys.max() - ys.min() < min_span):
             return None
         sort_idx = np.argsort(ys)
@@ -185,8 +185,8 @@ class  lane_detection(Node):
         left_strength = len(left_x) if left_x is not None else 0
         right_strength = len(right_x) if right_x is not None else 0
         
-        left_coeffs = self.polynomial_fit_from_points(left_y, left_x) if left_strength >= 50 else None
-        right_coeffs = self.polynomial_fit_from_points(right_y, right_x) if right_strength >= 50 else None
+        left_coeffs = self.polynomial_fit_from_points(left_y, left_x) if left_strength >= 30 else None
+        right_coeffs = self.polynomial_fit_from_points(right_y, right_x) if right_strength >= 30 else None
         
         lanes_coordinates = (left_coeffs, right_coeffs)  # For steering
         

@@ -25,7 +25,7 @@ setup(
     entry_points={
         'console_scripts': [
             'lane_detection_node = lane_detection.lane_detection_node:main',
-            'lane_filtering_node = lane_filtering.lane_filtering_node:main',
+            'lane_filtering_node = lane_detection.lane_filtering_node:main',
 
         ],
     },

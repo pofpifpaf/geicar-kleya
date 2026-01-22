@@ -14,7 +14,7 @@ SAFE_MAX_CM = 100          # 100 cm
 
 # Gains freinage
 BRAKE_GAIN_SOFT = 0.8     # quand 80-100
-BRAKE_GAIN_STRONG = 2.0   # quand <80
+BRAKE_GAIN_STRONG = 1.0   # quand <80
 
 
 # States

@@ -1,0 +1,302 @@
+*{ box-sizing:border-box; }
+html,body{ height:100%; margin:0; font-family:system-ui, Segoe UI, Arial, sans-serif; }
+body{ background:#050816; color:#eaf3ff; overflow:hidden; }
+
+:root{
+  --bg1:#0d0a36; --bg2:#0b2555; --bg3:#3b003a;
+  --panel: rgba(6,12,25,0.92);
+  --stroke: rgba(120,160,255,0.10);
+  --glow: rgba(0,160,255,0.35);
+  --textDim: rgba(184,215,255,0.85);
+  --accent:#4EE6FF;
+  --accent2:#6EF2B0;
+  --warn:#ffb14a;
+  --danger:#ff3b3b;
+}
+
+.app{
+  height:100%;
+  display:flex;
+  flex-direction:column;
+  background: linear-gradient(135deg, var(--bg1), var(--bg2), var(--bg3));
+}
+
+.app::before{
+  content:"";
+  position:fixed; inset:0;
+  background-image:
+    repeating-linear-gradient(to right, rgba(0,180,255,0.12) 0, rgba(0,180,255,0.12) 2px, transparent 2px, transparent 14px),
+    repeating-linear-gradient(to bottom, rgba(0,180,255,0.10) 0, rgba(0,180,255,0.10) 2px, transparent 2px, transparent 14px);
+  pointer-events:none;
+  opacity:0.55;
+}
+
+.topbar{
+  position:relative; z-index:2;
+  padding:18px 22px;
+  display:flex; justify-content:space-between; align-items:center;
+}
+.brand__title{
+  font-size:20px; font-weight:800; color:#fff;
+  text-shadow:0 0 18px var(--glow);
+}
+.brand__sub{ font-size:12px; color:var(--textDim); margin-top:2px; }
+
+.topbar{
+  position: relative; /* obligatoire pour le centrage absolu */
+}
+
+/* Centre le titre indépendamment des autres éléments */
+.brand{
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+}
+
+
+.pill{
+  display:inline-flex; align-items:center; gap:10px;
+  padding:10px 14px; border-radius:999px;
+  background: rgba(255,255,255,0.06);
+  border:1px solid var(--stroke);
+  backdrop-filter: blur(8px);
+  box-shadow:0 10px 25px rgba(0,0,0,0.35);
+  color:var(--textDim);
+  font-weight:600; font-size:13px;
+}
+.dot{
+  width:10px;
+  height:10px;
+  border-radius:50%;
+  background: #6b7380; /* neutre par défaut */
+  box-shadow: none;
+}
+
+/* État connecté */
+.pill.connected .dot{
+  background: #6EF2B0;
+  box-shadow: 0 0 12px rgba(110,242,176,0.9);
+}
+
+/* État déconnecté */
+.pill.disconnected .dot{
+  background: #ff3b3b;
+  box-shadow: 0 0 12px rgba(255,59,59,0.9);
+}
+
+
+.grid{
+  position:relative; z-index:2;
+  flex:1;
+  padding:18px 22px 26px;
+  display:grid;
+  grid-template-columns: 1fr 1.2fr 1fr;
+  grid-template-rows: 1fr auto;
+  gap:18px;
+  align-items:stretch;
+}
+
+.card{
+  background: var(--panel);
+  border:1px solid var(--stroke);
+  box-shadow:0 18px 50px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.03);
+  border-radius:18px;
+  padding:18px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+}
+
+.card__title{
+  font-size:14px;
+  color:var(--textDim);
+  text-align:center;
+  letter-spacing:1.2px;
+  text-transform:uppercase;
+  margin-bottom:14px;
+}
+
+.center{ display:grid; place-items:center; gap:10px; text-align:center; }
+.center__label{ font-size:14px; color:var(--accent); letter-spacing:1px; }
+.speed{
+  font-size:120px; font-weight:900; color:#fff;
+  text-shadow:0 2px 24px rgba(0,160,255,0.55);
+  line-height:1;
+}
+.center__unit{ font-size:18px; color:var(--textDim); }
+
+.subrow{ display:flex; gap:10px; margin-top:6px; }
+.chip{
+  padding:8px 10px;
+  border-radius:999px;
+  background: rgba(255,255,255,0.06);
+  border:1px solid rgba(255,255,255,0.08);
+  color: var(--textDim);
+  font-size:13px;
+}
+
+.small{ font-size:12px; color:rgba(184,215,255,0.6); margin-top:10px; text-align:center; }
+
+/* Gauges */
+.gauge-wrap{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:8px;
+}
+.gauge{
+  width:360px;
+  max-width:100%;
+  height:220px;
+}
+.gauge__value{
+  font-size:34px;
+  font-weight:850;
+  color:#fff;
+  text-shadow:0 0 18px var(--glow);
+}
+
+/* Status row */
+.status-row{
+  grid-column: 1 / 4;
+  display:flex;
+  justify-content:center;
+  gap:24px;
+  padding:12px 0 0;
+}
+
+.indicator{
+  font-weight:800;
+  letter-spacing:1px;
+  padding:10px 18px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.05);
+  color:#6b7380;
+  user-select:none;
+}
+.indicator.active{
+  color: var(--danger);
+  border-color: rgba(255,59,59,0.35);
+  box-shadow: 0 0 18px rgba(255,59,59,0.35);
+  animation: glowBlink 1.2s ease-in-out infinite alternate;
+}
+@keyframes glowBlink{
+  0%{ opacity:0.65; }
+  50%{ opacity:1; }
+  100%{ opacity:0.65; }
+}
+
+/* Collision banner */
+.collision{
+  margin-top:14px;
+  font-weight:800;
+  font-size:16px;
+  padding:10px 12px;
+  border-radius:12px;
+  background: rgba(255,177,74,0.18);
+  border: 1px solid rgba(255,177,74,0.35);
+  color: #fff;
+  text-shadow:0 0 10px rgba(0,0,0,0.6);
+  animation: popupBlink 1.6s infinite;
+  text-align:center;
+}
+@keyframes popupBlink{
+  0%{ opacity:0.55; transform:translateY(0); }
+  50%{ opacity:1; transform:translateY(-3px); }
+  100%{ opacity:0.55; transform:translateY(0); }
+}
+
+/* Airbag overlay */
+.airbag-overlay{
+  position:fixed;
+  inset:0;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  z-index:999;
+  font-size:60px;
+  font-weight:900;
+  color:white;
+  text-shadow:0 0 25px black;
+  background: rgba(255,0,0,0.12);
+  animation: flash 1s infinite;
+}
+@keyframes flash{
+  0%{ background: rgba(255,0,0,0.12); }
+  50%{ background: rgba(255,0,0,0.55); }
+  100%{ background: rgba(255,0,0,0.12); }
+}
+
+@media (max-width: 980px){
+  body{ overflow:auto; }
+  .grid{ grid-template-columns:1fr; grid-template-rows:auto; }
+  .status-row{ grid-column:1; }
+  .speed{ font-size:90px; }
+}
+
+/* Dot de base */
+.dot{
+  width:10px;
+  height:10px;
+  border-radius:50%;
+  background:#6b7380;
+}
+
+/* CONNECTED */
+.pill.connected .dot{
+  background:#6EF2B0;
+  box-shadow:0 0 12px rgba(110,242,176,0.9);
+}
+
+/* DISCONNECTED */
+.pill.disconnected .dot{
+  background:#ff3b3b;
+  box-shadow:0 0 12px rgba(255,59,59,0.9);
+  animation: blinkRed 1s infinite;
+}
+
+/* CONNECTING */
+.pill.connecting .dot{
+  background:#ffb14a;
+  box-shadow:0 0 12px rgba(255,177,74,0.9);
+  animation: blinkYellow 1s infinite;
+}
+
+/* Animations */
+@keyframes blinkRed{
+  0%{ opacity:0.4; }
+  50%{ opacity:1; }
+  100%{ opacity:0.4; }
+}
+
+@keyframes blinkYellow{
+  0%{ opacity:0.3; }
+  50%{ opacity:1; }
+  100%{ opacity:0.3; }
+}
+
+.indicator{
+  cursor: pointer;
+  transition: transform 0.08s ease;
+}
+.indicator:active{
+  transform: scale(0.97);
+}
+
+.corner-logo{
+  position: fixed;
+  top: 18px;
+  right: 22px;
+  height: 50px;          /* ajuste si besoin */
+  width: auto;
+  z-index: 50;           /* au-dessus du fond, sous overlay airbag */
+  opacity: 0.95;
+  pointer-events: none;  /* n'interfère avec rien */
+  animation: fadeIn 0.8s ease;
+}
+@keyframes fadeIn{
+  from{ opacity:0; transform: translateY(-6px); }
+  to{ opacity:0.95; transform: translateY(0); }
+}

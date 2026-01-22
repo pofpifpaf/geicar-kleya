@@ -1,14 +1,84 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="fr">
 <head>
-  <title>Car Dashboard</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>HMI Dashboard</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
-<body>
-  <div id="speed">0</div>
-  <div id="rpm">0</div>
-  <div id="battery">0%</div>
 
-  <script src="js/dashboard.js"></script>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand__title">Kleya Team Car</div>
+        <div class="brand__sub">Live dashboard</div>
+      </div>
+
+      <div class="pill" id="connPill">
+        <span class="dot"></span>
+        <span id="connText">Connected</span>
+      </div>
+    </header>
+
+    <main class="grid">
+      <!-- LEFT: Battery gauge -->
+      <section class="card card--left">
+        <div class="card__title">Battery</div>
+
+        <div class="gauge-wrap">
+          <div class="gauge" id="batteryGauge"></div>
+          <div class="gauge__value"><span id="battery">0</span>%</div>
+        </div>
+
+        <div class="small">State of charge</div>
+      </section>
+
+      <!-- CENTER: Speed + temp -->
+      <section class="card card--center">
+        <div class="center">
+          <div class="center__label">Speed</div>
+          <div class="speed"><span id="speed">0</span></div>
+          <div class="center__unit">km/h</div>
+
+          <div class="subrow">
+            <div class="chip">🌡️ <span id="temperature">0</span> °C</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- RIGHT: RPM gauge + collision message -->
+      <section class="card card--right">
+        <div class="card__title">RPM</div>
+
+        <div class="gauge-wrap">
+          <div class="gauge" id="rpmGauge"></div>
+          <div class="gauge__value"><span id="rpm">0</span></div>
+        </div>
+
+        <div class="small">Wheel avg</div>
+
+        <div class="collision" id="collisionBanner" style="display:none;"></div>
+      </section>
+
+      <!-- STATUS ROW (ESP / FCTA / ABG / ACC / LCA) -->
+      <section class="status-row">
+        <div class="indicator" id="indESP">ESP</div>
+        <div class="indicator" id="indFCTA">FCTA</div>
+        <div class="indicator" id="indABG">ABG</div>
+        <div class="indicator" id="indLCA">LCA</div>
+      </section>
+    </main>
+
+    <!-- AIRBAG OVERLAY -->
+    <div class="airbag-overlay" id="airbagOverlay" style="display:none;">
+      ⚠ AIRBAG DEPLOYED ⚠
+    </div>
+  </div>
+
+  <!-- Cache-buster pour éviter les 304 -->
+  <script src="js/dashboard.js?v=20"></script>
+  <img src="assets/logo.png" class="corner-logo" alt="Logo">
+
 </body>
 </html>

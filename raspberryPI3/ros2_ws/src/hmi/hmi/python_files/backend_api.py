@@ -1,4 +1,6 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
+import asyncio
 from pydantic import BaseModel
 from typing import Dict
 
@@ -17,9 +19,9 @@ telemetry_state: Dict = {
 }
 
 adas_state: Dict = {
-    "Collision": True,
-    "ESP": True,
-    "Airbag": True,
+    "collision": False,
+    "esp": False,
+    "airbag": False,
 }
 
 # ====== MODELS ======
@@ -34,9 +36,9 @@ class Telemetry(BaseModel):
     esp_state: str
 
 class AdasConfig(BaseModel):
-    Collision: bool
-    ESP: bool
-    Airbag: bool
+    collision: bool
+    esp: bool
+    airbag: bool
 
 
 # ====== TELEMETRY ======
@@ -60,9 +62,6 @@ def update_adas(cfg: AdasConfig):
     adas_state.update(cfg.dict())
     return {"status": "ok"}
 
-from fastapi import WebSocket
-from fastapi.middleware.cors import CORSMiddleware
-import asyncio
 
 app.add_middleware(
     CORSMiddleware,
@@ -74,6 +73,11 @@ app.add_middleware(
 @app.websocket("/ws/state")
 async def websocket_state(ws: WebSocket):
     await ws.accept()
-    while True:
-        await ws.send_json(telemetry_state)
-        await asyncio.sleep(0.2)
+    try:
+        while True:
+            await ws.send_json(telemetry_state)
+            await asyncio.sleep(0.2)
+    except (WebSocketDisconnect, Exception):
+        # Le client a fermé l'onglet / perdu le réseau / reload la page
+        # => on sort proprement sans stacktrace
+        return

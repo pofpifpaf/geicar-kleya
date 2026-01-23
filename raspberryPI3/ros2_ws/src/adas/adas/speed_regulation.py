@@ -151,7 +151,7 @@ class SpeedRegulation(Node):
 
         user_PWM = (self.motor_left_rear_pwm + self.motor_right_rear_pwm) / 2.0
 
-        if user_PWM <= STOP:
+        if user_PWM < STOP:
             self.state = STATE_AUTOMATIC_MODE_CORRECTING
             if self.state != self.prev_state:
                 self.get_logger().info("ACC ON: user controlling below STOP")

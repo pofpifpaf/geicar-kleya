@@ -3,24 +3,21 @@ from rclpy.node import Node
 import math
 
 from interfaces.msg import MotorsOrder, JoystickOrder, MotorsFeedback, MotorsOrderAdas, Ultrasonic
-from std_srvs.srv import SetBool  #Service pour ON/OFF 
+from std_srvs.srv import SetBool  # Service pour ON/OFF
 
 # Global Variable
-SPEED_TOLERANCE = 0.05  #Tolérance vitesse 5%
+SPEED_TOLERANCE = 0.05  # Tolérance vitesse 5%
 STOP = 50
-MAX_PWM = 100
-
-# Distances Ultrasonic (en cm)
 DETECT_DISTANCE_CM = 100   # < 1 m
-STOP_DETECTING_DISTANCE_CM = 150  # > 1.5 m
 SAFE_MIN_CM = 80           # 80 cm
 SAFE_MAX_CM = 100          # 100 cm
 
+# Gains freinage
+BRAKE_GAIN_SOFT = 0.4     # quand 80-100
+BRAKE_GAIN_STRONG = 1.0   # quand <80
 
-# Gains freinage/acceleration
-BRAKE_GAIN_STRONG = 2.0   # quand distance < 80
-ACCELERATION_GAIN = 2.0   # quand distance > 100
-
+# limitation de variation de freinage (évite STOP instant)
+MAX_BRAKE_STEP = 2      
 
 # States
 STATE_NOTHING = "state_nothing"
@@ -29,17 +26,12 @@ STATE_AUTOMATIC_MODE_CORRECTING = "state_automatic_mode_correcting"
 STATE_AUTOMATIC_MODE_NO_CORRECTING = "state_automatic_mode_no_correcting"
 
 # New states for distance keeping
-STATE_INCORRECT_DISTANCE_TO_VEHICLE = "state_incorrect_distance_to_vehicle"
-STATE_CORRECT_DISTANCE_TO_VEHICLE = "state_correct_distance_to_vehicle"
+STATE_VEHICLE_DETECTED = "state_vehicle_detected_<1m"
+STATE_KEEP_DISTANCE = "state_keep_distance_80<x>100cm"
+STATE_EMERGENCY_STOP_FRONT = "state_emergency_stop_front"
 
-
-
-# STATE_VEHICLE_DETECTED = "state_vehicle_detected_<1m"
-# STATE_KEEP_DISTANCE = "state_keep_distance_80<x>100cm"
-# STATE_EMERGENCY_STOP_FRONT = "state_emergency_stop_front"
-
-REFRESH_PERIOD = 0.01  #10 ms
-MIN_TOLERANCE = 1.0  #Minimum tolerance in RPM
+REFRESH_PERIOD = 0.01  # 10 ms
+MIN_TOLERANCE = 1.0 
 
 
 class SpeedRegulation(Node):
@@ -52,40 +44,41 @@ class SpeedRegulation(Node):
         # Subscriptions
         self.subscription = self.create_subscription(MotorsOrder, 'motors_order_raw', self.motors_order_callback, 10)
         self.subscription = self.create_subscription(MotorsFeedback, 'motors_feedback', self.motors_feedback_callback, 10)
-        self.subscription = self.create_subscription(Ultrasonic, 'us_data', self.ultrasonic_callback, 10)
+        self.create_subscription(Ultrasonic, 'us_data', self.ultrasonic_callback, 10)
         self.subscription  # prevent unused variable warning
 
-        #Speed regulation variables
+        # Speed regulation variables
         self.target_speed = 0.0
-        self.target_PWM = STOP
-        self.auto_mode_on = False  
+        self.target_PWM = 0
+        self.auto_mode_on = False
 
-        # Motors input order
-        self.motor_right_rear_pwm = STOP
-        self.motor_left_rear_pwm = STOP
+        # Motors order
+        self.motor_right_rear_pwm = 0
+        self.motor_left_rear_pwm = 0
+        self.motor_steering_angle = 0
 
         # Ultrasonic
         self.ultra_front_center = 300
-        self.vehicle_detected = False
 
         # Motors feedback
         self.left_rear_speed = 0.0
         self.right_rear_speed = 0.0
 
+        self.motor_right_rear_pwm_offset = 0
+        self.motor_left_rear_pwm_offset = 0
+        self.steering_angle_offset = 0
 
-        # Motors output orders
-        self.command_right_rear_pwm = STOP
-        self.command_left_rear_pwm = STOP
+        self.last_pwm_offset = (self.motor_left_rear_pwm_offset + self.motor_right_rear_pwm_offset) / 2.0
 
-        # Last values
-        self.last_pwm = int((self.command_left_rear_pwm + self.command_right_rear_pwm) /2.0)
+        self.max_pwm = 50  # max_pwm relatif
 
+        self.emergency_stop = False
         self.active = False
         self.state = STATE_NOTHING
         self.prev_state = STATE_NOTHING
 
         # Service (appeler dans joystick_to_cmd)
-        self.srv_ACC = self.create_service(SetBool,'ACC',self.call_ACC_service)
+        self.srv_ACC = self.create_service(SetBool, 'ACC', self.call_ACC_service)
 
         self.timer = self.create_timer(REFRESH_PERIOD, self.regulate_speed)
 
@@ -98,18 +91,14 @@ class SpeedRegulation(Node):
     def motors_order_callback(self, motors_order: MotorsOrder):
         self.motor_right_rear_pwm = motors_order.right_rear_pwm
         self.motor_left_rear_pwm = motors_order.left_rear_pwm
+        self.motor_steering_angle = motors_order.steering_angle
 
     def motors_feedback_callback(self, msg: MotorsFeedback):
         self.left_rear_speed = msg.left_rear_speed
         self.right_rear_speed = msg.right_rear_speed
 
-    def ultrasonic_callback(self, us_data : Ultrasonic):
+    def ultrasonic_callback(self, us_data: Ultrasonic):
         self.ultra_front_center = us_data.front_center
-        if self.ultra_front_center < DETECT_DISTANCE_CM:
-            self.vehicle_detected = True
-        elif self.ultra_front_center > STOP_DETECTING_DISTANCE_CM:
-            self.vehicle_detected = False
-
 
     ###########################################
     ######## Service implementation ###########
@@ -119,8 +108,10 @@ class SpeedRegulation(Node):
         if request.data:
             self.auto_mode_on = True
             self.target_speed = (self.left_rear_speed + self.right_rear_speed) / 2.0
-            self.target_PWM = int((self.motor_left_rear_pwm + self.motor_right_rear_pwm) / 2.0)
-            self.get_logger().info(f"ACC ON : target speed={self.target_speed:.2f} and target PWM={self.target_PWM:.2f})")
+            self.target_PWM = (self.motor_left_rear_pwm + self.motor_right_rear_pwm) / 2.0
+            self.get_logger().info(
+                f"ACC ON : target speed={self.target_speed:.2f} and target PWM={self.target_PWM:.2f})"
+            )
         else:
             self.auto_mode_on = False
             self.motor_right_rear_pwm_offset = 0
@@ -137,145 +128,160 @@ class SpeedRegulation(Node):
     def regulate_speed(self):
         """
         Régulation avec tolérance +-5 %
-        si vitesse trop basse/haute que tolerance corrige 
+        si vitesse trop basse/haute que tolerance corrige
         """
 
         self.state = STATE_NOTHING
         self.active = False
-        self.command_right_rear_pwm = STOP
-        self.command_left_rear_pwm = STOP
+        self.emergency_stop = False
+        self.motor_left_rear_pwm_offset = 0
+        self.motor_right_rear_pwm_offset = 0
 
-        # MODE OFF (MANUAL MODE)
+        # MODE OFF (MANUEL)
         if not self.auto_mode_on:
             self.state = STATE_MANUAL_MODE
             if self.state != self.prev_state:
                 self.get_logger().info("ACC OFF")
                 msg = MotorsOrderAdas()
+                msg.offset_right_rear_pwm = self.motor_right_rear_pwm_offset
+                msg.offset_left_rear_pwm = self.motor_left_rear_pwm_offset
+                msg.offset_steering_angle = self.steering_angle_offset
+                msg.max_pwm = self.max_pwm
+                msg.emergency_stop = self.emergency_stop
+                msg.active = self.active
                 msg.state = self.state
                 self.publisher_motors_order.publish(msg)
             self.prev_state = self.state
             return
-        
-        
-        # MODE ON (AUTOMATIC MODE)
 
-        user_pwm = int((self.motor_left_rear_pwm + self.motor_right_rear_pwm) / 2.0)
-        
-        #### User exceeds target speed => No correction
-        if user_pwm > self.target_PWM:
-            self.state = STATE_AUTOMATIC_MODE_NO_CORRECTING
-            if self.state != self.prev_state:
-                self.get_logger().info("ACC ON: User controlling beyond desired speed -> no correction")
-        
-        #### User trying to go in reverse => No correction
-        elif user_pwm < STOP:
-            self.state = STATE_AUTOMATIC_MODE_NO_CORRECTING
-            if self.state != self.prev_state:
-                self.get_logger().info("ACC ON: User controlling in reverse -> no correction")
+        # MODE ON (AUTO)
 
+        # DETECTION VEHICULE < 1m
+        distance = self.ultra_front_center
+
+        if distance < DETECT_DISTANCE_CM:
+
+            self.state = STATE_VEHICLE_DETECTED
+            self.active = True
+
+            user_PWM = (self.motor_left_rear_pwm + self.motor_right_rear_pwm) / 2.0
+
+            # Si <80cm : freinage plus fort pour remonter vers 80
+            if distance < SAFE_MIN_CM:
+
+                self.state = STATE_KEEP_DISTANCE
+
+                error_cm = float(SAFE_MIN_CM - distance)
+                brake = int(round(BRAKE_GAIN_STRONG * error_cm))
+
+                offset = -brake
+
+                # anti-recul 
+                min_offset = int(round(STOP - user_PWM))
+                if offset < min_offset:
+                    offset = min_offset
+
+                # si on est déjà à STOP et toujours <1m, on reste arrêté
+                if user_PWM <= STOP:
+                    offset = min_offset
+
+                # limiter la variation d’offset (évite arrêt brutal)
+                prev = int(round(self.last_pwm_offset))
+                desired = int(round(offset))
+
+                if desired < prev - MAX_BRAKE_STEP:
+                    desired = prev - MAX_BRAKE_STEP
+                elif desired > prev + MAX_BRAKE_STEP:
+                    desired = prev + MAX_BRAKE_STEP
+
+                if desired < min_offset:
+                    desired = min_offset
+
+                self.motor_left_rear_pwm_offset = int(desired)
+                self.motor_right_rear_pwm_offset = int(desired)
+
+                if self.state != self.prev_state:
+                    self.get_logger().info(f"ACC: Too close ({distance}cm) -> slow down)")
+
+            # Entre 80 et 100 : freinage soft pour rester dans la zone
+            else:
+
+                self.state = STATE_KEEP_DISTANCE
+
+                error_cm = float(SAFE_MAX_CM - distance)
+                brake = int(round(BRAKE_GAIN_SOFT * error_cm))
+
+                offset = -brake
+
+                # anti-recul 
+                min_offset = int(round(STOP - user_PWM))
+                if offset < min_offset:
+                    offset = min_offset
+
+                # si on est déjà à STOP et toujours <1m, on reste arrêté
+                if user_PWM <= STOP:
+                    offset = min_offset
+
+                # limiter la variation d’offset
+                prev = int(round(self.last_pwm_offset))
+                desired = int(round(offset))
+
+                if desired < prev - MAX_BRAKE_STEP:
+                    desired = prev - MAX_BRAKE_STEP
+                elif desired > prev + MAX_BRAKE_STEP:
+                    desired = prev + MAX_BRAKE_STEP
+
+                if desired < min_offset:
+                    desired = min_offset
+
+                self.motor_left_rear_pwm_offset = int(desired)
+                self.motor_right_rear_pwm_offset = int(desired)
+
+                if self.state != self.prev_state:
+                    self.get_logger().info(f"ACC: Vehicle at {distance}cm -> keeping distance)")
+
+        # Vehicle >= 1m : régulation vitesse 
         else:
+            actual_speed = (self.left_rear_speed + self.right_rear_speed) / 2.0
 
-            ## NO VEHICLE DETECTED (Normal speed regulation)
-            if not self.vehicle_detected:
-                
-                ### Actual speed calculation
-                actual_speed = (self.left_rear_speed + self.right_rear_speed) / 2.0
+            delta = self.target_speed - actual_speed
+            tolerance = max(MIN_TOLERANCE, SPEED_TOLERANCE * abs(self.target_speed))
 
-                ### Speed error and tolerance calculation
-                delta = self.target_speed - actual_speed
-                tolerance = max(MIN_TOLERANCE, SPEED_TOLERANCE * abs(self.target_speed))
+            if abs(delta) <= tolerance:
+                self.state = STATE_AUTOMATIC_MODE_NO_CORRECTING
+                if self.state != self.prev_state:
+                    self.get_logger().info("Speed within tolerance")
 
-                ### Speed in tolerance => No correction
-                if abs(delta) <= tolerance:
+            else:
+                user_PWM = (self.motor_left_rear_pwm + self.motor_right_rear_pwm) / 2.0
+                pwm_offset = self.target_PWM - user_PWM
+
+                if pwm_offset < 0 or user_PWM < STOP:
                     self.state = STATE_AUTOMATIC_MODE_NO_CORRECTING
                     if self.state != self.prev_state:
-                        self.get_logger().info("ACC ON: Speed within tolerance -> no correction")
-
-                ### Speed out of tolerance => Correction
+                        self.get_logger().info("ACC ON: user controlling beyond desired speed")
                 else:
                     self.state = STATE_AUTOMATIC_MODE_CORRECTING
-                    if self.state != self.prev_state:
-                        self.get_logger().info("ACC ON: Correcting speed")
-                    
-                    self.active = True
-                    self.command_right_rear_pwm = self.target_PWM
-                    self.command_left_rear_pwm = self.target_PWM
-
-
-
-            ## VEHICLE DETECTED AHEAD (Distance keeping mode)
-            else:
-                distance = self.ultra_front_center
-                ### If distance < 80 cm => slow down
-                if distance < SAFE_MIN_CM:
-                    self.state = STATE_INCORRECT_DISTANCE_TO_VEHICLE
-                    if self.state != self.prev_state:
-                        self.get_logger().info(f"ACC ON: Too close ({distance}cm) -> slow down)")
-                    
                     self.active = True
 
-                    error_cm = float(SAFE_MIN_CM - distance)      # 80-60 = 20
-                    brake = int(round(BRAKE_GAIN_STRONG * error_cm))
+                    self.motor_right_rear_pwm_offset = int(pwm_offset)
+                    self.motor_left_rear_pwm_offset = int(pwm_offset)
 
-                    if self.last_pwm - brake <= STOP:
-                        self.command_left_rear_pwm = STOP
-                        self.command_right_rear_pwm = STOP
-                    else:
-                        self.command_left_rear_pwm = self.last_pwm - brake
-                        self.command_right_rear_pwm = self.last_pwm - brake
-
-                ### If distance > 100 cm => speed up
-                elif distance > SAFE_MAX_CM:
-                    self.state = STATE_INCORRECT_DISTANCE_TO_VEHICLE
                     if self.state != self.prev_state:
-                        self.get_logger().info(f"ACC ON: Vehicle far away ({distance}cm) -> speed up)")
-                    
-                    self.active = True
+                        self.get_logger().info("Correcting speed")
 
-                    error_cm = float(distance - SAFE_MAX_CM)      # 120-100 = 20
-                    acceleration = int(round(ACCELERATION_GAIN * error_cm))
-
-                    if self.last_pwm + acceleration >= MAX_PWM:
-                        self.command_left_rear_pwm = MAX_PWM
-                        self.command_right_rear_pwm = MAX_PWM
-                    else:
-                        self.command_left_rear_pwm = self.last_pwm + acceleration
-                        self.command_right_rear_pwm = self.last_pwm + acceleration
-
-                ### Correct distance => maintain user PWM
-                else:
-                    self.state = STATE_CORRECT_DISTANCE_TO_VEHICLE
-                    if self.state != self.prev_state:
-                        self.get_logger().info(f"ACC ON: Correct distance to vehicle ({distance}cm) -> maintaining distance)")
-                    self.command_left_rear_pwm = self.last_pwm
-                    self.command_right_rear_pwm = self.last_pwm
-                
-        #Publishing
-        if self.prev_state != self.state or self.last_pwm != int((self.command_left_rear_pwm + self.command_right_rear_pwm) /2.0):
+        # Publishing
+        if (self.prev_state != self.state) or self.last_pwm_offset != int((self.motor_left_rear_pwm_offset + self.motor_right_rear_pwm_offset) / 2.0):
             msg = MotorsOrderAdas()
-            msg.command_right_rear_pwm = self.command_right_rear_pwm
-            msg.command_left_rear_pwm = self.command_left_rear_pwm
-
-            msg.state = self.state
+            msg.offset_right_rear_pwm = self.motor_right_rear_pwm_offset
+            msg.offset_left_rear_pwm = self.motor_left_rear_pwm_offset
+            msg.offset_steering_angle = self.steering_angle_offset
+            msg.max_pwm = self.max_pwm
+            msg.emergency_stop = self.emergency_stop
             msg.active = self.active
-
+            msg.state = self.state
             self.publisher_motors_order.publish(msg)
 
         self.prev_state = self.state
-        self.last_pwm = int((self.command_left_rear_pwm + self.command_right_rear_pwm) /2.0)
+        self.last_pwm_offset = (self.motor_left_rear_pwm_offset + self.motor_right_rear_pwm_offset) / 2.0
         return
-
-
-def main(args=None):
-    rclpy.init(args=args)
-
-    speed_regulation = SpeedRegulation()
-
-    rclpy.spin(speed_regulation)
-
-    speed_regulation.destroy_node()
-    rclpy.shutdown()
-
-
-if __name__ == '__main__':
-    main()

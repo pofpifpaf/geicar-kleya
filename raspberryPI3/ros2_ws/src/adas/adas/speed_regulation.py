@@ -8,9 +8,9 @@ from std_srvs.srv import SetBool  # Service pour ON/OFF
 # Global Variable
 SPEED_TOLERANCE = 0.05  # Tolérance vitesse 5%
 STOP = 50
-DETECT_DISTANCE_CM = 100   # < 1 m
+DETECT_DISTANCE_CM = 150   # < 1 m
 SAFE_MIN_CM = 80           # 80 cm
-SAFE_MAX_CM = 100          # 100 cm
+SAFE_MAX_CM = 150          # 100 cm
 
 # Gains freinage
 BRAKE_GAIN_SOFT = 0.4     # quand 80-100

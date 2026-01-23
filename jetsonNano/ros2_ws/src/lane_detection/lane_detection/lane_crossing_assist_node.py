@@ -23,8 +23,8 @@ class lane_crossing_assist(Node):
 
         self.right_lane = 2
 
-        self.right_zone = [-1000, 1000]
-        self.left_zone = [-1000, 1000]
+        self.right_zone = [241, 1000]
+        self.left_zone = [-1000, 240]
 
         self.lane1_point_ref = 0
         self.lane2_point_ref = 0
@@ -45,11 +45,9 @@ class lane_crossing_assist(Node):
         self.get_logger().info("lane_crossing_assist_node READY")
 
     def reset_zones(self):
-        self.get_logger().info(
-                f"0.5s without new lanes, resetting zones"
-            )
-        self.right_zone = [-1000, 1000]
-        self.left_zone = [-1000, 1000]
+        self.get_logger().info("0.5s without new lanes, resetting zones")
+        self.right_zone = [241, 1000]
+        self.left_zone = [-1000, 240]
 
     # ------------------Environment Variable -----------
     def param_callback(self, params):
@@ -63,8 +61,7 @@ class lane_crossing_assist(Node):
 
     def lane_position_callback(self,lanes : DetectedLane):
 
-        self.get_logger().info("Receiving new lanes")
-
+        # self.get_logger().info("Receiving new lanes")
 
         _, _, self.lane1_point_ref = self.compute_lane_point_ref(lanes.lane1_bottom_x, lanes.lane1_bottom_y, lanes.lane1_top_x, lanes.lane1_top_y, lanes.lane1_valid)
         _, _, self.lane2_point_ref = self.compute_lane_point_ref(lanes.lane2_bottom_x, lanes.lane2_bottom_y, lanes.lane2_top_x, lanes.lane2_top_y, lanes.lane2_valid)
@@ -73,18 +70,16 @@ class lane_crossing_assist(Node):
         lanes.lane2_valid &= (self.lane2_point_ref != None)
 
         if (lanes.lane1_valid or lanes.lane2_valid):
-            self.get_logger().info("And one of them is valid")
+            # self.get_logger().info("And one of them is valid")
             self.timer.reset()
         
-        self.determine_side_lane(lanes)
-        self.lane_crossing_test()
+            self.determine_side_lane(lanes)
+            self.lane_crossing_test()
 
     def determine_side_lane(self, lanes):
         # if both lanes are present, then update the zones
         if lanes.lane1_valid and lanes.lane2_valid:
-            self.get_logger().info(
-                f"Updating zones"
-            )
+            # self.get_logger().info(f"Updating zones")
 
             self.right_lane = 2
 
@@ -94,16 +89,17 @@ class lane_crossing_assist(Node):
             self.right_lane_valid = True
             self.left_lane_valid = True
 
-            self.right_zone[0] = self.right_lane_point_ref - 100
-            self.right_zone[1] = self.right_lane_point_ref + 100
+            self.right_zone[0] = self.right_lane_point_ref - 400
+            self.right_zone[1] = self.right_lane_point_ref + 400
 
-            self.left_zone[0] = self.left_lane_point_ref - 100
-            self.left_zone[1] = self.left_lane_point_ref + 100
+            self.left_zone[0] = self.left_lane_point_ref - 400
+            self.left_zone[1] = self.left_lane_point_ref + 400
 
         # if lane 1 is valid, is it right or left ? Default : left
         if lanes.lane1_valid and not(lanes.lane2_valid):
+            # self.get_logger().info("ONE LANE ### lane1")
             if self.right_zone[0] >= self.lane1_point_ref >= self.right_zone[1]:
-                self.get_logger().info(f"Selecting right lane from point_ref {self.right_lane_point_ref:.2f} px and zone {self.right_zone[1] - self.right_zone[0]:.2f}")
+                # self.get_logger().info(f"INSIDE ZONE #### Selecting right lane from point_ref {self.right_lane_point_ref:.2f} px and zone {self.right_zone[1] - self.right_zone[0]:.2f}")
                 self.right_lane_point_ref = self.lane1_point_ref
                 self.right_lane_valid = True
                 self.left_lane_valid = False
@@ -114,8 +110,9 @@ class lane_crossing_assist(Node):
 
         # if lane 2 is valid, is it right or left ? Default : right
         if lanes.lane2_valid and not(lanes.lane1_valid):
+            # self.get_logger().info("ONE LANE ### lane2")
             if self.left_zone[0] >= self.lane2_point_ref >= self.left_zone[1]:
-                self.get_logger().info(f"Selecting left lane from point_ref {self.left_lane_point_ref:.2f} px and zone {self.left_zone[1] - self.left_zone[0]:.2f}")
+                # self.get_logger().info(f"INSIDE ZONE #### Selecting left lane from point_ref {self.left_lane_point_ref:.2f} px and zone {self.left_zone[1] - self.left_zone[0]:.2f}")
                 self.left_lane_point_ref = self.lane2_point_ref
                 self.left_lane_valid = True
                 self.right_lane_valid = False
@@ -123,31 +120,27 @@ class lane_crossing_assist(Node):
                 self.right_lane_point_ref = self.lane2_point_ref 
                 self.right_lane_valid = True
                 self.left_lane_valid = False
+                
+        # self.get_logger().info(f"left_zone = [{self.left_zone[0]:.2f}, {self.left_zone[1]:.2f}] || right_zone = [{self.right_zone[0]:.2f}, {self.right_zone[1]:.2f}]")
 
     def compute_lane_point_ref(self, x1, y1, x2, y2, valid):
-        if (x2 - x1) == 0 :
+        if (y2 - y1) == 0 :
             return None, None, None
-        a = (y2 - y1) / (x2 - x1) 
+        a = (x2 - x1) / (y2 - y1)
         b = x1 - a * y1
         if a == 0 :
             return None, None, None
-        point_ref = (-HEIGHT + b) / a
-        self.get_logger().info(
-                f"a = {a:.2f}, b = {b:.2f}, y1 = {y1:.2f}, y2 = {y2:.2f}, x1 = {x1:.2f}, x2 = {x2:.2f}, point_ref = {point_ref:.2f}"
-            )
+        point_ref = a * HEIGHT + b
+        self.get_logger().info(f"a = {a:.2f}, b = {b:.2f}, y1 = {y1:.2f}, y2 = {y2:.2f}, x1 = {x1:.2f}, x2 = {x2:.2f}, point_ref = {point_ref:.2f}")
         return a, b, point_ref
     
     def lane_crossing_test(self):
         if (self.left_lane_valid and self.left_lane_point_ref > self.left_lane_crossing_threshold):
-            self.get_logger().info(
-                f"Left lane crossing detected | left_lane_point_ref = {self.left_lane_point_ref:.2f} > {self.left_lane_crossing_threshold}"
-            )
+            self.get_logger().info(f"/////////LEFT lane crossing detected | left_lane_point_ref = {self.left_lane_point_ref:.2f} > {self.left_lane_crossing_threshold}")
         else:
             self.lane_crossed_left = False
         if (self.right_lane_valid and self.right_lane_point_ref < self.right_lane_crossing_threshold):
-            self.get_logger().info(
-                f"Right lane crossing detected | right_lane_point_ref = {self.right_lane_point_ref:.2f} < {self.right_lane_crossing_threshold}"
-            )
+            self.get_logger().info(f"/////////RIGHT lane crossing detected | right_lane_point_ref = {self.right_lane_point_ref:.2f} < {self.right_lane_crossing_threshold}")
             self.lane_crossed_right = True
         else:
             self.lane_crossed_right = False

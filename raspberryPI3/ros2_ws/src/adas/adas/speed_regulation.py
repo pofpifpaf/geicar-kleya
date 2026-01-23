@@ -220,7 +220,7 @@ class SpeedRegulation(Node):
                 desired = min_offset
             
             max_offset = int(round(MAX_PWM - user_PWM))
-            if derised > max_offset:
+            if desired > max_offset:
                 desired = max_offset
 
 

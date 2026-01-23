@@ -17,7 +17,7 @@ BRAKE_GAIN_SOFT = 0.4     # quand 80-100
 BRAKE_GAIN_STRONG = 1.0   # quand <80
 
 # limitation de variation de freinage (évite STOP instant)
-MAX_BRAKE_STEP = 2      
+MAX_BRAKE_STEP = 2        
 
 # States
 STATE_NOTHING = "state_nothing"
@@ -285,3 +285,17 @@ class SpeedRegulation(Node):
         self.prev_state = self.state
         self.last_pwm_offset = (self.motor_left_rear_pwm_offset + self.motor_right_rear_pwm_offset) / 2.0
         return
+
+
+def main(args=None):
+    rclpy.init(args=args)
+
+    speed_regulation = SpeedRegulation()
+    rclpy.spin(speed_regulation)
+
+    speed_regulation.destroy_node()
+    rclpy.shutdown()
+
+
+if __name__ == '__main__':
+    main()

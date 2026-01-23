@@ -15,18 +15,10 @@ DETECT_DISTANCE_CM = 100   # < 1 m
 STOP_DETECTING_DISTANCE_CM = 150
 
 
-SAFE_MIN_CM = 80           # 80 cm
+SAFE_MIN_CM = 60           # 80 cm
 SAFE_MAX_CM = 100          # 100 cm
 
-# Gains freinage
-BRAKE_GAIN_SOFT = 0.2     # quand 80-100
-BRAKE_GAIN_STRONG = 0.4   # quand <80
-
-# limitation de variation de freinage (évite STOP instant)
-MAX_BRAKE_STEP = 2
-
-
-N = 2
+N = 5
 
 # States
 STATE_NOTHING = "state_nothing"

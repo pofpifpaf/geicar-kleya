@@ -25,6 +25,7 @@ setup(
     entry_points={
         'console_scripts': [
             'lane_detection_node = lane_detection.lane_detection_node:main',
+            'lane_crossing_assist_node = lane_detection.lane_crossing_assist_node:main',
 
         ],
     },

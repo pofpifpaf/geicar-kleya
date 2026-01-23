@@ -12,13 +12,14 @@ MAX_PWM = 100
 
 
 DETECT_DISTANCE_CM = 100   # < 1 m
-STOP_DETECTING_DISTANCE_CM = 150
+STOP_DETECTING_DISTANCE_CM = 120
 
 
-SAFE_MIN_CM = 60           # 80 cm
+SAFE_MIN_CM = 80           # 80 cm
 SAFE_MAX_CM = 100          # 100 cm
 
-N = 5
+
+N = 1
 
 # States
 STATE_NOTHING = "state_nothing"

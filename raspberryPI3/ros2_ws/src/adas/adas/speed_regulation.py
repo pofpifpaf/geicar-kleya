@@ -186,6 +186,8 @@ class SpeedRegulation(Node):
         else:
             self.state = STATE_KEEP_DISTANCE
             self.active = True
+            if self.state != self.prev_state:
+                    self.get_logger().info(f"Keeping distance. Current distance = {distance}")
 
 
             distance_diff = distance - self.last_distance

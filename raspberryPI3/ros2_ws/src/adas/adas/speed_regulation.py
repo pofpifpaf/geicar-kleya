@@ -179,22 +179,22 @@ class SpeedRegulation(Node):
             self.active = True
             if distance < SAFE_MIN_CM:
                 self.state = STATE_DISTANCE_80CM_LESS
-                self.command_left_rear_pwm = max(self.last_pwm_command - N, STOP)
-                self.command_right_rear_pwm = max(self.last_pwm_command - N, STOP)
+                self.command_left_rear_pwm = int(max(self.last_pwm_command - N, STOP))
+                self.command_right_rear_pwm = int(max(self.last_pwm_command - N, STOP))
                 if self.state != self.prev_state:
                     self.get_logger().info(f"ACC: Too close ({distance}cm) -> slow down)")
             
             elif distance > SAFE_MAX_CM:
                 self.state = STATE_DISTANCE_80CM_1M
-                self.command_left_rear_pwm = self.last_pwm_command
-                self.command_right_rear_pwm = self.last_pwm_command
+                self.command_left_rear_pwm = int(self.last_pwm_command)
+                self.command_right_rear_pwm = int(self.last_pwm_command)
                 if self.state != self.prev_state:
                     self.get_logger().info(f"ACC: Correct distance ({distance}cm)")
 
             else:
                 self.state = STATE_DISTANCE_1M_PLUS
-                self.command_left_rear_pwm = min(self.last_pwm_command + N, MAX_PWM)
-                self.command_right_rear_pwm = min(self.last_pwm_command + N, MAX_PWM)
+                self.command_left_rear_pwm = int(min(self.last_pwm_command + N, MAX_PWM))
+                self.command_right_rear_pwm = int(min(self.last_pwm_command + N, MAX_PWM))
                 if self.state != self.prev_state:
                     self.get_logger().info(f"ACC: Too far ({distance}cm) -> speed up)")
 

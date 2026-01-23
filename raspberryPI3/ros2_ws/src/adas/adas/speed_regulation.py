@@ -213,18 +213,18 @@ class SpeedRegulation(Node):
 
             # anti-recul
             min_offset = int(round(STOP - user_PWM))
-            if offset < min_offset:
-                offset = min_offset
+            if desired < min_offset:
+                desired = min_offset
             
             max_offset = int(round(MAX_PWM - user_PWM))
-            if offset > max_offset:
-                offset = max_offset
+            if derised > max_offset:
+                desired = max_offset
 
 
             
 
-            self.motor_right_rear_pwm_offset = int(offset)
-            self.motor_left_rear_pwm_offset = int(offset)
+            self.motor_right_rear_pwm_offset = int(desired)
+            self.motor_left_rear_pwm_offset = int(desired)
 
         # Publishing
         if (self.prev_state != self.state) or self.last_pwm_offset != int((self.motor_left_rear_pwm_offset + self.motor_right_rear_pwm_offset) / 2.0):

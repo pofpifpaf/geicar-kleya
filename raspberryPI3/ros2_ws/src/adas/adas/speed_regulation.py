@@ -204,6 +204,7 @@ class SpeedRegulation(Node):
 
             offset = int(round(correction))
 
+            prev = int(round(self.last_pwm_offset))
             desired = int(round(offset))
 
             if desired < prev - MAX_BRAKE_STEP:

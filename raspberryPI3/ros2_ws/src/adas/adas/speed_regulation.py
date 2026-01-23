@@ -13,6 +13,8 @@ MAX_PWM = 100
 DETECT_DISTANCE_CM = 100   # < 1 m
 SAFE_MIN_CM = 80           # 80 cm
 SAFE_MAX_CM = 100          # 100 cm
+
+MAX_BRAKE_STEP = 5
    
 
 # States

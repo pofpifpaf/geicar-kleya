@@ -206,6 +206,10 @@ class SpeedRegulation(Node):
             min_offset = int(round(STOP - user_PWM))
             if offset < min_offset:
                 offset = min_offset
+            
+            max_offset = int(round(MAX_PWM - user_PWM))
+            if offset > max_offset
+                offset = max_offset
 
             self.motor_right_rear_pwm_offset = int(offset)
             self.motor_left_rear_pwm_offset = int(offset)

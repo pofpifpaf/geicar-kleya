@@ -12,13 +12,13 @@ MAX_PWM = 100
 
 
 DETECT_DISTANCE_CM = 100   # < 1 m
-STOP_DETECTING_DISTANCE_CM = 120
+STOP_DETECTING_DISTANCE_CM = 150
 
 
 SAFE_MIN_CM = 80           # 80 cm
-SAFE_MAX_CM = 120          # 100 cm
+SAFE_MAX_CM = 100          # 100 cm
 
-MARGE = 5
+MARGE = 2
 
 
 N = 0.01
@@ -181,8 +181,8 @@ class SpeedRegulation(Node):
             
             elif distance > SAFE_MAX_CM - MARGE:
                 self.state = STATE_DISTANCE_1M_PLUS
-                self.command_left_rear_pwm = int(min(self.last_pwm_command + N, MAX_PWM))
-                self.command_right_rear_pwm = int(min(self.last_pwm_command + N, MAX_PWM))
+                self.command_left_rear_pwm = int(min(self.last_pwm_command + N/2, MAX_PWM))
+                self.command_right_rear_pwm = int(min(self.last_pwm_command + N/2, MAX_PWM))
                 if self.state != self.prev_state:
                     self.get_logger().info(f"ACC: Too far ({distance}cm) -> speed up)")
 

@@ -21,7 +21,7 @@ SAFE_MAX_CM = 100          # 100 cm
 MARGE = 5
 
 
-N = 0.1
+N = 0.01
 
 # States
 STATE_NOTHING = "state_nothing"
@@ -38,7 +38,7 @@ STATE_DISTANCE_80CM_1M = "state_distance_80cm_1m"
 STATE_DISTANCE_80CM_LESS = "state_distance_80cm_less"
 STATE_DISTANCE_1M_PLUS = "state_distance_1m_plus"
 
-REFRESH_PERIOD = 0.01  # 10 ms
+REFRESH_PERIOD = 0.05  # 10 ms
 MIN_TOLERANCE = 1.0 
 
 
@@ -174,8 +174,8 @@ class SpeedRegulation(Node):
             self.active = True
             if distance < SAFE_MIN_CM + MARGE:
                 self.state = STATE_DISTANCE_80CM_LESS
-                self.command_left_rear_pwm = int(max(self.last_pwm_command - N, STOP))
-                self.command_right_rear_pwm = int(max(self.last_pwm_command - N, STOP))
+                self.command_left_rear_pwm = int(max(self.last_pwm_command - N, 55))
+                self.command_right_rear_pwm = int(max(self.last_pwm_command - N, 55))
                 if self.state != self.prev_state:
                     self.get_logger().info(f"ACC: Too close ({distance}cm) -> slow down)")
             

@@ -22,6 +22,7 @@ MARGE = 2
 
 
 N = 0.01
+G = 0.1
 
 # States
 STATE_NOTHING = "state_nothing"
@@ -181,8 +182,8 @@ class SpeedRegulation(Node):
             
             elif distance > SAFE_MAX_CM - MARGE:
                 self.state = STATE_DISTANCE_1M_PLUS
-                self.command_left_rear_pwm = int(min(self.last_pwm_command + N/2, MAX_PWM))
-                self.command_right_rear_pwm = int(min(self.last_pwm_command + N/2, MAX_PWM))
+                self.command_left_rear_pwm = int(min(self.last_pwm_command + G, MAX_PWM))
+                self.command_right_rear_pwm = int(min(self.last_pwm_command + G, MAX_PWM))
                 if self.state != self.prev_state:
                     self.get_logger().info(f"ACC: Too far ({distance}cm) -> speed up)")
 

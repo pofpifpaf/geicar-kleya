@@ -21,7 +21,7 @@ SAFE_MAX_CM = 100          # 100 cm
 MARGE = 5
 
 
-N = 1
+N = 0.1
 
 # States
 STATE_NOTHING = "state_nothing"
@@ -218,7 +218,7 @@ class SpeedRegulation(Node):
         
 
         # Publishing
-        if (self.prev_state != self.state) or self.last_pwm_command != int((self.command_left_rear_pwm + self.command_right_rear_pwm) / 2.0):
+        if (self.prev_state != self.state) or self.last_pwm_command != (self.command_left_rear_pwm + self.command_right_rear_pwm) / 2.0:
             msg = MotorsOrderAdas()
             msg.command_left_rear_pwm = self.command_left_rear_pwm
             msg.command_right_rear_pwm = self.command_right_rear_pwm

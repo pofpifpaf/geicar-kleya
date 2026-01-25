@@ -184,7 +184,7 @@ class SpeedRegulation(Node):
             elif distance > SAFE_MAX_CM - MARGE:
                 self.state = STATE_DISTANCE_1M_PLUS
                 
-                acc = DEC_GAIN * (pwm - STOP)
+                acc = DEC_GAIN * (MAX_PWM - pwm)
                 acc = max(acc, MIN_STEP)
 
                 pwm = min(pwm + acc, MAX_PWM)

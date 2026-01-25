@@ -76,8 +76,6 @@ class SpeedRegulation(Node):
 
         self.last_pwm_command = float(STOP)
 
-        self.max_pwm = 50  # max_pwm relatif
-
         self.emergency_stop = False
         self.active = False
         self.state = STATE_NOTHING
@@ -178,7 +176,7 @@ class SpeedRegulation(Node):
 
                 pwm = max(pwm - dec, STOP)
                 self.command_left_rear_pwm = pwm
-                self.command_left_rear_pwm = pwm
+                self.command_right_rear_pwm = pwm
                 # self.command_left_rear_pwm = int(max(self.last_pwm_command - N, STOP))
                 # self.command_right_rear_pwm = int(max(self.last_pwm_command - N, STOP))
                 self.get_logger().info(f"New pwm to {(self.command_left_rear_pwm + self.command_right_rear_pwm)/2.0}")
@@ -189,11 +187,11 @@ class SpeedRegulation(Node):
                 self.state = STATE_DISTANCE_1M_PLUS
                 
                 acc = DEC_GAIN * (pwm - STOP)
-                acc = max(dec, MIN_STEP)
+                acc = max(acc, MIN_STEP)
 
                 pwm = min(pwm + acc, MAX_PWM)
                 self.command_left_rear_pwm = pwm
-                self.command_left_rear_pwm = pwm
+                self.command_right_rear_pwm = pwm
                 # self.command_left_rear_pwm = int(min(self.last_pwm_command + G, MAX_PWM))
                 # self.command_right_rear_pwm = int(min(self.last_pwm_command + G, MAX_PWM))
                 self.get_logger().info(f"New pwm to {(self.command_left_rear_pwm + self.command_right_rear_pwm)/2.0}")
@@ -203,7 +201,7 @@ class SpeedRegulation(Node):
             else:
                 self.state = STATE_DISTANCE_80CM_1M
                 self.command_left_rear_pwm = pwm
-                self.command_left_rear_pwm = pwm
+                self.command_right_rear_pwm = pwm
                 # self.command_left_rear_pwm = int(self.last_pwm_command)
                 # self.command_right_rear_pwm = int(self.last_pwm_command)
                 if self.state != self.prev_state:
@@ -225,8 +223,8 @@ class SpeedRegulation(Node):
                 self.active = True
                 
 
-                self.command_left_rear_pwm = int(self.target_PWM)
-                self.command_right_rear_pwm = int(self.target_PWM)
+                self.command_left_rear_pwm = float(self.target_PWM)
+                self.command_right_rear_pwm = float(self.target_PWM)
 
                 if self.state != self.prev_state:
                     self.get_logger().info("ACC: Speed out of tolerance -> Correcting speed")

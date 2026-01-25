@@ -165,7 +165,7 @@ class adas_priority(Node):
                     min_prio_command_pwm = self.priorities[key]
                     selected_command_msg_pwm = msg
 
-                if self.priorities[key] < min_prio_command_steering and msg.command_steering:
+                if self.priorities[key] < min_prio_command_steering and msg.command_steering and not(key == "lca" and self.raw_motor_right_rear_pwm < STOP and self.raw_motor_left_rear_pwm < STOP):
 
                     min_prio_command_steering = self.priorities[key]
                     selected_command_msg_steering = msg

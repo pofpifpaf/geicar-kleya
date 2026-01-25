@@ -14,7 +14,8 @@ STATE_LANE_CROSSED_LEFT = "state_lane_crossed_left"
 STATE_LANE_CROSSED_RIGHT = "state_lane_crossed_right"
 
 MINIMUM_LANE_CROSS_DISTANCE_PX = 24
-HOLD_TIME = 3
+HOLD_TIME = 2
+ANGLE_LATCH_THRESHOLD = 5 
 
 class lane_crossing_assist(Node):
     def __init__(self):
@@ -28,14 +29,11 @@ class lane_crossing_assist(Node):
         # Class Variable 
         self.right_lane_valid = False
         self.left_lane_valid = False
-        
-        self.lane_crossed_right = False
-        self.lane_crossed_left = False
 
         self.left_lane = 2
 
-        self.left_zone = [241, 1000]
-        self.right_zone = [-1000, 240]
+        self.right_zone = [241, 1000]
+        self.left_zone = [-1000, 240]
 
         self.lane1_point_ref = 0
         self.lane2_point_ref = 0
@@ -44,12 +42,17 @@ class lane_crossing_assist(Node):
         self.right_lane_point_ref = 0
 
         self.state = STATE_NOTHING
-        self.prev_state = STATE_NOTHING
-
-        self.prev_steering = 0
-        self.steering_hold = 0
+        
+        self.latched_steering_angle = 0
+        self.steering_hold = -1
 
         self.no_lanes = True
+
+        self.last_published = {
+            "state" : None,
+            "command_steering" : None,
+            "command_steering_angle" : None,
+        }
 
         # Add environnement variables
         self.declare_parameter("right_lane_crossing_threshold", WIDTH*0.4)
@@ -80,11 +83,11 @@ class lane_crossing_assist(Node):
 
         self.get_logger().info("0.5s without new lanes, resetting zones")
 
-        self.left_zone = [241, 1000]
-        self.right_zone = [-1000, 240]
-        self.steering_hold = 1
+        self.right_zone = [241, 1000]
+        self.left_zone = [-1000, 240]
+        self.steering_hold = 0
 
-        if not(self.no_lanes) and self.prev_steering != 0:
+        if not(self.no_lanes) and self.latched_steering_angle != 0:
             self.publish_adas(STATE_NOTHING, 0, False)
 
         self.no_lanes = True
@@ -116,8 +119,14 @@ class lane_crossing_assist(Node):
         _, _, self.lane1_point_ref = self.compute_lane_point_ref(lanes.lane1_bottom_x, lanes.lane1_bottom_y, lanes.lane1_top_x, lanes.lane1_top_y, lanes.lane1_valid)
         _, _, self.lane2_point_ref = self.compute_lane_point_ref(lanes.lane2_bottom_x, lanes.lane2_bottom_y, lanes.lane2_top_x, lanes.lane2_top_y, lanes.lane2_valid)
         
+
         lanes.lane1_valid &= (self.lane1_point_ref != None) and (-1000 < self.lane1_point_ref < 1000)
         lanes.lane2_valid &= (self.lane2_point_ref != None) and (-1000 < self.lane2_point_ref < 1000)
+        
+        if lanes.lane1_valid:
+            self.get_logger().info(f"lane1 point_ref = {self.lane1_point_ref:.2f}")
+        if lanes.lane2_valid:
+            self.get_logger().info(f"lane3 point_ref = {self.lane2_point_ref:.2f}")
 
         if (lanes.lane1_valid or lanes.lane2_valid):
 
@@ -156,7 +165,7 @@ class lane_crossing_assist(Node):
 
         # if lane 1 is valid, is it left or right ? Default : right
         if lanes.lane1_valid and not(lanes.lane2_valid):
-            if self.left_zone[0] >= self.lane1_point_ref >= self.left_zone[1]:
+            if self.left_zone[0] <= self.lane1_point_ref <= self.left_zone[1]:
                 self.left_lane_point_ref = self.lane1_point_ref
                 self.left_lane_valid = True
                 self.right_lane_valid = False
@@ -167,7 +176,7 @@ class lane_crossing_assist(Node):
 
         # if lane 2 is valid, is it left or right ? Default : left
         if lanes.lane2_valid and not(lanes.lane1_valid):
-            if self.right_zone[0] >= self.lane2_point_ref >= self.right_zone[1]:
+            if self.right_zone[0] <= self.lane2_point_ref <= self.right_zone[1]:
                 self.right_lane_point_ref = self.lane2_point_ref
                 self.right_lane_valid = True
                 self.left_lane_valid = False
@@ -185,12 +194,10 @@ class lane_crossing_assist(Node):
         if a == 0 :
             return None, None, None
         point_ref = a * self.image_height + b
-        self.get_logger().info(f"a = {a:.2f}, b = {b:.2f}, y1 = {y1:.2f}, y2 = {y2:.2f}, x1 = {x1:.2f}, x2 = {x2:.2f}, point_ref = {point_ref:.2f}")
+        # self.get_logger().info(f"a = {a:.2f}, b = {b:.2f}, y1 = {y1:.2f}, y2 = {y2:.2f}, x1 = {x1:.2f}, x2 = {x2:.2f}, point_ref = {point_ref:.2f}")
         return a, b, point_ref
     
     def lane_crossing_test(self):
-
-        self.prev_state = self.state
 
         if (self.right_lane_valid and self.right_lane_point_ref > self.right_lane_crossing_threshold):
             self.state = STATE_LANE_CROSSED_RIGHT
@@ -198,38 +205,43 @@ class lane_crossing_assist(Node):
         else:
             self.state = STATE_NOTHING
 
-        if (self.left_lane_valid and self.left_lane_point_ref < self.left_lane_crossing_threshold):
+        if (self.left_lane_valid and self.left_lane_point_ref < self.left_lane_crossing_threshold and self.state == STATE_NOTHING):
             self.state = STATE_LANE_CROSSED_LEFT
             self.get_logger().info(f"/////////LEFT lane crossing detected | left_lane_point_ref = {self.left_lane_point_ref:.2f} < {self.left_lane_crossing_threshold}")
         elif self.state != STATE_LANE_CROSSED_RIGHT:
             self.lane_crossed_left = False
             self.state = STATE_NOTHING
 
+    def should_publish(self, state, command_steering, command_steering_angle):
+
+        return (self.last_published["state"] != state) or (self.last_published["command_steering"] != command_steering) or (command_steering and self.last_published["command_steering_angle"] != command_steering_angle)
+
     def publish_adas(self, state, command_steering_angle, command_steering):
 
-            steering_angle = command_steering_angle
-
-            if self.steering_hold >= 0:
-                steering_angle = self.prev_steering
-                command_steering = True
-                self.steering_hold -= 1
-
-            if self.steering_hold == 0:
-                steering_angle = 0
-
-            if (self.prev_state == self.state and self.state == STATE_NOTHING and self.steering_hold == -1):
-                return None
-            
             msg = MotorsOrderAdas()
 
-            self.get_logger().info(f"PUBLISH / Steering angle = {command_steering_angle} / Steering hold = {self.steering_hold}")
+            if self.steering_hold > 0:
+                msg.command_steering_angle = self.latched_steering_angle
+                msg.command_steering = True
+                self.steering_hold -= 1
 
-            msg.command_steering_angle = steering_angle
-            msg.command_steering = command_steering
+            else:
+                msg.command_steering_angle = command_steering_angle
+                msg.command_steering = command_steering
+
+            if not(self.should_publish(state, command_steering, command_steering_angle)):
+                return
+            
             msg.state = state
             msg.active = True
-
             self.publisher_motors_order.publish(msg)
+
+            self.get_logger().info(f"PUBLISH / Steering angle = {msg.command_steering_angle} / Steering hold = {self.steering_hold}")
+
+            self.last_published["state"] = state
+            self.last_published["command_steering"] = msg.command_steering
+            self.last_published["command_steering_angle"] = msg.command_steering_angle
+
 
     def calculate_steering_angle(self):
 
@@ -238,24 +250,26 @@ class lane_crossing_assist(Node):
 
         if self.state == STATE_LANE_CROSSED_RIGHT:
             deviation_px = self.right_lane_point_ref - self.right_lane_crossing_threshold
-            self.get_logger().info(f"Calculating steering angle w/ deviation {deviation_px}")
+            # self.get_logger().info(f"Calculating steering angle w/ deviation {deviation_px}")
             if abs(deviation_px) > self.minimum_lane_cross_distance_px:
                 steering_angle = 0.73 * deviation_px - 17.64
-                steering_angle = min(max(int(steering_angle), -127), 127)
-                # self.get_logger().info(f"Steering angle = {steering_angle}\n")
-                self.prev_steering = steering_angle
-                self.steering_hold = self.hold_time
-                return int(steering_angle), True
+                steering_angle = -min(max(int(steering_angle), -127), 127)
+                if abs(steering_angle - self.latched_steering_angle) > ANGLE_LATCH_THRESHOLD:
+                    self.latched_steering_angle = steering_angle
+                    self.steering_hold = self.hold_time
+                self.get_logger().info(f"Steering angle = {steering_angle} and deviation {deviation_px} and latched = {self.latched_steering_angle}\n")
+                return steering_angle, True
 
         if self.state == STATE_LANE_CROSSED_LEFT:
             deviation_px = self.left_lane_point_ref - self.left_lane_crossing_threshold
-            self.get_logger().info(f"Calculating steering angle w/ deviation {deviation_px}")
+            # self.get_logger().info(f"Calculating steering angle w/ deviation {deviation_px}")
             if abs(deviation_px) > self.minimum_lane_cross_distance_px:
                 steering_angle = 0.73 * deviation_px + 17.64
-                steering_angle = min(max(int(steering_angle), -127), 127)
-                # self.get_logger().info(f"Steering angle = {steering_angle}\n")
-                self.prev_steering = steering_angle
-                self.steering_hold = self.hold_time
+                steering_angle = -min(max(int(steering_angle), -127), 127)
+                if abs(steering_angle - self.latched_steering_angle) > ANGLE_LATCH_THRESHOLD:
+                    self.latched_steering_angle = steering_angle
+                    self.steering_hold = self.hold_time
+                self.get_logger().info(f"Steering angle = {steering_angle} and deviation {deviation_px} and latched = {self.latched_steering_angle}\n")
                 return steering_angle, True
 
         return steering_angle, False

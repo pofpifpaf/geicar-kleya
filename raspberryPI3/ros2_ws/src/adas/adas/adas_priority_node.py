@@ -129,7 +129,7 @@ class adas_priority(Node):
         
     # Active features HMI callback
     def active_features_HMI_callback(self, msg):
-        #self.hmi_active = {"collision":msg.collision_avoidance_active, "airbag":msg.airbag_active, "esp":msg.esp_active, "acc": msg.acc_active, "lca": msg.lca_active}
+        # When HMI will work : self.hmi_active = {"collision":msg.collision_avoidance_active, "airbag":msg.airbag_active, "esp":msg.esp_active, "acc": msg.acc_active, "lca": msg.lca_active}
         self.hmi_active = {"collision":msg.collision_avoidance_active, "airbag":msg.airbag_active, "esp":msg.esp_active}
         
     def motors_order_raw_callback(self, msg):

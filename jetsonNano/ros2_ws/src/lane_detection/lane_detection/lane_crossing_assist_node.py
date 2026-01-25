@@ -207,14 +207,15 @@ class lane_crossing_assist(Node):
 
     def publish_adas(self, state, command_steering_angle, command_steering):
 
-            command_steering_angle = self.prev_steering
-            
+            steering_angle = command_steering_angle
+
             if self.steering_hold >= 0:
+                steering_angle = self.prev_steering
                 command_steering = True
                 self.steering_hold -= 1
 
             if self.steering_hold == 0:
-                command_steering_angle = 0
+                steering_angle = 0
 
             if (self.prev_state == self.state and self.state == STATE_NOTHING and self.steering_hold == -1):
                 return None
@@ -223,7 +224,7 @@ class lane_crossing_assist(Node):
 
             self.get_logger().info(f"PUBLISH / Steering angle = {command_steering_angle} / Steering hold = {self.steering_hold}")
 
-            msg.command_steering_angle = command_steering_angle
+            msg.command_steering_angle = steering_angle
             msg.command_steering = command_steering
             msg.state = state
             msg.active = True

@@ -21,8 +21,9 @@ SAFE_MAX_CM = 100          # 100 cm
 MARGE = 2
 
 
-N = 0.01
-G = 0.1
+ACC_GAIN = 0.08
+DEC_GAIN = 0.12
+MIN_STEP = 0.02
 
 # States
 STATE_NOTHING = "state_nothing"
@@ -69,11 +70,11 @@ class SpeedRegulation(Node):
         self.left_rear_speed = 0.0
         self.right_rear_speed = 0.0
 
-        self.command_left_rear_pwm = STOP
-        self.command_right_rear_pwm = STOP
+        self.command_left_rear_pwm = float(STOP)
+        self.command_right_rear_pwm = float(STOP)
         self.command_pwm = False
 
-        self.last_pwm_command = STOP 
+        self.last_pwm_command = float(STOP)
 
         self.max_pwm = 50  # max_pwm relatif
 
@@ -168,26 +169,43 @@ class SpeedRegulation(Node):
 
         if self.vehicle_detected:
             self.active = True
+            pwm = self.last_pwm_command #float
             if distance < SAFE_MIN_CM + MARGE:
                 self.state = STATE_DISTANCE_80CM_LESS
-                self.command_left_rear_pwm = int(max(self.last_pwm_command - N, STOP))
-                self.command_right_rear_pwm = int(max(self.last_pwm_command - N, STOP))
+
+                dec = DEC_GAIN * (pwm - STOP)
+                dec = max(dec, MIN_STEP)
+
+                pwm = max(pwm - dec, STOP)
+                self.command_left_rear_pwm = pwm
+                self.command_left_rear_pwm = pwm
+                # self.command_left_rear_pwm = int(max(self.last_pwm_command - N, STOP))
+                # self.command_right_rear_pwm = int(max(self.last_pwm_command - N, STOP))
                 self.get_logger().info(f"New pwm to {(self.command_left_rear_pwm + self.command_right_rear_pwm)/2.0}")
                 if self.state != self.prev_state:
                     self.get_logger().info(f"ACC: Too close ({distance}cm) -> slow down)")
             
             elif distance > SAFE_MAX_CM - MARGE:
                 self.state = STATE_DISTANCE_1M_PLUS
-                self.command_left_rear_pwm = int(min(self.last_pwm_command + G, MAX_PWM))
-                self.command_right_rear_pwm = int(min(self.last_pwm_command + G, MAX_PWM))
+                
+                acc = DEC_GAIN * (pwm - STOP)
+                acc = max(dec, MIN_STEP)
+
+                pwm = min(pwm + acc, MAX_PWM)
+                self.command_left_rear_pwm = pwm
+                self.command_left_rear_pwm = pwm
+                # self.command_left_rear_pwm = int(min(self.last_pwm_command + G, MAX_PWM))
+                # self.command_right_rear_pwm = int(min(self.last_pwm_command + G, MAX_PWM))
                 self.get_logger().info(f"New pwm to {(self.command_left_rear_pwm + self.command_right_rear_pwm)/2.0}")
                 if self.state != self.prev_state:
                     self.get_logger().info(f"ACC: Too far ({distance}cm) -> speed up)")
 
             else:
                 self.state = STATE_DISTANCE_80CM_1M
-                self.command_left_rear_pwm = int(self.last_pwm_command)
-                self.command_right_rear_pwm = int(self.last_pwm_command)
+                self.command_left_rear_pwm = pwm
+                self.command_left_rear_pwm = pwm
+                # self.command_left_rear_pwm = int(self.last_pwm_command)
+                # self.command_right_rear_pwm = int(self.last_pwm_command)
                 if self.state != self.prev_state:
                     self.get_logger().info(f"ACC: Correct distance ({distance}cm)")
                 
@@ -216,10 +234,10 @@ class SpeedRegulation(Node):
         
 
         # Publishing
-        if (self.prev_state != self.state) or self.last_pwm_command != int((self.command_left_rear_pwm + self.command_right_rear_pwm) / 2.0):
+        if (self.prev_state != self.state) or int(round(self.last_pwm_command)) != int(round((self.command_left_rear_pwm + self.command_right_rear_pwm) / 2.0)):
             msg = MotorsOrderAdas()
-            msg.command_left_rear_pwm = self.command_left_rear_pwm
-            msg.command_right_rear_pwm = self.command_right_rear_pwm
+            msg.command_left_rear_pwm = int(round(self.command_left_rear_pwm))
+            msg.command_right_rear_pwm = int(round(self.command_right_rear_pwm))
             msg.command_pwm = self.command_pwm
             msg.active = self.active
             msg.state = self.state

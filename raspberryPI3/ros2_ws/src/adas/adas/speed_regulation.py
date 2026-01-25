@@ -24,6 +24,9 @@ MARGE = 2
 N = 0.01
 G = 0.1
 
+K_ACCEL = 0.001
+K_DECEL = 0.001
+
 # States
 STATE_NOTHING = "state_nothing"
 STATE_MANUAL_MODE = "state_manual_mode"
@@ -31,9 +34,6 @@ STATE_AUTOMATIC_MODE_CORRECTING = "state_automatic_mode_correcting"
 STATE_AUTOMATIC_MODE_NO_CORRECTING = "state_automatic_mode_no_correcting"
 
 # New states for distance keeping
-# STATE_VEHICLE_DETECTED = "state_vehicle_detected_<1m"
-# STATE_KEEP_DISTANCE = "state_keep_distance_80<x>100cm"
-# STATE_EMERGENCY_STOP_FRONT = "state_emergency_stop_front"
 
 STATE_DISTANCE_80CM_1M = "state_distance_80cm_1m"
 STATE_DISTANCE_80CM_LESS = "state_distance_80cm_less"
@@ -41,7 +41,6 @@ STATE_DISTANCE_1M_PLUS = "state_distance_1m_plus"
 
 REFRESH_PERIOD = 0.05  # 10 ms
 MIN_TOLERANCE = 1.0 
-
 
 class SpeedRegulation(Node):
     def __init__(self):
@@ -175,15 +174,23 @@ class SpeedRegulation(Node):
             self.active = True
             if distance < SAFE_MIN_CM + MARGE:
                 self.state = STATE_DISTANCE_80CM_LESS
-                self.command_left_rear_pwm = int(max(self.last_pwm_command - N, STOP))
-                self.command_right_rear_pwm = int(max(self.last_pwm_command - N, STOP))
+                delta = self.last_pwm_command - STOP
+                decrement = min(0.05, K_DECEL * delta)
+                # self.command_left_rear_pwm = int(max(self.last_pwm_command - N, STOP))
+                # self.command_right_rear_pwm = int(max(self.last_pwm_command - N, STOP))
+                self.command_left_rear_pwm = int(max(self.last_pwm_command - decrement, STOP))
+                self.command_right_rear_pwm = int(max(self.last_pwm_command - decrement, STOP))
                 if self.state != self.prev_state:
                     self.get_logger().info(f"ACC: Too close ({distance}cm) -> slow down)")
             
             elif distance > SAFE_MAX_CM - MARGE:
                 self.state = STATE_DISTANCE_1M_PLUS
-                self.command_left_rear_pwm = int(min(self.last_pwm_command + G, MAX_PWM))
-                self.command_right_rear_pwm = int(min(self.last_pwm_command + G, MAX_PWM))
+                delta = MAX_PWM - self.last_pwm_command
+                increment = min(0.05, K_ACCEL * delta)
+                self.command_left_rear_pwm = int(min(self.last_pwm_command + increment, MAX_PWM))
+                self.command_right_rear_pwm = int(min(self.last_pwm_command + increment, MAX_PWM))
+                # self.command_left_rear_pwm = int(min(self.last_pwm_command + G, MAX_PWM))
+                # self.command_right_rear_pwm = int(min(self.last_pwm_command + G, MAX_PWM))
                 if self.state != self.prev_state:
                     self.get_logger().info(f"ACC: Too far ({distance}cm) -> speed up)")
 

@@ -172,6 +172,7 @@ class SpeedRegulation(Node):
                 self.state = STATE_DISTANCE_80CM_LESS
                 self.command_left_rear_pwm = int(max(self.last_pwm_command - N, STOP))
                 self.command_right_rear_pwm = int(max(self.last_pwm_command - N, STOP))
+                self.get_logger().info(f"New pwm to {(self.command_left_rear_pwm + self.command_right_rear_pwm)/2.0}")
                 if self.state != self.prev_state:
                     self.get_logger().info(f"ACC: Too close ({distance}cm) -> slow down)")
             
@@ -179,6 +180,7 @@ class SpeedRegulation(Node):
                 self.state = STATE_DISTANCE_1M_PLUS
                 self.command_left_rear_pwm = int(min(self.last_pwm_command + G, MAX_PWM))
                 self.command_right_rear_pwm = int(min(self.last_pwm_command + G, MAX_PWM))
+                self.get_logger().info(f"New pwm to {(self.command_left_rear_pwm + self.command_right_rear_pwm)/2.0}")
                 if self.state != self.prev_state:
                     self.get_logger().info(f"ACC: Too far ({distance}cm) -> speed up)")
 
@@ -214,7 +216,7 @@ class SpeedRegulation(Node):
         
 
         # Publishing
-        if (self.prev_state != self.state) or self.last_pwm_command != (self.command_left_rear_pwm + self.command_right_rear_pwm) / 2.0:
+        if (self.prev_state != self.state) or self.last_pwm_command != int((self.command_left_rear_pwm + self.command_right_rear_pwm) / 2.0):
             msg = MotorsOrderAdas()
             msg.command_left_rear_pwm = self.command_left_rear_pwm
             msg.command_right_rear_pwm = self.command_right_rear_pwm

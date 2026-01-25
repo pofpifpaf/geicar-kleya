@@ -21,9 +21,9 @@ SAFE_MAX_CM = 100          # 100 cm
 MARGE = 2
 
 
-ACC_GAIN = 0.08
-DEC_GAIN = 0.12
-MIN_STEP = 0.02
+ACC_GAIN = 0.04
+DEC_GAIN = 0.06
+MIN_STEP = 0.01
 
 # States
 STATE_NOTHING = "state_nothing"
@@ -177,9 +177,7 @@ class SpeedRegulation(Node):
                 pwm = max(pwm - dec, STOP)
                 self.command_left_rear_pwm = pwm
                 self.command_right_rear_pwm = pwm
-                # self.command_left_rear_pwm = int(max(self.last_pwm_command - N, STOP))
-                # self.command_right_rear_pwm = int(max(self.last_pwm_command - N, STOP))
-                self.get_logger().info(f"New pwm to {(self.command_left_rear_pwm + self.command_right_rear_pwm)/2.0}")
+                self.get_logger().info(f"New pwm deccel to {(self.command_left_rear_pwm + self.command_right_rear_pwm)/2.0}")
                 if self.state != self.prev_state:
                     self.get_logger().info(f"ACC: Too close ({distance}cm) -> slow down)")
             
@@ -192,9 +190,7 @@ class SpeedRegulation(Node):
                 pwm = min(pwm + acc, MAX_PWM)
                 self.command_left_rear_pwm = pwm
                 self.command_right_rear_pwm = pwm
-                # self.command_left_rear_pwm = int(min(self.last_pwm_command + G, MAX_PWM))
-                # self.command_right_rear_pwm = int(min(self.last_pwm_command + G, MAX_PWM))
-                self.get_logger().info(f"New pwm to {(self.command_left_rear_pwm + self.command_right_rear_pwm)/2.0}")
+                self.get_logger().info(f"New pwm accel to {(self.command_left_rear_pwm + self.command_right_rear_pwm)/2.0}")
                 if self.state != self.prev_state:
                     self.get_logger().info(f"ACC: Too far ({distance}cm) -> speed up)")
 
@@ -202,8 +198,6 @@ class SpeedRegulation(Node):
                 self.state = STATE_DISTANCE_80CM_1M
                 self.command_left_rear_pwm = pwm
                 self.command_right_rear_pwm = pwm
-                # self.command_left_rear_pwm = int(self.last_pwm_command)
-                # self.command_right_rear_pwm = int(self.last_pwm_command)
                 if self.state != self.prev_state:
                     self.get_logger().info(f"ACC: Correct distance ({distance}cm)")
                 

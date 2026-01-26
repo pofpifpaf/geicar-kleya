@@ -174,7 +174,7 @@ class SpeedRegulation(Node):
                 dec = DEC_GAIN * (pwm - STOP)
                 dec = max(dec, MIN_STEP)
 
-                pwm = max(pwm - dec, 60)
+                pwm = max(pwm - dec, STOP)
                 self.command_left_rear_pwm = pwm
                 self.command_right_rear_pwm = pwm
                 self.get_logger().info(f"New pwm deccel to {(self.command_left_rear_pwm + self.command_right_rear_pwm)/2.0}")

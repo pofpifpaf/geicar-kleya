@@ -98,6 +98,23 @@ function setCollisionBanner(state){
   }
 }
 
+function setLCABanner(state){
+  const banner = document.getElementById("lcaBanner");
+  if (!banner) return;
+
+  // mapping basé sur ton Dashboard.py :contentReference[oaicite:1]{index=1}
+  let text = "";
+  if (state === "state_lane_crossed_left") text = "⚠️ Depassement de ligne à gauche";
+  else if (state === "state_lane_crossed_right") text = "⚠️ Depassement de ligne à droite";
+
+  if (text){
+    banner.textContent = text;
+    banner.style.display = "block";
+  } else {
+    banner.style.display = "none";
+  }
+}
+
 function isIndicatorActive(id){
   const el = document.getElementById(id);
   return !!(el && el.classList.contains("active"));
@@ -182,6 +199,7 @@ ws.onmessage = (event) => {
   window.__lastAirbagState = data.airbag_state;   // <--- ajoute ça
   setCollisionBanner(data.collision_state);
   setAirbagOverlay(data.airbag_state);
+  setLCABanner(data.lca_state);
 };
 
 // Rendu initial (avant 1er message)

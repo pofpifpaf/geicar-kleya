@@ -16,12 +16,14 @@ telemetry_state: Dict = {
     "airbag_state": "None",
     "collision_state": "None",
     "esp_state": "None",
+    "lca_state": "None",
 }
 
 adas_state: Dict = {
     "collision": False,
     "esp": False,
     "airbag": False,
+    "lca": False,
 }
 
 # ====== MODELS ======
@@ -34,11 +36,13 @@ class Telemetry(BaseModel):
     airbag_state: str
     collision_state: str
     esp_state: str
+    lca_state: str
 
 class AdasConfig(BaseModel):
     collision: bool
     esp: bool
     airbag: bool
+    lca: bool
 
 
 # ====== TELEMETRY ======

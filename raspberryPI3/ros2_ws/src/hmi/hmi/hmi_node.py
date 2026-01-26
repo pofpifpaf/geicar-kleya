@@ -37,11 +37,13 @@ class HmiNode(Node):
         self.airbag_state  = "None"
         self.collision_state  = "None"
         self.esp_state  = "None"
+        self.lca_state  = "None"
 
         self.active_features = {
             "collision": True,
             "airbag": True,
-            "esp": True
+            "esp": True,
+            "lca": True
         }
 
         self.timer = self.create_timer(0.3, self.send_to_api)
@@ -57,6 +59,7 @@ class HmiNode(Node):
             self.active_features["collision"] = data.get("collision", True)
             self.active_features["airbag"] = data.get("airbag", True)
             self.active_features["esp"] = data.get("esp", True)
+            self.active_features["lca"] = data.get("lca", True)
         except Exception as e:
             self.get_logger().warn(f"Failed to fetch ADAS state from FastAPI: {e}")
 
@@ -65,6 +68,7 @@ class HmiNode(Node):
         msg.collision_avoidance_active = self.active_features["collision"]
         msg.airbag_active = self.active_features["airbag"]
         msg.esp_active = self.active_features["esp"]
+        msg.lca_active = self.active_features["lca"]
         self.publisher_active_features_hmi.publish(msg)
 
     #Circonference function : 2*pie*rayon
@@ -104,6 +108,7 @@ class HmiNode(Node):
         self.airbag_state  = hmi_states.states[1]  #index_airbag
         self.collision_state  = hmi_states.states[0] #index collsion
         self.esp_state  = hmi_states.states[2] #index esp
+        self.lca_state  = hmi_states.states[3] #index lca
 
 
     def send_to_api(self):
@@ -121,6 +126,7 @@ class HmiNode(Node):
             "airbag_state": self.airbag_state,
             "collision_state": self.collision_state,
             "esp_state": self.esp_state,
+            "lca_state": self.lca_state,
         }
 
         try:

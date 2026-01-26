@@ -202,6 +202,21 @@ body{ background:#050816; color:#eaf3ff; overflow:hidden; }
   animation: popupBlink 1.6s infinite;
   text-align:center;
 }
+
+/* LCA banner */
+.lca{
+  margin-top:14px;
+  font-weight:800;
+  font-size:16px;
+  padding:10px 12px;
+  border-radius:12px;
+  background: rgba(255,177,74,0.18);
+  border: 1px solid rgba(255,177,74,0.35);
+  color: #fff;
+  text-shadow:0 0 10px rgba(0,0,0,0.6);
+  animation: popupBlink 1.6s infinite;
+  text-align:center;
+}
 @keyframes popupBlink{
   0%{ opacity:0.55; transform:translateY(0); }
   50%{ opacity:1; transform:translateY(-3px); }

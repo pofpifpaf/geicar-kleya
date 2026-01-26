@@ -126,7 +126,10 @@ class lane_crossing_assist(Node):
         if lanes.lane1_valid:
             self.get_logger().info(f"lane1 point_ref = {self.lane1_point_ref:.2f}")
         if lanes.lane2_valid:
-            self.get_logger().info(f"lane3 point_ref = {self.lane2_point_ref:.2f}")
+            self.get_logger().info(f"lane2 point_ref = {self.lane2_point_ref:.2f}")
+
+        if (lanes.lane1_valid and lanes.lane2_valid) and abs(self.lane1_point_ref - self.lane2_point_ref) < 50:
+            lanes.lane1_valid = False
 
         if (lanes.lane1_valid or lanes.lane2_valid):
 

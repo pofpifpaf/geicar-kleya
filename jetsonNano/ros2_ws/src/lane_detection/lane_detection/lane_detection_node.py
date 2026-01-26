@@ -128,7 +128,7 @@ class  lane_detection(Node):
         chan_y = clahe.apply(Y)
         # Simple adaptive threshold: mean - some factor
         mean_y = np.mean(chan_y)
-        thresh = max(0, int(mean_y * 0.5))  # dark tape is darker than mean
+        thresh = max(0, int(mean_y * 0.65))  # dark tape is darker than mean
         # Mask: pixels darker than threshold
         mask = cv2.inRange(chan_y, 0, thresh)
         # Morphology to clean noise

@@ -108,7 +108,7 @@ class HmiNode(Node):
         self.airbag_state  = hmi_states.states[1]  #index_airbag
         self.collision_state  = hmi_states.states[0] #index collsion
         self.esp_state  = hmi_states.states[2] #index esp
-        self.lca_state  = hmi_states.states[3] #index lca
+        self.lca_state  = hmi_states.states[4] #index lca
 
 
     def send_to_api(self):

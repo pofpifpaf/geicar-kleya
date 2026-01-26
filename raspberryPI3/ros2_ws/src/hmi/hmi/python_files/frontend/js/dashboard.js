@@ -104,8 +104,8 @@ function setLCABanner(state){
 
   // mapping basé sur ton Dashboard.py :contentReference[oaicite:1]{index=1}
   let text = "";
-  if (state === "state_lane_crossed_left") text = "⚠️ Depassement de ligne à gauche";
-  else if (state === "state_lane_crossed_right") text = "⚠️ Depassement de ligne à droite";
+  if (state === "state_lane_crossed_left") text = "⚠️ Left lane crossing detected";
+  else if (state === "state_lane_crossed_right") text = "⚠️ Right lane crossing detected";
 
   if (text){
     banner.textContent = text;

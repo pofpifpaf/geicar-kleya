@@ -1,0 +1,35 @@
+.adas-panel{
+  display:flex;
+  gap:16px;
+  align-items:center;
+  flex-wrap:wrap;
+}
+
+.lamp{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:10px 14px;
+  border-radius:12px;
+  border:1px solid #2a2a2a;
+  cursor:pointer;
+  user-select:none;
+}
+
+.lamp .dot{
+  width:14px;
+  height:14px;
+  border-radius:50%;
+  background:#3a3a3a;          /* éteint */
+  box-shadow:none;
+  transition: all .15s ease;
+}
+
+.lamp.on .dot{
+  background:#ff2b2b;           /* allumé rouge */
+  box-shadow:0 0 10px rgba(255,43,43,.9);
+}
+
+.lamp .label{
+  font-size:14px;
+}

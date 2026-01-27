@@ -13,6 +13,7 @@ INDEX_COLLISION = 0
 INDEX_AIRBAG = 1
 INDEX_ESP = 2
 INDEX_ACC = 3
+INDEX_LCA = 4
 
 class adas_priority(Node):
 
@@ -26,6 +27,7 @@ class adas_priority(Node):
         self.sub_airbag = self.create_subscription(MotorsOrderAdas, 'motors_order_airbag', self.airbag_callback, 10)
         self.sub_esp = self.create_subscription(MotorsOrderAdas,'motors_order_esp', self.esp_callback, 10)
         self.sub_acc = self.create_subscription(MotorsOrderAdas, 'motors_order_acc', self.acc_callback, 10)
+        self.sub_lca = self.create_subscription(MotorsOrderAdas, 'motors_order_lca', self.lca_callback, 10)
 
         self.sub_active_features_hmi = self.create_subscription(HmiFeatures, 'active_features_hmi', self.active_features_HMI_callback, 10)
 
@@ -37,14 +39,16 @@ class adas_priority(Node):
         self.declare_parameter("airbag_priority", 0)
         self.declare_parameter("collision_priority", 1)
         self.declare_parameter("esp_priority", 2)
-        self.declare_parameter("acc_priority", 3)
+        self.declare_parameter("acc_priority", 4)
+        self.declare_parameter("lca_priority", 3)
 
         self.declare_parameter("airbag_block_duration", 10)
 
         self.priorities = {"collision": self.get_parameter("collision_priority").value,
                          "airbag": self.get_parameter("airbag_priority").value,
                          "esp": self.get_parameter("esp_priority").value,
-                         "acc" : self.get_parameter("acc_priority").value}
+                         "acc" : self.get_parameter("acc_priority").value,
+                         "lca" : self.get_parameter("lca_priority").value}
 
         self.airbag_block_duration = self.get_parameter("airbag_block_duration").value
 
@@ -52,18 +56,21 @@ class adas_priority(Node):
         self.hmi_active = {"collision":True,
                              "airbag":True,
                              "esp":True,
-                             "acc": True}
+                             "acc": True,
+                             "lca": True}
 
         self.states = {"collision": "state_nothing",
                          "airbag": "state_nothing",
                          "esp": "state_nothing",
-                         "acc": "state_nothing"}
+                         "acc": "state_nothing",
+                         "lca": "state_nothing"}
 
         # Active features on HMI
         self.collision_avoidance_active_HMI = 0
         self.esp_active_HMI = 0
         self.airbag_active_HMI = 0
         self.acc_active_HMI = 0
+        self.lca_active_HMI = 0
 
         # Raw motor order
         self.raw_motor_left_rear_pwm = 50
@@ -115,10 +122,14 @@ class adas_priority(Node):
     def acc_callback(self, msg):
         self.last_offsets["acc"] = msg
         self.states["acc"] = msg.state
+
+    def lca_callback(self, msg):
+        self.last_offsets["lca"] = msg
+        self.states["lca"] = msg.state
         
     # Active features HMI callback
     def active_features_HMI_callback(self, msg):
-        #self.hmi_active = {"collision":msg.collision_avoidance_active, "airbag":msg.airbag_active, "esp":msg.esp_active, "acc": msg.acc_active}
+        # When HMI will work : self.hmi_active = {"collision":msg.collision_avoidance_active, "airbag":msg.airbag_active, "esp":msg.esp_active, "acc": msg.acc_active, "lca": msg.lca_active}
         self.hmi_active = {"collision":msg.collision_avoidance_active, "airbag":msg.airbag_active, "esp":msg.esp_active}
         
     def motors_order_raw_callback(self, msg):
@@ -154,7 +165,7 @@ class adas_priority(Node):
                     min_prio_command_pwm = self.priorities[key]
                     selected_command_msg_pwm = msg
 
-                if self.priorities[key] < min_prio_command_steering and msg.command_steering:
+                if self.priorities[key] < min_prio_command_steering and msg.command_steering and not(key == "lca" and self.raw_motor_right_rear_pwm < STOP and self.raw_motor_left_rear_pwm < STOP):
 
                     min_prio_command_steering = self.priorities[key]
                     selected_command_msg_steering = msg
@@ -231,6 +242,7 @@ class adas_priority(Node):
         states_msg.states[INDEX_COLLISION] = self.states["collision"]
         states_msg.states[INDEX_ESP] = self.states["esp"]
         states_msg.states[INDEX_ACC] = self.states["acc"]
+        states_msg.states[INDEX_LCA] = self.states["lca"]
 
         if (self.state_airbag_deployed):
             states_msg.states[INDEX_AIRBAG] = "state_deployed"

@@ -29,7 +29,6 @@ setup(
             'adas_priority_node = adas.adas_priority_node:main',
             'speed_regulation = adas.speed_regulation:main',
             'esp_node = adas.esp_node:main',
-            'lane_centering_assist_node = adas.lane_centering_assist:main',
         ],
     },
 )

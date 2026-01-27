@@ -21,6 +21,12 @@ set(msg_files
   "msg/Ultrasonic.msg"
   "msg/Gnss.msg"
   "msg/SystemCheck.msg"
+  "msg/ECompass.msg"
+  "msg/EnvironmentData.msg"
+  "msg/HmiFeatures.msg"
+  "msg/MotorsOrderAdas.msg"
+  "msg/HmiStates.msg"
+  "msg/DetectedLane.msg"
 )
 
 rosidl_generate_interfaces(${PROJECT_NAME}

@@ -33,8 +33,14 @@ The projects are (or were) surpervised by:
   * Toggle the red button to bring the power.
   * Press the START push button (hold it down for a short while).
   * Wait until Raspberry boot up and connect to it using its IP address (written on the board): `ssh pi@10.105.1.xx`
-  * When connected start ROS subsystem using :`ros2 launch geicar_start geicar.launch.py`
-  * Then, you will get a report of subsystems and be able to control the car using XBOX controler 
+  * When connected start ROS subsystem using : `source ~/test/develop/geicar-kleya/raspberryPI3/ros2_ws/launch.sh`
+  * Then, you will get a report of subsystems and be able to control the car using XBOX controller 
+  * For the LCA system, connect to the jetson Nano : `ssh jetson@192.168.1.xx` (the IP can change, see Project Architecture Notes)
+  * Start the docker : `sudo docker start -ai ros-humble`
+  * Launch the jetson ROS subsystem : `source /root/test/develop/geicar-kleya/jetsonNano/ros2_ws/launch.sh`
+
+>[!NOTE]
+>More information on the startup and the build are available in the [Project architecture notes](https://docs.google.com/document/d/1LTkkd4-w4RaJ8ROUtFZ62aQJ4dhyVaZO-zE2RoP_Y3U/edit?usp=sharing)
 
 * To turn off the car:
   * Use the red button as a switch to turn off the power.
@@ -48,5 +54,14 @@ The projects are (or were) surpervised by:
     * jetsonNano: Directory containing info on IA, Camera and Lidar
     * simulation: if you want to setup a carla simulation environment
 
-__warning__
-You normally do not need to change firmware running in F103 and F476 boards. You main work is on the raspberry and jetson side.
+### Building the ROS2 environments
+
+#### On the Raspberry Pi 4
+* Clone this repository
+* Go into `./raspberryPI3/ros2_ws`
+* Run `build.sh`
+
+#### On the Jetson
+* Clone this repository
+* Go into `./jetsonNano/ros2_ws`
+* Run `build.sh`

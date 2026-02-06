@@ -79,6 +79,18 @@ def generate_launch_description():
         emulate_tty=True
     )
 
+    collision_avoidance_node = Node(
+        package="adas",
+        executable="collision_avoidance_node",
+        emulate_tty=True
+    )
+    
+    shock_detection_node = Node(
+        package="adas",
+        executable="airbag_shock_detection",
+        emulate_tty=True
+    )
+
 
     config_dir = os.path.join(get_package_share_directory('imu_filter_madgwick'), 'config')
 

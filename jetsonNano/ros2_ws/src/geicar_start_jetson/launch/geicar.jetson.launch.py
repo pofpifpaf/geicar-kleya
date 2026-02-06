@@ -27,6 +27,18 @@ def generate_launch_description():
         emulate_tty=True
     )
 
+    lane_detection_node = Node(
+        package="lane_detection",
+        executable="lane_detection_node",
+        emulate_tty=True
+    )
+    
+    lane_crossing_assist_node = Node(
+        package="lane_detection",
+        executable="lane_crossing_assist_node",
+        emulate_tty=True
+    )
+    
     system_check_ack_node = Node(
         package="system_check_ack",
         executable="system_check_ack_node",
@@ -36,6 +48,8 @@ def generate_launch_description():
 
     ld.add_action(lidar_node)
     ld.add_action(camera_node)
+    ld.add_action(lane_detection_node)
+    ld.add_action(lane_crossing_assist_node)
     ld.add_action(system_check_ack_node)
 
     return ld

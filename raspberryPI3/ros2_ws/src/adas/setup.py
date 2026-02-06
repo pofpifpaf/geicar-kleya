@@ -25,7 +25,10 @@ setup(
     entry_points={
         'console_scripts': [
             'collision_avoidance_node = adas.collision_avoidance_node:main',
-            'airbag_shock_detection = adas.airbag.airbag_shock_detect:main',
+            'airbag_shock_detection = adas.airbag_shock_detect:main',
+            'adas_priority_node = adas.adas_priority_node:main',
+            'speed_regulation = adas.speed_regulation:main',
+            'esp_node = adas.esp_node:main',
         ],
     },
 )

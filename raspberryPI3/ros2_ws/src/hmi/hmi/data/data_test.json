@@ -1,0 +1,21 @@
+{
+    "LCA": true,
+    "ACC": true,
+    "LDW": true,
+    "ESP": true,
+    "Airbag": true,
+    "Collision": true,
+    "speed": 0,
+    "battery": 30,
+    "pressure": 0,
+    "temperature": 0,
+    "RPMright": 0,
+    "RPMleft": 0,
+    "RPM": 5,
+    "front_left": 0,
+    "front_right": 0,
+    "front_center": 0,
+    "airbag_state": "nothing",
+    "collision_state": "state_1m",
+    "esp_state": "None"
+}

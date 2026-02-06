@@ -53,9 +53,9 @@ class adas_priority(Node):
         self.airbag_block_duration = self.get_parameter("airbag_block_duration").value
 
         self.last_offsets = {}
-        self.hmi_active = {"collision":True,
-                             "airbag":True,
-                             "esp":True,
+        self.hmi_active = {"collision": True,
+                             "airbag": True,
+                             "esp": True,
                              "acc": True,
                              "lca": True}
 
@@ -101,7 +101,6 @@ class adas_priority(Node):
             if key in self.priorities:   
                 self.priorities[key] = p.value
                 self.get_logger().info(f"Parameter {p.name} changed to {self.priorities[key]}")
-
         return SetParametersResult(successful=True)
 
     # Collision avoidance callback
@@ -129,8 +128,7 @@ class adas_priority(Node):
         
     # Active features HMI callback
     def active_features_HMI_callback(self, msg):
-        # When HMI will work : self.hmi_active = {"collision":msg.collision_avoidance_active, "airbag":msg.airbag_active, "esp":msg.esp_active, "acc": msg.acc_active, "lca": msg.lca_active}
-        self.hmi_active = {"collision":msg.collision_avoidance_active, "airbag":msg.airbag_active, "esp":msg.esp_active}
+        self.hmi_active = {"collision":msg.collision_avoidance_active, "airbag":msg.airbag_active, "esp":msg.esp_active, "acc":msg.acc_active, "lca":msg.lca_active}
         
     def motors_order_raw_callback(self, msg):
         self.raw_motor_left_rear_pwm = msg.left_rear_pwm
@@ -201,7 +199,7 @@ class adas_priority(Node):
         # Checking for any emergency stops
         for key, msg in self.last_offsets.items():
 
-            if msg.active and self.hmi_active[key]:
+            if msg.active and self.hmi_active.get(key, True):
 
                 if msg.emergency_stop :
 
